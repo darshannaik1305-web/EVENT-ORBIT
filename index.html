@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>College Event Management</title>
+  <style>
+    /* Reset and base styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f9;
+      display: flex;
+      flex-direction: column;
+    }
+    a, button {
+      cursor: pointer;
+    }
+    /* LOGIN PAGE */
+    #loginPage {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #34495e url('https://media.collegedekho.com/media/img/news/college_fests.jpg?height=310&width=615') no-repeat center center fixed;
+      background-size: cover;
+      color: #ecf0f1;
+      padding: 20px;
+      position: relative;
+    }
+    #loginPage::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 1;
+    }
+    #loginBox {
+      background: rgba(255, 255, 255, 0.3);
+      padding: 30px 40px;
+      border-radius: 12px;
+      width:300px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      position: relative;
+      z-index: 2;
+    }
+    #loginBox h2 {
+      margin-bottom: 25px;
+      text-align: center;
+      font-weight: 700;
+    }
+    #loginBox label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    #loginBox input {
+      width: 100%;
+      padding: 8px 12px;
+      margin-top: 6px;
+      border-radius: 6px;
+      border: none;
+      font-size: 1rem;
+    }
+    #loginButtons {
+      margin-top: 25px;
+      display: flex;
+      justify-content: space-between;
+    }
+    #loginButtons button {
+      flex: 1;
+      margin: 0 5px;
+      border: none;
+      background: #2980b9;
+      color: white;
+      padding: 10px 0;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 8px;
+      transition: background 0.3s ease;
+    }
+    #loginButtons button:hover {
+      background: #1c5980;
+    }
+    #loginError {
+      color: #e74c3c;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      height: 20px;
+      text-align: center;
+    }
+    /* MAIN PAGE LAYOUT */
+    #mainPage {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header#mainHeader {
+      background: rgba(255, 255, 255, 0.4);
+      color: rgb(0, 0, 0);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+    #menuToggle {
+      font-size: 1.8rem;
+      background: none;
+      border: none;
+      color: rgb(0, 0, 0);
+    }
+    #topRightButtons {
+      display: flex;
+      gap: 12px;
+    }
+    #topRightButtons button {
+      background: #ffffff;
+      border: none;
+      color: rgb(0, 0, 0);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    #topRightButtons button:hover {
+      background: #ffffff;
+    }
+    #sideMenu {
+      position: fixed;
+      top: 0;
+      left: -260px;
+      width: 250px;
+      height: 100%;
+      background: #ffffff;
+      box-shadow: 3px 0 8px rgba(0,0,0,0.3);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      transition: left 0.3s ease;
+      z-index: 9999;
+    }
+    #sideMenu.visible {
+      left: 0;
+    }
+    #sideMenu h3 {
+      color: #000000;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+    #sideMenu a {
+      color: #000000;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #ffffff;
+      transition: background 0.3s ease;
+      display: block;
+    }
+    #sideMenu a:hover, #sideMenu a:focus {
+      background: #2a3e73;
+      outline: none;
+    }
+    main#content {
+      flex: 1;
+      display: flex;
+      padding: 20px 25px;
+      gap: 25px;
+      background: #ecf0f1 url('https://img.freepik.com/free-photo/amazing-beautiful-art-sky-with-colorful-clouds_58702-1688.jpg?semt=ais_hybrid&w=740') no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+    }
+    main#content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 1;
+    }
+    #clubContainer {
+      flex: 1.7;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      position: relative;
+      z-index: 2;
+    }
+    .clubBox {
+      background: #3498db;
+      border-radius: 12px;
+      color: white;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      height: 130px;
+      cursor: pointer;
+      box-shadow: 0 8px 15px -5px #2980b980;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      position: relative;
+      user-select: none;
+      overflow: hidden;
+    }
+    .clubBox .clubImage {
+      flex: 1;
+      background-size: cover;
+      background-position: center;
+      width: 100%;
+    }
+    .clubBox .clubName {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 8px 5px;
+      text-align: center;
+      font-size: 0.85rem;
+      line-height: 1.2;
+      min-height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .clubBox:hover {
+      transform: scale(1.05);
+      box-shadow: 0 16px 25px -10px #2980b9cc;
+    }
+    .clubBox:after {
+      content: "";
+      position: absolute;
+      border-radius: 12px;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.15);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .clubBox:hover:after {
+      opacity: 1;
+    }
+    #notificationBox {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 12px;
+      color: rgb(0, 0, 0);
+      display: flex;
+      flex-direction: column;
+      padding: 15px 20px;
+      box-shadow: 0 16px 25px -10px #1c5980cc;
+      position: relative;
+      z-index: 2;
+    }
+    #notificationBox h3 {
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+    #notificationList {
+      overflow-y: auto;
+      flex: 1;
+      max-height: 300px;
+    }
+    #notificationList li {
+      margin-bottom: 10px;
+      cursor: default;
+    }
+    #notificationList li span.date {
+      font-size: 0.8rem;
+      color: #d6eaf8;
+      font-weight: 400;
+    }
+    #eventsModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 20000;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    #eventsModal.visible {
+      display: flex;
+    }
+    #eventsModalContent {
+      background: white;
+      border-radius: 14px;
+      max-width: 720px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 25px 30px;
+      box-shadow: 0 12px 40px rgba(50,50,50,0.3);
+      position: relative;
+    }
+    #eventsModalContent h2 {
+      margin-bottom: 20px;
+      font-weight: 700;
+      text-align: center;
+    }
+    #closeModalBtn {
+      position: absolute;
+      top: 12px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #888;
+      transition: color 0.3s ease;
+    }
+    #closeModalBtn:hover {
+      color: #000;
+    }
+    .eventBox {
+      border: 1px solid #2980b9;
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin-bottom: 16px;
+      background: #f7fbff;
+    }
+    .eventBox h3 {
+      font-weight: 700;
+      color: #2980b9;
+    }
+    .eventBox p {
+      margin: 8px 0 14px 0;
+      line-height: 1.3;
+    }
+    .registerBtn {
+      background: #3498db;
+      border: none;
+      color: white;
+      padding: 8px 20px;
+      font-weight: 700;
+      border-radius: 20px;
+      transition: background 0.3s ease;
+    }
+    .registerBtn:hover {
+      background: #1c5980;
+    }
+    .registrationFormContainer {
+      margin-top: 10px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    .registrationFormContainer label {
+      font-weight: 600;
+    }
+    .registrationFormContainer input {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    .registrationFormContainer button {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-weight: 600;
+      margin-top: 5px;
+      transition: background 0.3s ease;
+    }
+    .registrationFormContainer button:hover {
+      background: #1f7a45;
+    }
+    .regMsg {
+      margin-top: 6px;
+      font-weight: 600;
+    }
+        .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+      display: none;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 900px) {
+      #clubContainer {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      main#content {
+        flex-direction: column;
+        padding: 15px 15px;
+      }
+      #notificationBox {
+        width: 100%;
+        margin-top: 25px;
+        flex: none;
+        height: 200px;
+      }
+    }
+    @media (max-width: 600px) {
+      #clubContainer {
+        grid-template-columns: 1fr;
+      }
+      #loginBox {
+        width: 90%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div id="loginBox">
+    <h2>MVJ COLLEGE OF ENGINEERING</h2>
+    <form id="loginForm" onsubmit="return false;">
+      <label for="usernameInput">Username:</label>
+      <input type="text" id="usernameInput" autocomplete="username" required />
+      <label for="passwordInput">Password:</label>
+      <input type="password" id="passwordInput" autocomplete="current-password" required />
+      <div id="loginButtons">
+        <button type="button" onclick="attemptLogin('user')">Student Login</button>
+      </div>
+      <div style="margin-top: 10px; text-align: center;">
+        <button type="button" style="background: transparent; border: none; color: #ffffff; text-decoration: underline; font-weight: 600;" onclick="showRegisterForm()">Create new account</button>
+      </div>
+      <div id="loginError" role="alert" aria-live="assertive"></div>
+      <div class="spinner" id="loginSpinner"></div>
+    </form>
+
+    <form id="registerForm" onsubmit="return false;" style="display:none;">
+      <label for="registerUsernameInput">Username:</label>
+      <input type="text" id="registerUsernameInput" autocomplete="username" required />
+      <label for="registerPasswordInput">Password:</label>
+      <input type="password" id="registerPasswordInput" autocomplete="new-password" required />
+      <label for="registerMobileInput">Mobile Number:</label>
+      <input type="tel" id="registerMobileInput" pattern="[0-9]{10}" maxlength="10" required placeholder="10-digit mobile number" />
+      <div id="registerButtons" style="margin-top: 25px; display: flex; justify-content: space-between;">
+        <button type="button" onclick="attemptRegister()" style="flex:1; margin: 0 5px; border: none; background: #27ae60; color: white; padding: 10px 0; font-weight: 600; font-size: 1rem; border-radius: 8px; transition: background 0.3s ease;">Register</button>
+        <button type="button" onclick="showLoginForm()" style="flex:1; margin: 0 5px; border: none; background: #7f8c8d; color: white; padding: 10px 0; font-weight: 600; font-size: 1rem; border-radius: 8px; transition: background 0.3s ease;">Back</button>
+      </div>
+      <div id="registerError" role="alert" aria-live="assertive" style="color: #e74c3c; margin-top: 12px; font-size: 0.9rem; height: 20px; text-align: center;"></div>
+      <div class="spinner" id="registerSpinner"></div>
+    </form>
+  </div>
+</div>
+<!-- MAIN PAGE -->
+<div id="mainPage">
+  <header id="mainHeader">
+    <button id="menuToggle" aria-label="Toggle menu" onclick="toggleMenu()">☰</button>
+    <div id="topRightButtons">
+      <button onclick="goHome()">Home</button>
+      <button onclick="contact()">Contact</button>
+      <button onclick="helpPage()">Help</button>
+    </div>
+    <nav id="sideMenu" aria-label="User menu">
+      <h3>User Menu</h3>
+      <a href="#" id="userAccountDetailsLink" tabindex="0">Account Details</a>
+      <a href="#" onclick="logout()" tabindex="0">Logout</a>
+      <a href="#" onclick="about()" tabindex="0">About</a>
+    </nav>
+  </header>
+  <main id="content">
+    <section id="clubContainer" aria-label="Club list"></section>
+    <aside id="notificationBox" aria-label="Notifications">
+      <h3>Recent Events & Updates</h3>
+      <ul id="notificationList" role="list"></ul>
+    </aside>
+  </main>
+</div>
+<!-- EVENTS MODAL -->
+<div id="eventsModal" role="dialog" aria-modal="true" aria-labelledby="eventsModalTitle" tabindex="-1">
+  <div id="eventsModalContent">
+    <button id="closeModalBtn" aria-label="Close events modal" onclick="closeEventsModal()">×</button>
+    <h2 id="eventsModalTitle">Events for Club</h2>
+    <div id="eventsList"></div>
+  </div>
+</div>
+<script>
+  const API_BASE_URL = 'http://localhost:7070/api';
+
+  // Data Structures - Now fetched from backend
+  let clubs = [];
+  let events = {};
+  let currentUser = null;
+  let authToken = null;
+
+  function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
+  }
+
+  // FIXED: Enhanced sanitizeInput for better security
+  function sanitizeInput(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function saveData() {
+    localStorage.setItem('cem_user', JSON.stringify(currentUser));
+    if (authToken) {
+      localStorage.setItem('cem_token', authToken);
+    }
+  }
+
+  function loadData() {
+    try {
+      const savedUser = localStorage.getItem('cem_user');
+      const savedToken = localStorage.getItem('cem_token');
+      
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+      }
+      if (savedToken) {
+        authToken = savedToken;
+      }
+    } catch (error) {
+      console.error('Error loading data from localstorage:', error);
+      currentUser = null;
+      authToken = null;
+    }
+  }
+
+  function toggleSpinner(spinnerId, show) {
+    document.getElementById(spinnerId).style.display = show ? 'block' : 'none';
+  }
+
+  function attemptLogin(role) {
+    const username = sanitizeInput(document.getElementById('usernameInput').value.trim());
+    const password = document.getElementById('passwordInput').value;
+    const errElem = document.getElementById('loginError');
+    errElem.textContent = '';
+    toggleSpinner('loginSpinner', true);
+
+    // Call backend API for authentication
+    fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
+      return response.json();
+    })
+    .then(data => {
+      currentUser = { username: data.username, role: data.role.toLowerCase() };
+      authToken = data.token;
+      saveData();
+      loginSuccess();
+    })
+    .catch(error => {
+      errElem.textContent = 'Invalid credentials.';
+    })
+    .finally(() => {
+      toggleSpinner('loginSpinner', false);
+    });
+  }
+
+  function showRegisterForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('registerError').textContent = '';
+    document.getElementById('registerUsernameInput').focus();
+  }
+
+  function showLoginForm() {
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('registerError').textContent = '';
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('usernameInput').focus();
+  }
+
+  function attemptRegister() {
+    const username = sanitizeInput(document.getElementById('registerUsernameInput').value.trim());
+    const password = document.getElementById('registerPasswordInput').value;
+    const mobile = sanitizeInput(document.getElementById('registerMobileInput').value.trim());
+    const errElem = document.getElementById('registerError');
+    errElem.textContent = '';
+
+    if (!username || !password) {
+      errElem.textContent = 'Please enter username and password.';
+      return;
+    }
+
+    if (!/^\d{10}$/.test(mobile)) {
+      errElem.textContent = 'Please enter a valid 10-digit mobile number.';
+      return;
+    }
+
+    toggleSpinner('registerSpinner', true);
+
+    fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password, mobile })
+    })
+    .then(async response => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+      return data;
+    })
+    .then(() => {
+      document.getElementById('usernameInput').value = username;
+      document.getElementById('passwordInput').value = password;
+      document.getElementById('registerPasswordInput').value = '';
+      document.getElementById('registerMobileInput').value = '';
+      showLoginForm();
+      attemptLogin('user');
+    })
+    .catch(error => {
+      errElem.textContent = error.message || 'Registration failed.';
+    })
+    .finally(() => {
+      toggleSpinner('registerSpinner', false);
+    });
+  }
+
+  function loginSuccess() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('mainPage').style.display = 'flex';
+    document.getElementById('usernameInput').value = '';
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('loginError').textContent = '';
+    populateClubs();
+    populateNotifications();
+    updateMenuUserDetails();
+  }
+
+  function populateClubs() {
+    fetch(`${API_BASE_URL}/clubs`)
+      .then(response => response.json())
+      .then(data => {
+        clubs = data;
+        const container = document.getElementById('clubContainer');
+        container.innerHTML = '';
+        clubs.forEach(club => {
+          const div = document.createElement('div');
+          div.className = 'clubBox';
+          div.id = club.id;
+          div.setAttribute('tabindex', 0);
+          div.setAttribute('role', 'button');
+          div.setAttribute('aria-label', `View events for ${sanitizeInput(club.name)}`);
+          
+          // Create image container
+          const imageDiv = document.createElement('div');
+          imageDiv.className = 'clubImage';
+          if (club.imageUrl) {
+            imageDiv.style.backgroundImage = `url('${sanitizeInput(club.imageUrl)}')`;
+            console.log(`Applied background image for ${club.name}: ${club.imageUrl}`);
+            const img = new Image();
+            img.src = club.imageUrl;
+            img.onerror = () => {
+              console.error(`Failed to load image for ${club.name}: ${club.imageUrl}`);
+              imageDiv.style.backgroundImage = 'none';
+              div.style.backgroundColor = '#3498db';
+            };
+          } else {
+            console.warn(`No image path/URL for ${club.name}`);
+            div.style.backgroundColor = '#3498db';
+          }
+          
+          // Create name container
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'clubName';
+          nameDiv.textContent = club.name;
+          
+          div.appendChild(imageDiv);
+          div.appendChild(nameDiv);
+          
+          div.addEventListener('click', () => showEvents(club.id, div));
+          div.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              showEvents(club.id, div);
+            }
+          });
+          container.appendChild(div);
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching clubs:', error);
+        alert('Failed to load clubs. Please try again.');
+      });
+  }
+
+  function populateNotifications() {
+    const notificationsElem = document.getElementById('notificationList');
+    notificationsElem.innerHTML = '<li>Loading notifications...</li>';
+
+    fetch(`${API_BASE_URL}/events`)
+      .then(response => response.json())
+      .then(allEvents => {
+        notificationsElem.innerHTML = '';
+        const recentEvents = allEvents.slice(0, 7);
+
+        if (recentEvents.length === 0) {
+          notificationsElem.innerHTML = '<li>No recent events available.</li>';
+          return;
+        }
+
+        recentEvents.forEach(event => {
+          const li = document.createElement('li');
+          const clubName = clubs.find(c => c.id === event.clubId)?.name || '';
+          const startStr = new Date(event.regStart).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'});
+          const endStr = new Date(event.regEnd).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'});
+          const regCount = event.registrations ? event.registrations.length : 0;
+          li.innerHTML = `<strong>${sanitizeInput(event.name)}</strong> (${sanitizeInput(clubName)}) <br/>
+            <span class="date">From: ${startStr} to ${endStr}</span><br/>
+            <span class="date">Registrations: ${regCount}</span>`;
+          notificationsElem.appendChild(li);
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching notifications:', error);
+        notificationsElem.innerHTML = '<li>Failed to load notifications.</li>';
+      });
+  }
+
+  function toggleMenu() {
+    const menu = document.getElementById('sideMenu');
+    menu.classList.toggle('visible');
+  }
+
+  function updateMenuUserDetails() {
+    const userDetailsLink = document.getElementById('userAccountDetailsLink');
+    if (currentUser) {
+      userDetailsLink.textContent = `Account: ${sanitizeInput(currentUser.username)} (${currentUser.role})`;
+      userDetailsLink.addEventListener('click', () => {
+        alert(`Username: ${sanitizeInput(currentUser.username)}\nRole: ${currentUser.role}`);
+      });
+      userDetailsLink.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          alert(`Username: ${sanitizeInput(currentUser.username)}\nRole: ${currentUser.role}`);
+        }
+      });
+    }
+  }
+
+  function logout() {
+    if (confirm("Do you want to logout?")) {
+      currentUser = null;
+      authToken = null;
+      localStorage.removeItem('cem_user');
+      localStorage.removeItem('cem_token');
+      document.getElementById('mainPage').style.display = 'none';
+      document.getElementById('loginPage').style.display = 'flex';
+      closeEventsModal();
+      document.getElementById('sideMenu').classList.remove('visible');
+    }
+  }
+
+  
+  function about() {
+    alert('College Event Management Website\nVersion 1.0\nCreated for educational purposes');
+  }
+
+  function goHome() {
+    alert('You are already on the Home page.');
+  }
+  function contact() {
+    alert('Contact us at: contact@collegeevents.edu');
+  }
+  function helpPage() {
+    alert('Help:\n- Use the menu ☰ for account options\n- Click clubs to see events\n- Register for events as a student');
+  }
+
+  
+  let currentEventsClubId = null;
+  let lastFocusedElement = null;
+
+  function trapFocus(modal, firstFocusable, lastFocusable) {
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            e.preventDefault();
+            lastFocusable.focus();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            e.preventDefault();
+            firstFocusable.focus();
+          }
+        }
+      }
+    });
+  }
+
+  function showEvents(clubId, triggerElement) {
+    lastFocusedElement = triggerElement;
+    currentEventsClubId = clubId;
+    const club = clubs.find(c => c.id === clubId);
+    const eventsModal = document.getElementById('eventsModal');
+    const eventsModalTitle = document.getElementById('eventsModalTitle');
+    const eventsListElem = document.getElementById('eventsList');
+    eventsModalTitle.textContent = `Events - ${club ? sanitizeInput(club.name) : ''}`;
+    eventsListElem.innerHTML = '<p>Loading events...</p>';
+
+    // Fetch events for this club from backend
+    fetch(`${API_BASE_URL}/events/club/${clubId}`)
+      .then(response => response.json())
+      .then(clubEvents => {
+        eventsListElem.innerHTML = '';
+        if (clubEvents.length === 0) {
+          eventsListElem.innerHTML = '<p>No events found for this club.</p>';
+        } else {
+          clubEvents.forEach(event => {
+            const box = document.createElement('div');
+            box.className = 'eventBox';
+            if (event.bgImageUrl) {
+              box.style.backgroundImage = `url('${sanitizeInput(event.bgImageUrl)}')`;
+              box.style.backgroundSize = 'cover';
+              box.style.backgroundPosition = 'center';
+              box.style.color = 'white';
+              box.style.textShadow = '1px 1px 6px rgba(0,0,0,0.7)';
+            }
+
+            box.innerHTML = `
+              <h3>${sanitizeInput(event.name)}</h3>
+              <p>${sanitizeInput(event.description)}</p>
+              <button class="registerBtn" aria-label="Register for ${sanitizeInput(event.name)}">Register</button>
+              <div class="registrationFormContainer" style="display:none;">
+                <form onsubmit="return false;" class="registrationForm" aria-label="Registration form for ${sanitizeInput(event.name)}">
+                  <label for="regUsername-${event.id}">Username:</label>
+                  <input type="text" id="regUsername-${event.id}" name="regUsername" required placeholder="Your username" />
+                  <label for="regMobile-${event.id}">Mobile Number:</label>
+                  <input type="tel" id="regMobile-${event.id}" name="regMobile" pattern="[0-9]{10}" maxlength="10" required placeholder="10-digit mobile number" />
+                  <small style="color: #666; font-size: 12px;">Please enter a valid 10-digit mobile number</small>
+                  <button type="submit">Submit</button>
+                  <div class="regMsg" role="alert" aria-live="assertive"></div>
+                </form>
+              </div>
+            `;
+
+            const registerBtn = box.querySelector('.registerBtn');
+            const regFormContainer = box.querySelector('.registrationFormContainer');
+            const regForm = box.querySelector('.registrationForm');
+            const regMsg = box.querySelector('.regMsg');
+
+            registerBtn.addEventListener('click', () => {
+              if (currentUser && currentUser.role === 'user') {
+                regFormContainer.style.display = regFormContainer.style.display === 'none' ? 'block' : 'none';
+                regMsg.textContent = '';
+              } else {
+                alert('Only logged-in users can register for events.');
+              }
+            });
+
+            regForm.addEventListener('submit', () => {
+              regMsg.textContent = '';
+              const inputUsername = sanitizeInput(regForm.regUsername.value.trim());
+              const inputMobile = sanitizeInput(regForm.regMobile.value.trim());
+
+              if (inputUsername !== currentUser.username) {
+                regMsg.style.color = 'red';
+                regMsg.textContent = `Username must be your logged-in username (${sanitizeInput(currentUser.username)}).`;
+                return false;
+              }
+
+              // Validate mobile number (must be exactly 10 digits)
+              if (!/^\d{10}$/.test(inputMobile)) {
+                regMsg.style.color = 'red';
+                regMsg.textContent = 'Please enter a valid 10-digit mobile number.';
+                return false;
+              }
+
+              // Call backend API to register
+              fetch(`${API_BASE_URL}/events/${event.id}/register`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ username: inputUsername, mobile: inputMobile })
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.message === 'Registration successful') {
+                  regMsg.style.color = 'green';
+                  regMsg.textContent = 'Registration successful!';
+                  regForm.reset();
+                  populateNotifications();
+                  setTimeout(() => {
+                    regFormContainer.style.display = 'none';
+                    regMsg.textContent = '';
+                  }, 2000);
+                } else {
+                  regMsg.style.color = 'green';
+                  regMsg.textContent = data.message;
+                }
+              })
+              .catch(error => {
+                regMsg.style.color = 'red';
+                regMsg.textContent = 'Registration failed. Please try again.';
+              });
+
+              return false;
+            });
+
+            eventsListElem.appendChild(box);
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching events:', error);
+        eventsListElem.innerHTML = '<p>Failed to load events. Please try again.</p>';
+      });
+
+    eventsModal.classList.add('visible');
+    const firstFocusable = eventsModal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const lastFocusable = eventsModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (firstFocusable) firstFocusable.focus();
+    trapFocus(eventsModal, firstFocusable, lastFocusable[lastFocusable.length - 1]);
+  }
+
+  function closeEventsModal() {
+    document.getElementById('eventsModal').classList.remove('visible');
+    currentEventsClubId = null;
+    if (lastFocusedElement) {
+      lastFocusedElement.focus();
+      lastFocusedElement = null;
+    }
+  }
+
+  
+  function closeSideMenu() {
+    const sideMenu = document.getElementById('sideMenu');
+    if (sideMenu.classList.contains('visible')) {
+      sideMenu.classList.remove('visible');
+      document.getElementById('menuToggle').focus();
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const sideMenu = document.getElementById('sideMenu');
+    const menuToggle = document.getElementById('menuToggle');
+    if (
+      sideMenu.classList.contains('visible') &&
+      !sideMenu.contains(e.target) &&
+      !menuToggle.contains(e.target)
+    ) {
+      closeSideMenu();
+    }
+  });
+
+  function setupEventListeners() {
+    document.getElementById('eventsModal').addEventListener('click', e => {
+      if (e.target === document.getElementById('eventsModal')) closeEventsModal();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('eventsModal').classList.contains('visible')) {
+          closeEventsModal();
+        } else if (document.getElementById('sideMenu').classList.contains('visible')) {
+          closeSideMenu();
+        }
+      }
+    });
+  }
+
+  window.onload = () => {
+    loadData();
+    if (currentUser) {
+      loginSuccess();
+    } else {
+      document.getElementById('loginPage').style.display = 'flex';
+      document.getElementById('mainPage').style.display = 'none';
+    }
+    setupEventListeners();
+  };
+</script>
+</body>
+</html>
