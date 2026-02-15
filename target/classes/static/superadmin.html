@@ -3,48 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Super Admin - Event Management</title>
+  <title>Super Admin</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; color: #111; }
-
     header { padding: 14px 18px; background: #111827; color: #fff; display: flex; align-items: center; justify-content: space-between; }
     header h1 { font-size: 1.1rem; }
-
-    main { max-width: 1200px; margin: 18px auto; padding: 0 14px 40px; }
-
+    main { max-width: 1100px; margin: 18px auto; padding: 0 14px 40px; }
     .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
-
     label { display:block; font-weight: 600; margin-top: 10px; font-size: .9rem; }
     input, textarea, select { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 10px; border: 1px solid #d1d5db; outline: none; }
     textarea { min-height: 90px; resize: vertical; }
-
     .btnRow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
     button { border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
     .primary { background: #2563eb; color: #fff; }
     .danger { background: #dc2626; color: #fff; }
-    .muted { background: #6b7280; color: #fff; }
     .good { background: #16a34a; color: #fff; }
-
+    .muted { background: #6b7280; color: #fff; }
     .small { font-size: .85rem; color: #6b7280; margin-top: 6px; }
-    .err { color: #dc2626; font-weight: 600; margin-top: 10px; white-space: pre-wrap; }
-
+    .err { color: #dc2626; font-weight: 600; margin-top: 10px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
     th { font-size: .85rem; color: #374151; }
     td { font-size: .92rem; }
-
-    .pill { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: .8rem; font-weight: 700; }
-    .pill.admin { background:#111827; color:#fff; }
-    .pill.club_admin { background:#2563eb; color:#fff; }
-    .pill.user { background:#e5e7eb; color:#111827; }
+    dialog { border: none; border-radius: 12px; padding: 0; width: min(560px, 95vw); box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+    dialog::backdrop { background: rgba(17,24,39,0.55); }
+    .dialogBody { padding: 16px; }
+    .dialogHeader { padding: 14px 16px; background: #111827; color: #fff; border-top-left-radius: 12px; border-top-right-radius: 12px; }
+    .dialogHeader h3 { font-size: 1rem; }
+    .pill { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: .8rem; font-weight: 700; }
+    .pill.admin { background: #3b82f6; color: #fff; }
+    .pill.club-admin { background: #10b981; color: #fff; }
+    .pill.student { background: #6b7280; color: #fff; }
+    .pill.disabled { background: #ef4444; color: #fff; }
   </style>
+  <link rel="icon" href="data:;base64,=" />
 </head>
 <body>
   <header>
-    <h1>Super Admin Panel</h1>
+    <h1>Super Admin</h1>
     <div class="btnRow" style="margin-top:0;">
       <button class="muted" id="logoutBtn" style="display:none;" type="button">Logout</button>
     </div>
@@ -52,8 +51,7 @@
 
   <main>
     <div class="card" id="loginCard">
-      <h2 style="margin-bottom:10px;">Super Admin Login</h2>
-      <div class="small">Only global ADMIN accounts can access this page.</div>
+      <h2 style="margin-bottom:10px;">Admin Login</h2>
       <label for="adminUsername">Username</label>
       <input id="adminUsername" type="text" autocomplete="username" />
       <label for="adminPassword">Password</label>
@@ -61,12 +59,13 @@
       <div class="btnRow">
         <button class="primary" type="button" id="loginBtn">Login</button>
       </div>
+      <div class="small">Only ADMIN accounts can access this page.</div>
       <div class="err" id="loginErr"></div>
     </div>
 
-    <div id="app" style="display:none;">
+    <div id="superAdminApp" style="display:none;">
       <div class="row">
-        <div class="card">
+        <div class="card" id="clubsCard">
           <h2 style="margin-bottom:8px;">Clubs</h2>
           <div class="btnRow">
             <button class="primary" type="button" id="refreshClubsBtn">Refresh Clubs</button>
@@ -80,15 +79,15 @@
           <div class="btnRow">
             <button class="good" type="button" id="addClubBtn">Add Club</button>
           </div>
-          <div class="err" id="clubsErr"></div>
 
           <h3 style="margin-top:14px;">Existing Clubs</h3>
+          <div class="small">Edit/Delete buttons are per club.</div>
           <div style="overflow:auto; margin-top:8px;">
             <table>
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Image URL</th>
+                  <th>Audit</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -124,14 +123,16 @@
           <div class="err" id="eventsErr"></div>
 
           <h3 style="margin-top:14px;">Existing Events</h3>
+          <div class="small">Extend registration end date using the Extend button.</div>
           <div style="overflow:auto; margin-top:8px;">
             <table>
               <thead>
                 <tr>
                   <th>Event</th>
-                  <th>Club</th>
+                  <th>Description</th>
                   <th>Reg Window</th>
-                  <th>Capacity</th>
+                  <th>Participants</th>
+                  <th>Audit</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -141,47 +142,12 @@
         </div>
       </div>
 
-      <div class="card">
-        <h2 style="margin-bottom:8px;">Club Admins</h2>
+      <div class="card" id="pendingClubAdminsCard">
+        <h2 style="margin-bottom:8px;">Pending Club Admin Requests</h2>
         <div class="btnRow">
-          <button class="primary" type="button" id="refreshClubAdminsBtn">Refresh Club Admins</button>
+          <button class="primary" type="button" id="refreshPendingAdminsBtn">Refresh Pending</button>
         </div>
-
-        <h3 style="margin-top:12px;">Create Club Admin</h3>
-        <div class="small">Maximum 2 club admins per club.</div>
-
-        <label for="caUsn">USN</label>
-        <input id="caUsn" type="text" minlength="10" maxlength="10" pattern="1MJ[A-Z0-9]{7}" title="USN must be in format 1MJ******* (all caps)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" />
-
-        <label for="caFullName">Full Name</label>
-        <input id="caFullName" type="text" />
-
-        <label for="caEmail">Gmail</label>
-        <input id="caEmail" type="email" autocomplete="email" />
-
-        <label for="caMobile">Mobile No</label>
-        <input id="caMobile" type="tel" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number" />
-
-        <label for="caClub">Which Club Admin</label>
-        <select id="caClub"></select>
-
-        <label for="caGender">Gender</label>
-        <select id="caGender">
-          <option value="">Select</option>
-          <option value="MALE">Male</option>
-          <option value="FEMALE">Female</option>
-          <option value="OTHER">Other</option>
-        </select>
-
-        <label for="caPassword">Password</label>
-        <input id="caPassword" type="password" autocomplete="new-password" />
-
-        <div class="btnRow">
-          <button class="good" type="button" id="createClubAdminBtn">Create Club Admin</button>
-        </div>
-        <div class="err" id="clubAdminsErr"></div>
-
-        <h3 style="margin-top:14px;">Existing Club Admins</h3>
+        <div class="small">Approve to grant access. Reject to remove the request.</div>
         <div style="overflow:auto; margin-top:8px;">
           <table>
             <thead>
@@ -190,6 +156,50 @@
                 <th>Name</th>
                 <th>Mobile</th>
                 <th>Email</th>
+                <th>Club</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pendingAdminsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="usersCard">
+        <h2 style="margin-bottom:8px;">Regular Users</h2>
+        <div class="btnRow">
+          <button class="primary" type="button" id="refreshUsersBtn">Refresh Users</button>
+        </div>
+        <div class="small">You can enable/disable student accounts. (Admins should remain enabled.)</div>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Mobile</th>
+                <th>Enabled</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="clubAdminsCard">
+        <h2 style="margin-bottom:8px;">Club Admins</h2>
+        <div class="btnRow">
+          <button class="primary" type="button" id="refreshClubAdminsBtn">Refresh Club Admins</button>
+        </div>
+        <div class="small">Club administrators who manage events for their clubs.</div>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Mobile</th>
                 <th>Club</th>
                 <th>Enabled</th>
                 <th>Actions</th>
@@ -201,92 +211,125 @@
       </div>
 
       <div class="card">
-        <h2 style="margin-bottom:8px;">All Users</h2>
-        <div class="btnRow">
-          <button class="primary" type="button" id="refreshUsersBtn">Refresh Users</button>
+        <h2 style="margin-bottom:8px;">Notes</h2>
+        <div class="small">
+          - Club/Event create/edit/delete requires ADMIN token.
+          <br/>
+          - Extend registration end date uses PATCH /api/events/{id}/extend-reg-end.
+          <br/>
+          - Audit fields are stored in database.
         </div>
-        <div class="small">You can remove non-global-admin accounts. (Global ADMIN delete is blocked.)</div>
-        <div style="overflow:auto; margin-top:8px;">
-          <table>
-            <thead>
-              <tr>
-                <th>USN</th>
-                <th>Role</th>
-                <th>Mobile</th>
-                <th>Email</th>
-                <th>Club</th>
-                <th>Enabled</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="usersTbody"></tbody>
-          </table>
-        </div>
-        <div class="err" id="usersErr"></div>
       </div>
-
     </div>
   </main>
 
+  <dialog id="eventDialog">
+    <div class="dialogHeader"><h3 id="eventDialogTitle">Edit Event</h3></div>
+    <div class="dialogBody">
+      <div class="small" id="eventDialogSub"></div>
+      <label for="dlgEventName">Name</label>
+      <input id="dlgEventName" type="text" />
+      <label for="dlgEventDesc">Description</label>
+      <textarea id="dlgEventDesc"></textarea>
+      <label for="dlgEventRegStart">Registration Start</label>
+      <input id="dlgEventRegStart" type="datetime-local" />
+      <label for="dlgEventRegEnd">Registration End</label>
+      <input id="dlgEventRegEnd" type="datetime-local" />
+      <label for="dlgEventCapacity">Max Participants (0 = unlimited)</label>
+      <input id="dlgEventCapacity" type="number" min="0" step="1" placeholder="0" />
+      <label for="dlgEventBg">Background Image URL</label>
+      <input id="dlgEventBg" type="text" />
+      <div class="btnRow">
+        <button class="primary" type="button" id="dlgSaveBtn">Save</button>
+        <button class="muted" type="button" id="dlgCancelBtn">Cancel</button>
+      </div>
+      <div class="err" id="dlgErr"></div>
+    </div>
+  </dialog>
+
+  <dialog id="participantsDialog">
+    <div class="dialogHeader"><h3 id="participantsDialogTitle">Participants</h3></div>
+    <div class="dialogBody">
+      <div class="small" id="participantsDialogSub"></div>
+      <div style="overflow:auto; margin-top:10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>USN</th>
+              <th>Name</th>
+              <th>Mobile</th>
+              <th>Email</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="participantsTbody"></tbody>
+        </table>
+      </div>
+      <div class="btnRow" style="margin-top: 12px;">
+        <button class="muted" type="button" id="participantsCloseBtn">Close</button>
+      </div>
+      <div class="err" id="participantsErr"></div>
+    </div>
+  </dialog>
+
+  <dialog id="extendDialog">
+    <div class="dialogHeader"><h3>Extend Registration End</h3></div>
+    <div class="dialogBody">
+      <div class="small" id="extendDialogSub"></div>
+      <label for="dlgExtendRegEnd">New Registration End</label>
+      <input id="dlgExtendRegEnd" type="datetime-local" />
+      <div class="btnRow">
+        <button class="primary" type="button" id="dlgExtendBtn">Extend</button>
+        <button class="muted" type="button" id="dlgExtendCancelBtn">Cancel</button>
+      </div>
+      <div class="err" id="dlgExtendErr"></div>
+    </div>
+  </dialog>
+
   <script>
     const API_BASE_URL = '/api';
-    const LS_TOKEN = 'cem_superadmin_token';
+    const LS_ADMIN_TOKEN = 'cem_admin_token';
+    const LS_ADMIN_ROLE = 'cem_admin_role';
+    const LS_ADMIN_CLUB_ID = 'cem_admin_club_id';
 
-    let token = localStorage.getItem(LS_TOKEN) || null;
+    let adminToken = localStorage.getItem(LS_ADMIN_TOKEN) || null;
+    let adminRole = localStorage.getItem(LS_ADMIN_ROLE) || null;
+    let adminClubId = localStorage.getItem(LS_ADMIN_CLUB_ID) || null;
     let clubsCache = [];
 
     function authHeaders() {
       return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${adminToken}`
       };
     }
 
     function setLoggedInState(loggedIn) {
       document.getElementById('loginCard').style.display = loggedIn ? 'none' : 'block';
-      document.getElementById('app').style.display = loggedIn ? 'block' : 'none';
+      const app = document.getElementById('superAdminApp');
+      if (app) app.style.display = loggedIn ? 'block' : 'none';
       document.getElementById('logoutBtn').style.display = loggedIn ? 'inline-block' : 'none';
+      if (loggedIn) {
+        const eventDlg = document.getElementById('eventDialog');
+        const extendDlg = document.getElementById('extendDialog');
+        const participantsDlg = document.getElementById('participantsDialog');
+        try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (e) {}
+        try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (e) {}
+        try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (e) {}
+      }
     }
 
     async function apiJson(url, options = {}) {
       const res = await fetch(url, options);
-      const rawText = await res.text();
-      let data = {};
-      try {
-        data = rawText ? JSON.parse(rawText) : {};
-      } catch (e) {
-        data = {};
-      }
-
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const candidate = data.error || data.message || rawText;
-        const msg = (candidate && String(candidate).trim()) ? String(candidate) : `Request failed (${res.status})`;
+        const msg = data.error || data.message || `Request failed (${res.status})`;
         throw new Error(msg);
       }
-
       return data;
     }
 
-    function normalizeToIsoSeconds(datetimeLocalValue) {
-      if (!datetimeLocalValue) return '';
-      const s = String(datetimeLocalValue).trim();
-      if (!s) return '';
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) {
-        return `${s}:00`;
-      }
-      return s;
-    }
-
-    function fmtDateTime(val) {
-      if (!val) return '';
-      try {
-        return new Date(val).toLocaleString();
-      } catch {
-        return String(val);
-      }
-    }
-
-    async function login() {
+    async function loginAdmin() {
       const username = document.getElementById('adminUsername').value.trim();
       const password = document.getElementById('adminPassword').value;
       document.getElementById('loginErr').textContent = '';
@@ -299,54 +342,100 @@
 
       const role = (data.role || '').toUpperCase();
       if (role !== 'ADMIN') {
-        throw new Error('This account is not a global ADMIN');
+        throw new Error('This account is not an ADMIN');
       }
 
-      token = data.token;
-      localStorage.setItem(LS_TOKEN, token);
+      adminToken = data.token;
+      adminRole = role;
+      adminClubId = data.adminClubId || null;
+      localStorage.setItem(LS_ADMIN_TOKEN, adminToken);
+      localStorage.setItem(LS_ADMIN_ROLE, adminRole);
+      if (adminClubId) localStorage.setItem(LS_ADMIN_CLUB_ID, adminClubId); else localStorage.removeItem(LS_ADMIN_CLUB_ID);
+
       setLoggedInState(true);
       await refreshAll();
     }
 
-    function logout() {
-      token = null;
-      localStorage.removeItem(LS_TOKEN);
+    function logoutAdmin() {
+      adminToken = null;
+      adminRole = null;
+      adminClubId = null;
+      localStorage.removeItem(LS_ADMIN_TOKEN);
+      localStorage.removeItem(LS_ADMIN_ROLE);
+      localStorage.removeItem(LS_ADMIN_CLUB_ID);
       setLoggedInState(false);
+    }
+
+    function fmtDateTime(val) {
+      if (!val) return '';
+      try {
+        return new Date(val).toLocaleString();
+      } catch {
+        return String(val);
+      }
+    }
+
+    function toDatetimeLocalValue(val) {
+      if (!val) return '';
+      const s = String(val);
+      if (s.length >= 16) {
+        return s.substring(0, 16);
+      }
+      return s;
+    }
+
+    function normalizeToIsoSeconds(datetimeLocalValue) {
+      if (!datetimeLocalValue) return '';
+      const s = String(datetimeLocalValue).trim();
+      if (!s) return '';
+      if (/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(s)) {
+        return `${s}:00`;
+      }
+      return s;
     }
 
     async function loadClubs() {
       clubsCache = await apiJson(`${API_BASE_URL}/clubs`);
 
       const clubSelect = document.getElementById('eventClub');
-      const caClubSelect = document.getElementById('caClub');
-      clubSelect.innerHTML = '';
-      caClubSelect.innerHTML = '';
-
-      for (const c of clubsCache) {
-        const opt1 = document.createElement('option');
-        opt1.value = c.id;
-        opt1.textContent = c.name;
-        clubSelect.appendChild(opt1);
-
-        const opt2 = document.createElement('option');
-        opt2.value = c.id;
-        opt2.textContent = c.name;
-        caClubSelect.appendChild(opt2);
+      if (clubSelect) {
+        clubSelect.innerHTML = '';
+        for (const c of clubsCache) {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          clubSelect.appendChild(opt);
+        }
       }
 
       const tbody = document.getElementById('clubsTbody');
+      if (!tbody) return;
       tbody.innerHTML = '';
       for (const c of clubsCache) {
         const tr = document.createElement('tr');
+        const audit = `createdBy: ${c.createdBy || ''}\\ncreatedAt: ${fmtDateTime(c.createdAt)}\\nupdatedBy: ${c.updatedBy || ''}\\nupdatedAt: ${fmtDateTime(c.updatedAt)}`;
         tr.innerHTML = `
-          <td><b>${c.name}</b></td>
-          <td>${c.imageUrl || ''}</td>
+          <td><b>${c.name}</b><div class="small">${c.imageUrl || ''}</div></td>
+          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${audit}</pre></td>
           <td>
             <div class="btnRow">
+              <button class="muted" type="button" data-action="edit">Edit</button>
               <button class="danger" type="button" data-action="delete">Delete</button>
             </div>
           </td>
         `;
+        tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
+          const newName = prompt('Club name', c.name);
+          if (newName === null) return;
+          const newImageUrl = prompt('Image URL', c.imageUrl || '');
+          if (newImageUrl === null) return;
+          await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ name: newName, imageUrl: newImageUrl })
+          });
+          await loadClubs();
+        });
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!confirm(`Delete club ${c.name}?`)) return;
           await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
@@ -354,26 +443,20 @@
             headers: authHeaders()
           });
           await loadClubs();
-          await loadEvents();
-          await loadClubAdmins();
         });
         tbody.appendChild(tr);
       }
     }
 
     async function addClub() {
-      const err = document.getElementById('clubsErr');
-      err.textContent = '';
       const name = document.getElementById('clubName').value.trim();
       const imageUrl = document.getElementById('clubImageUrl').value.trim();
       if (!name) throw new Error('Club name is required');
-
       await apiJson(`${API_BASE_URL}/clubs`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ name, imageUrl })
       });
-
       document.getElementById('clubName').value = '';
       document.getElementById('clubImageUrl').value = '';
       await loadClubs();
@@ -382,28 +465,44 @@
     async function loadEvents() {
       const events = await apiJson(`${API_BASE_URL}/events`);
       const tbody = document.getElementById('eventsTbody');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
 
       for (const e of events) {
         const tr = document.createElement('tr');
+        const audit = `createdBy: ${e.createdBy || ''}\\ncreatedAt: ${fmtDateTime(e.createdAt)}\\nupdatedBy: ${e.updatedBy || ''}\\nupdatedAt: ${fmtDateTime(e.updatedAt)}`;
+        const regWindow = `${fmtDateTime(e.regStart)}\\n→ ${fmtDateTime(e.regEnd)}`;
         const clubName = clubNameById.get(e.clubId) || e.clubId;
-        const regWindow = `${fmtDateTime(e.regStart)}\n→ ${fmtDateTime(e.regEnd)}`;
-        const cap = (e.capacity == null ? '' : String(e.capacity));
-
+        const regs = Array.isArray(e.registrations) ? e.registrations : [];
+        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : 0;
+        const participantsLabel = cap > 0 ? `${regs.length}/${cap}` : `${regs.length}`;
         tr.innerHTML = `
-          <td><b>${e.name}</b></td>
-          <td>${clubName}</td>
+          <td><b>${e.name}</b><div class="small">Club: ${clubName}</div></td>
+          <td>${e.description || ''}</td>
           <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${regWindow}</pre></td>
-          <td>${cap}</td>
+          <td><b>${participantsLabel}</b><div class="small">participants</div></td>
+          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${audit}</pre></td>
           <td>
             <div class="btnRow">
+              <button class="muted" type="button" data-action="edit">Edit</button>
+              <button class="primary" type="button" data-action="participants">Participants</button>
+              <button class="primary" type="button" data-action="extend">Extend</button>
               <button class="danger" type="button" data-action="delete">Delete</button>
             </div>
           </td>
         `;
 
+        tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
+          await openEditEventDialog(e, clubName);
+        });
+        tr.querySelector('[data-action="participants"]').addEventListener('click', async () => {
+          await openParticipantsDialog(e, clubName);
+        });
+        tr.querySelector('[data-action="extend"]').addEventListener('click', async () => {
+          await openExtendDialog(e, clubName);
+        });
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!confirm(`Delete event ${e.name}?`)) return;
           await apiJson(`${API_BASE_URL}/events/${e.id}`, {
@@ -412,15 +511,11 @@
           });
           await loadEvents();
         });
-
         tbody.appendChild(tr);
       }
     }
 
     async function addEvent() {
-      const err = document.getElementById('eventsErr');
-      err.textContent = '';
-
       const clubId = document.getElementById('eventClub').value;
       const name = document.getElementById('eventName').value.trim();
       const description = document.getElementById('eventDesc').value.trim();
@@ -438,7 +533,15 @@
       await apiJson(`${API_BASE_URL}/events`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ clubId, name, description, regStart, regEnd, capacity, bgImageUrl })
+        body: JSON.stringify({
+          clubId,
+          name,
+          description,
+          regStart,
+          regEnd,
+          capacity,
+          bgImageUrl
+        })
       });
 
       document.getElementById('eventName').value = '';
@@ -451,187 +554,302 @@
       await loadEvents();
     }
 
-    async function loadClubAdmins() {
-      const users = await apiJson(`${API_BASE_URL}/admin/club-admins`, { headers: authHeaders() });
-      const tbody = document.getElementById('clubAdminsTbody');
+    async function openParticipantsDialog(eventObj, clubName) {
+      const dlg = document.getElementById('participantsDialog');
+      const tbody = document.getElementById('participantsTbody');
+      const err = document.getElementById('participantsErr');
+      err.textContent = '';
       tbody.innerHTML = '';
+      document.getElementById('participantsDialogTitle').textContent = 'Participants';
+      document.getElementById('participantsDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
+      try {
+        const regs = await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations`, { headers: authHeaders() });
+        if (!Array.isArray(regs) || regs.length === 0) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="5" class="small">No participants</td>`;
+          tbody.appendChild(tr);
+        } else {
+          for (const r of regs) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><b>${r.username || ''}</b></td>
+              <td>${r.fullName || ''}</td>
+              <td>${r.mobile || ''}</td>
+              <td>${r.email || ''}</td>
+              <td>
+                <button class="danger" type="button" data-action="remove">Remove</button>
+              </td>
+            `;
+            tr.querySelector('[data-action="remove"]').addEventListener('click', async () => {
+              if (!confirm(`Remove ${r.username || 'participant'} from ${eventObj.name}?`)) return;
+              await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations/${r.id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+              });
+              await loadEvents();
+              await openParticipantsDialog(eventObj, clubName);
+            });
+            tbody.appendChild(tr);
+          }
+        }
+      } catch (e) {
+        err.textContent = e.message;
+      }
+      document.getElementById('participantsCloseBtn').onclick = () => dlg.close();
+      dlg.showModal();
+    }
 
-      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
+    async function openEditEventDialog(eventObj, clubName) {
+      const dlg = document.getElementById('eventDialog');
+      const err = document.getElementById('dlgErr');
+      err.textContent = '';
+      document.getElementById('eventDialogTitle').textContent = 'Edit Event';
+      document.getElementById('eventDialogSub').textContent = `Club: ${clubName}`;
+      document.getElementById('dlgEventName').value = eventObj.name || '';
+      document.getElementById('dlgEventDesc').value = eventObj.description || '';
+      document.getElementById('dlgEventRegStart').value = toDatetimeLocalValue(eventObj.regStart);
+      document.getElementById('dlgEventRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
+      document.getElementById('dlgEventCapacity').value = (eventObj.capacity == null ? '' : String(eventObj.capacity));
+      document.getElementById('dlgEventBg').value = eventObj.bgImageUrl || '';
+      const onCancel = () => { dlg.close(); };
+      const onSave = async () => {
+        try {
+          err.textContent = '';
+          const name = document.getElementById('dlgEventName').value.trim();
+          const description = document.getElementById('dlgEventDesc').value.trim();
+          const regStart = normalizeToIsoSeconds(document.getElementById('dlgEventRegStart').value);
+          const regEnd = normalizeToIsoSeconds(document.getElementById('dlgEventRegEnd').value);
+          const capacityVal = document.getElementById('dlgEventCapacity').value;
+          const capacity = capacityVal === '' ? null : Number(capacityVal);
+          const bgImageUrl = document.getElementById('dlgEventBg').value.trim();
+          if (!name) { err.textContent = 'Event name is required'; return; }
+          if (!regStart || !regEnd) { err.textContent = 'Registration start and end are required'; return; }
+          if (capacity != null && (Number.isNaN(capacity) || capacity < 0)) { err.textContent = 'capacity must be >= 0'; return; }
+          await apiJson(`${API_BASE_URL}/events/${eventObj.id}`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ name, description, regStart, regEnd, capacity, bgImageUrl })
+          });
+          dlg.close();
+          await loadEvents();
+        } catch (e) {
+          err.textContent = e.message;
+        }
+      };
+      document.getElementById('dlgSaveBtn').onclick = onSave;
+      document.getElementById('dlgCancelBtn').onclick = onCancel;
+      dlg.showModal();
+    }
 
-      for (const u of users) {
+    async function openExtendDialog(eventObj, clubName) {
+      const dlg = document.getElementById('extendDialog');
+      const err = document.getElementById('dlgExtendErr');
+      err.textContent = '';
+      document.getElementById('extendDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
+      document.getElementById('dlgExtendRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
+      const onCancel = () => { dlg.close(); };
+      const onExtend = async () => {
+        try {
+          err.textContent = '';
+          const regEnd = normalizeToIsoSeconds(document.getElementById('dlgExtendRegEnd').value);
+          if (!regEnd) { err.textContent = 'New registration end is required'; return; }
+          await apiJson(`${API_BASE_URL}/events/${eventObj.id}/extend-reg-end`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({ regEnd })
+          });
+          dlg.close();
+          await loadEvents();
+        } catch (e) {
+          err.textContent = e.message;
+        }
+      };
+      document.getElementById('dlgExtendBtn').onclick = onExtend;
+      document.getElementById('dlgExtendCancelBtn').onclick = onCancel;
+      dlg.showModal();
+    }
+
+    async function loadPendingClubAdmins() {
+      const tbody = document.getElementById('pendingAdminsTbody');
+      tbody.innerHTML = '';
+      const rows = await apiJson(`${API_BASE_URL}/admin/club-admins/pending`, { headers: authHeaders() });
+      if (!Array.isArray(rows) || rows.length === 0) {
         const tr = document.createElement('tr');
-        const clubName = clubNameById.get(u.adminClubId) || (u.adminClubId || '');
+        tr.innerHTML = `<td colspan="6" class="small">No pending requests</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+      const clubs = await apiJson(`${API_BASE_URL}/clubs`);
+      const clubNameById = new Map(clubs.map(c => [c.id, c.name]));
+      for (const u of rows) {
+        const tr = document.createElement('tr');
+        const clubName = clubNameById.get(u.adminClubId) || u.adminClubId || '';
         tr.innerHTML = `
           <td><b>${u.username}</b></td>
           <td>${u.fullName || ''}</td>
           <td>${u.mobile || ''}</td>
           <td>${u.email || ''}</td>
           <td>${clubName}</td>
+          <td>
+            <div class="btnRow">
+              <button class="good" type="button" data-action="approve">Approve</button>
+              <button class="danger" type="button" data-action="reject">Reject</button>
+            </div>
+          </td>
+        `;
+        tr.querySelector('[data-action="approve"]').addEventListener('click', async () => {
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({ enabled: true })
+          });
+          await loadPendingClubAdmins();
+        });
+        tr.querySelector('[data-action="reject"]').addEventListener('click', async () => {
+          if (!confirm(`Reject and delete request for ${u.username}?`)) return;
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadPendingClubAdmins();
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function loadUsers() {
+      const users = await apiJson(`${API_BASE_URL}/admin/users`, { headers: authHeaders() });
+      const usersTbody = document.getElementById('usersTbody');
+      const clubAdminsTbody = document.getElementById('clubAdminsTbody');
+
+      if (!usersTbody || !clubAdminsTbody) return;
+
+      usersTbody.innerHTML = '';
+      clubAdminsTbody.innerHTML = '';
+
+      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
+      const regularUsers = users.filter(u => (u.role || '').toUpperCase() !== 'CLUB_ADMIN');
+      const clubAdmins = users.filter(u => (u.role || '').toUpperCase() === 'CLUB_ADMIN');
+
+      for (const u of regularUsers) {
+        const tr = document.createElement('tr');
+        const isAdmin = (u.role || '').toUpperCase() === 'ADMIN';
+        const roleClass = isAdmin ? 'admin' : 'student';
+        const toggleBtn = isAdmin ? '' : `<button class="primary" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>`;
+        tr.innerHTML = `
+          <td><b>${u.username}</b></td>
+          <td><span class="pill ${roleClass}">${u.role}</span></td>
+          <td>${u.mobile || ''}</td>
           <td>${u.enabled ? 'Yes' : 'No'}</td>
           <td>
             <div class="btnRow">
+              ${toggleBtn}
+            </div>
+          </td>
+        `;
+        const toggleBtnEl = tr.querySelector('[data-action="toggle"]');
+        if (toggleBtnEl) {
+          toggleBtnEl.addEventListener('click', async () => {
+            await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
+              method: 'PATCH',
+              headers: authHeaders(),
+              body: JSON.stringify({ enabled: !u.enabled })
+            });
+            await loadUsers();
+          });
+        }
+        usersTbody.appendChild(tr);
+      }
+
+      for (const u of clubAdmins) {
+        const tr = document.createElement('tr');
+        const roleClass = u.enabled ? 'club-admin' : 'disabled';
+        const clubName = clubNameById.get(u.adminClubId) || u.adminClubId || '';
+        tr.innerHTML = `
+          <td><b>${u.username}</b></td>
+          <td><span class="pill ${roleClass}">${u.role}</span></td>
+          <td>${u.mobile || ''}</td>
+          <td>${clubName}</td>
+          <td>${u.enabled ? 'Yes' : 'No'}</td>
+          <td>
+            <div class="btnRow">
+              <button class="primary" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>
               <button class="danger" type="button" data-action="delete">Delete</button>
             </div>
           </td>
         `;
-
+        tr.querySelector('[data-action="toggle"]').addEventListener('click', async () => {
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({ enabled: !u.enabled })
+          });
+          await loadUsers();
+        });
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!confirm(`Delete club admin ${u.username}?`)) return;
           await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
             method: 'DELETE',
             headers: authHeaders()
           });
-          await loadClubAdmins();
-        });
-
-        tbody.appendChild(tr);
-      }
-    }
-
-    async function createClubAdmin() {
-      const err = document.getElementById('clubAdminsErr');
-      err.textContent = '';
-
-      const usn = String(document.getElementById('caUsn').value || '').trim().toUpperCase();
-      const fullName = String(document.getElementById('caFullName').value || '').trim();
-      const email = String(document.getElementById('caEmail').value || '').trim();
-      const mobile = String(document.getElementById('caMobile').value || '').trim();
-      const clubId = document.getElementById('caClub').value;
-      const gender = document.getElementById('caGender').value;
-      const password = document.getElementById('caPassword').value;
-
-      if (!/^1MJ[A-Z0-9]{7}$/.test(usn)) throw new Error('Invalid USN. Use format 1MJ******* (all capital letters).');
-      if (!fullName) throw new Error('Full name is required');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Email is invalid');
-      if (!/^\d{10}$/.test(mobile)) throw new Error('Mobile must be 10 digits');
-      if (!clubId) throw new Error('Club is required');
-      if (!gender) throw new Error('Gender is required');
-      if (!password) throw new Error('Password is required');
-
-      await apiJson(`${API_BASE_URL}/admin/club-admins`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ usn, fullName, email, mobile, gender, clubId, password })
-      });
-
-      document.getElementById('caUsn').value = '';
-      document.getElementById('caFullName').value = '';
-      document.getElementById('caEmail').value = '';
-      document.getElementById('caMobile').value = '';
-      document.getElementById('caGender').value = '';
-      document.getElementById('caPassword').value = '';
-
-      await loadClubAdmins();
-    }
-
-    async function loadUsers() {
-      const users = await apiJson(`${API_BASE_URL}/admin/users`, { headers: authHeaders() });
-      const tbody = document.getElementById('usersTbody');
-      tbody.innerHTML = '';
-
-      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
-
-      for (const u of users) {
-        const tr = document.createElement('tr');
-        const role = String(u.role || '').toUpperCase();
-        const roleClass = role === 'ADMIN' ? 'admin' : (role === 'CLUB_ADMIN' ? 'club_admin' : 'user');
-        const clubName = clubNameById.get(u.adminClubId) || (u.adminClubId || '');
-
-        tr.innerHTML = `
-          <td><b>${u.username}</b></td>
-          <td><span class="pill ${roleClass}">${role}</span></td>
-          <td>${u.mobile || ''}</td>
-          <td>${u.email || ''}</td>
-          <td>${clubName}</td>
-          <td>${u.enabled ? 'Yes' : 'No'}</td>
-          <td>
-            <div class="btnRow">
-              <button class="danger" type="button" data-action="delete">Delete</button>
-            </div>
-          </td>
-        `;
-
-        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-          if (!confirm(`Delete user ${u.username}?`)) return;
-          await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-          });
           await loadUsers();
-          await loadClubAdmins();
         });
-
-        tbody.appendChild(tr);
+        clubAdminsTbody.appendChild(tr);
       }
     }
 
     async function refreshAll() {
       await loadClubs();
       await loadEvents();
-      await loadClubAdmins();
       await loadUsers();
+      await loadPendingClubAdmins();
     }
 
     document.getElementById('loginBtn').addEventListener('click', async () => {
       try {
-        await login();
+        await loginAdmin();
       } catch (e) {
         document.getElementById('loginErr').textContent = e.message;
       }
     });
-
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    document.getElementById('refreshClubsBtn').addEventListener('click', async () => {
-      await loadClubs();
+    document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
+    document.getElementById('refreshPendingAdminsBtn').addEventListener('click', async () => {
+      await loadPendingClubAdmins();
     });
-
-    document.getElementById('addClubBtn').addEventListener('click', async () => {
-      try {
-        document.getElementById('clubsErr').textContent = '';
-        await addClub();
-      } catch (e) {
-        document.getElementById('clubsErr').textContent = e.message;
-      }
+    const rc = document.getElementById('refreshClubsBtn');
+    if (rc) rc.addEventListener('click', async () => { await loadClubs(); });
+    const ac = document.getElementById('addClubBtn');
+    if (ac) ac.addEventListener('click', async () => {
+      try { await addClub(); } catch (e) { alert(e.message); }
     });
-
-    document.getElementById('refreshEventsBtn').addEventListener('click', async () => {
-      await loadEvents();
+    const re = document.getElementById('refreshEventsBtn');
+    if (re) re.addEventListener('click', async () => { await loadEvents(); });
+    const ae = document.getElementById('addEventBtn');
+    if (ae) ae.addEventListener('click', async () => {
+      try { document.getElementById('eventsErr').textContent = ''; await addEvent(); }
+      catch (e) { document.getElementById('eventsErr').textContent = e.message; }
     });
-
-    document.getElementById('addEventBtn').addEventListener('click', async () => {
-      try {
-        document.getElementById('eventsErr').textContent = '';
-        await addEvent();
-      } catch (e) {
-        document.getElementById('eventsErr').textContent = e.message;
-      }
-    });
-
-    document.getElementById('refreshClubAdminsBtn').addEventListener('click', async () => {
-      await loadClubAdmins();
-    });
-
-    document.getElementById('createClubAdminBtn').addEventListener('click', async () => {
-      try {
-        document.getElementById('clubAdminsErr').textContent = '';
-        await createClubAdmin();
-      } catch (e) {
-        document.getElementById('clubAdminsErr').textContent = e.message;
-      }
-    });
-
-    document.getElementById('refreshUsersBtn').addEventListener('click', async () => {
-      await loadUsers();
+    const ru = document.getElementById('refreshUsersBtn');
+    if (ru) ru.addEventListener('click', async () => { await loadUsers(); });
+    const rca = document.getElementById('refreshClubAdminsBtn');
+    if (rca) rca.addEventListener('click', async () => { await loadUsers(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const eventDlg = document.getElementById('eventDialog');
+      const extendDlg = document.getElementById('extendDialog');
+      const participantsDlg = document.getElementById('participantsDialog');
+      try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (err) {}
+      try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (err) {}
+      try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (err) {}
     });
 
     (async function init() {
-      if (token) {
+      if (adminToken && String(adminRole || '').toUpperCase() === 'ADMIN') {
         setLoggedInState(true);
         try {
           await refreshAll();
         } catch {
-          logout();
+          logoutAdmin();
         }
       } else {
         setLoggedInState(false);

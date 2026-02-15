@@ -132,7 +132,7 @@ public class AuthService {
             throw new RuntimeException("club is invalid");
         }
 
-        long currentAdmins = userRepository.countByRoleAndAdminClubId("CLUB_ADMIN", Objects.requireNonNull(normalizedClubId));
+        long currentAdmins = userRepository.countByRoleAndAdminClubIdAndEnabledTrue("CLUB_ADMIN", Objects.requireNonNull(normalizedClubId));
         if (currentAdmins >= 2) {
             throw new RuntimeException("Only two admins are allowed per club");
         }
@@ -180,7 +180,7 @@ public class AuthService {
         user.setFullName(fullName);
         user.setEmail(email);
         user.setGender(g);
-        user.setEnabled(true);
+        user.setEnabled(false);
 
         return userRepository.save(user);
     }

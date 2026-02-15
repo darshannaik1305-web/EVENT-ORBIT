@@ -12,4 +12,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByUsernameIgnoreCase(String username);
 
     long countByRoleAndAdminClubId(String role, String adminClubId);
+
+    long countByRoleAndAdminClubIdAndEnabledTrue(String role, String adminClubId);
 }

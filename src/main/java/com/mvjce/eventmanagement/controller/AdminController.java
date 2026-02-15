@@ -69,6 +69,26 @@ public class AdminController {
         return ResponseEntity.ok(users);
     }
 
+    @GetMapping("/club-admins/pending")
+    public ResponseEntity<List<Map<String, Object>>> listPendingClubAdmins() {
+        List<Map<String, Object>> users = userRepository.findAll().stream()
+                .filter(u -> u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN"))
+                .filter(u -> !u.isEnabled())
+                .map(u -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", u.getId());
+                    m.put("username", u.getUsername());
+                    m.put("mobile", u.getMobile());
+                    m.put("fullName", u.getFullName());
+                    m.put("email", u.getEmail());
+                    m.put("gender", u.getGender());
+                    m.put("adminClubId", u.getAdminClubId());
+                    return m;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(users);
+    }
+
     @PostMapping("/club-admins")
     public ResponseEntity<?> createClubAdmin(@RequestBody Map<String, String> payload) {
         try {
@@ -116,6 +136,9 @@ public class AdminController {
 
         return userRepository.findById(id)
                 .map(user -> {
+                    if (!enabled && user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Cannot disable global admin"));
+                    }
                     user.setEnabled(enabled);
                     userRepository.save(user);
                     return ResponseEntity.ok(Map.of(

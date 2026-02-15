@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Superadmin Diagnostics</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Superadmin Diagnostics</h1>
+    
+    <div class="section">
+        <h2>Login Test</h2>
+        <button onclick="testLogin()">Test Login</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Users Data Test</h2>
+        <button onclick="testUsers()">Load Users</button>
+        <div id="usersResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Clubs Data Test</h2>
+        <button onclick="testClubs()">Load Clubs</button>
+        <div id="clubsResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Club Admins Analysis</h2>
+        <button onclick="analyzeClubAdmins()">Analyze Club Admins</button>
+        <div id="analysisResult"></div>
+    </div>
+
+    <script>
+        let token = '';
+        let clubsCache = [];
+        let usersCache = [];
+
+        async function testLogin() {
+            try {
+                const response = await fetch('http://localhost:7070/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('loginResult').innerHTML = '<span class="success">Login successful! Token received.</span>';
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<span class="error">Login failed: ' + (data.message || 'Unknown error') + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = '<span class="error">Login error: ' + error.message + '</span>';
+            }
+        }
+
+        async function testClubs() {
+            if (!token) {
+                document.getElementById('clubsResult').innerHTML = '<span class="error">Please login first</span>';
+                return;
+            }
+            try {
+                const response = await fetch('http://localhost:7070/api/clubs', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    clubsCache = data;
+                    document.getElementById('clubsResult').innerHTML = '<span class="success">Clubs loaded: ' + data.length + ' clubs found</span><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    document.getElementById('clubsResult').innerHTML = '<span class="error">Failed to load clubs: ' + (data.message || 'Unknown error') + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('clubsResult').innerHTML = '<span class="error">Clubs error: ' + error.message + '</span>';
+            }
+        }
+
+        async function testUsers() {
+            if (!token) {
+                document.getElementById('usersResult').innerHTML = '<span class="error">Please login first</span>';
+                return;
+            }
+            try {
+                const response = await fetch('http://localhost:7070/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    usersCache = data;
+                    document.getElementById('usersResult').innerHTML = '<span class="success">Users loaded: ' + data.length + ' users found</span><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    document.getElementById('usersResult').innerHTML = '<span class="error">Failed to load users: ' + (data.message || 'Unknown error') + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('usersResult').innerHTML = '<span class="error">Users error: ' + error.message + '</span>';
+            }
+        }
+
+        function analyzeClubAdmins() {
+            if (!usersCache.length) {
+                document.getElementById('analysisResult').innerHTML = '<span class="error">Please load users first</span>';
+                return;
+            }
+            
+            const clubAdmins = usersCache.filter(u => (u.role || '').toUpperCase() === 'CLUB_ADMIN');
+            const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
+            
+            let html = '<h3>Club Admins Analysis</h3>';
+            html += '<p>Total Club Admins: ' + clubAdmins.length + '</p>';
+            
+            if (clubAdmins.length === 0) {
+                html += '<p class="error">No club admins found!</p>';
+            } else {
+                html += '<table>';
+                html += '<tr><th>Username</th><th>Role</th><th>Mobile</th><th>Club ID</th><th>Club Name</th><th>Enabled</th></tr>';
+                
+                for (const admin of clubAdmins) {
+                    const clubName = clubNameById.get(admin.adminClubId) || admin.adminClubId || 'N/A';
+                    html += '<tr>';
+                    html += '<td>' + (admin.username || 'N/A') + '</td>';
+                    html += '<td>' + (admin.role || 'N/A') + '</td>';
+                    html += '<td>' + (admin.mobile || 'N/A') + '</td>';
+                    html += '<td>' + (admin.adminClubId || 'N/A') + '</td>';
+                    html += '<td>' + clubName + '</td>';
+                    html += '<td>' + (admin.enabled ? 'Yes' : 'No') + '</td>';
+                    html += '</tr>';
+                }
+                html += '</table>';
+            }
+            
+            document.getElementById('analysisResult').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

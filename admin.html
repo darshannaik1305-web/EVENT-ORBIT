@@ -137,6 +137,29 @@
         </div>
       </div>
 
+      <div class="card" id="pendingClubAdminsCard">
+        <h2 style="margin-bottom:8px;">Pending Club Admin Requests</h2>
+        <div class="btnRow">
+          <button class="primary" type="button" id="refreshPendingAdminsBtn">Refresh Pending</button>
+        </div>
+        <div class="small">Approve to grant access. Reject to remove the request.</div>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>USN</th>
+                <th>Name</th>
+                <th>Mobile</th>
+                <th>Email</th>
+                <th>Club</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pendingAdminsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card">
         <h2 style="margin-bottom:8px;">Users</h2>
         <div class="btnRow">
@@ -446,10 +469,61 @@
       }
     }
 
+    async function loadPendingClubAdmins() {
+      const tbody = document.getElementById('pendingAdminsTbody');
+      if (!tbody) return;
+      const rows = await apiJson(`${API_BASE_URL}/admin/club-admins/pending`, { headers: authHeaders() });
+      tbody.innerHTML = '';
+      if (!Array.isArray(rows) || rows.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="6" class="small">No pending requests</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+      const clubs = await apiJson(`${API_BASE_URL}/clubs`);
+      const clubNameById = new Map(clubs.map(c => [c.id, c.name]));
+      for (const u of rows) {
+        const tr = document.createElement('tr');
+        const clubName = clubNameById.get(u.adminClubId) || u.adminClubId || '';
+        tr.innerHTML = `
+          <td><b>${u.username}</b></td>
+          <td>${u.fullName || ''}</td>
+          <td>${u.mobile || ''}</td>
+          <td>${u.email || ''}</td>
+          <td>${clubName}</td>
+          <td>
+            <div class="btnRow">
+              <button class="good" type="button" data-action="approve">Approve</button>
+              <button class="danger" type="button" data-action="reject">Reject</button>
+            </div>
+          </td>
+        `;
+        tr.querySelector('[data-action="approve"]').addEventListener('click', async () => {
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({ enabled: true })
+          });
+          await loadPendingClubAdmins();
+          await loadUsers();
+        });
+        tr.querySelector('[data-action="reject"]').addEventListener('click', async () => {
+          if (!confirm(`Reject and delete request for ${u.username}?`)) return;
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadPendingClubAdmins();
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
     async function refreshAll() {
       await loadClubs();
       await loadEvents();
       await loadUsers();
+      await loadPendingClubAdmins();
     }
 
     document.getElementById('loginBtn').addEventListener('click', async () => {
@@ -502,6 +576,10 @@
         setLoggedInState(false);
       }
     })();
+
+    document.getElementById('refreshPendingAdminsBtn').addEventListener('click', async () => {
+      await loadPendingClubAdmins();
+    });
   </script>
 </body>
 </html>

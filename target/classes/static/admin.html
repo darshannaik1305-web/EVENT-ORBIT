@@ -453,7 +453,7 @@
         body: JSON.stringify({ usn, fullName, email, mobile, gender, clubId, password })
       });
 
-      alert('Admin registered successfully. You can login now.');
+      alert('Request submitted. Superadmin must approve before you can login.');
       document.getElementById('adminUsername').value = usn;
       document.getElementById('adminPassword').value = '';
       document.getElementById('regAdminUsn').value = '';
