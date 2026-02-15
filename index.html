@@ -436,8 +436,8 @@
   <div id="loginBox">
     <h2>MVJ COLLEGE OF ENGINEERING</h2>
     <form id="loginForm" onsubmit="return false;">
-      <label for="usernameInput">Username:</label>
-      <input type="text" id="usernameInput" autocomplete="username" required />
+      <label for="usernameInput">USN:</label>
+      <input type="text" id="usernameInput" autocomplete="username" required placeholder="Enter USN" minlength="10" maxlength="10" pattern="1MJ[A-Z0-9]{7}" title="USN must be in format 1MJ******* (all caps)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" />
       <label for="passwordInput">Password:</label>
       <input type="password" id="passwordInput" autocomplete="current-password" required />
       <div id="loginButtons">
@@ -451,12 +451,31 @@
     </form>
 
     <form id="registerForm" onsubmit="return false;" style="display:none;">
-      <label for="registerUsernameInput">Username:</label>
-      <input type="text" id="registerUsernameInput" autocomplete="username" required />
-      <label for="registerPasswordInput">Password:</label>
+      <label for="registerUsnInput">USN:</label>
+      <input type="text" id="registerUsnInput" required minlength="10" maxlength="10" pattern="1MJ[A-Z0-9]{7}" title="USN must be in format 1MJ******* (all caps)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" />
+
+      <label for="registerFullNameInput">Full Name:</label>
+      <input type="text" id="registerFullNameInput" required />
+
+      <label for="registerPasswordInput">Create Password:</label>
       <input type="password" id="registerPasswordInput" autocomplete="new-password" required />
+
+      <label for="registerConfirmPasswordInput">Re-enter Password:</label>
+      <input type="password" id="registerConfirmPasswordInput" autocomplete="new-password" required />
+
       <label for="registerMobileInput">Mobile Number:</label>
       <input type="tel" id="registerMobileInput" pattern="[0-9]{10}" maxlength="10" required placeholder="10-digit mobile number" />
+
+      <label for="registerEmailInput">Email:</label>
+      <input type="email" id="registerEmailInput" autocomplete="email" required />
+
+      <label for="registerGenderInput">Gender:</label>
+      <select id="registerGenderInput" required style="padding: 8px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem;">
+        <option value="">Select</option>
+        <option value="MALE">Male</option>
+        <option value="FEMALE">Female</option>
+        <option value="OTHER">Other</option>
+      </select>
       <div id="registerButtons" style="margin-top: 25px; display: flex; justify-content: space-between;">
         <button type="button" onclick="attemptRegister()" style="flex:1; margin: 0 5px; border: none; background: #27ae60; color: white; padding: 10px 0; font-weight: 600; font-size: 1rem; border-radius: 8px; transition: background 0.3s ease;">Register</button>
         <button type="button" onclick="showLoginForm()" style="flex:1; margin: 0 5px; border: none; background: #7f8c8d; color: white; padding: 10px 0; font-weight: 600; font-size: 1rem; border-radius: 8px; transition: background 0.3s ease;">Back</button>
@@ -557,10 +576,21 @@
   }
 
   function attemptLogin(role) {
-    const username = sanitizeInput(document.getElementById('usernameInput').value.trim());
+    const username = sanitizeInput(document.getElementById('usernameInput').value.trim()).toUpperCase();
     const password = document.getElementById('passwordInput').value;
     const errElem = document.getElementById('loginError');
     errElem.textContent = '';
+
+    const usnRegex = /^1MJ[A-Z0-9]{7}$/;
+    if (!usnRegex.test(username)) {
+      errElem.textContent = 'Invalid USN. Use format 1MJ******* (all capital letters).';
+      return;
+    }
+
+    if (!username || !password) {
+      errElem.textContent = 'Please enter username and password';
+      return;
+    }
     toggleSpinner('loginSpinner', true);
 
     // Call backend API for authentication
@@ -596,7 +626,7 @@
     document.getElementById('registerForm').style.display = 'block';
     document.getElementById('loginError').textContent = '';
     document.getElementById('registerError').textContent = '';
-    document.getElementById('registerUsernameInput').focus();
+    document.getElementById('registerUsnInput').focus();
   }
 
   function showLoginForm() {
@@ -608,19 +638,44 @@
   }
 
   function attemptRegister() {
-    const username = sanitizeInput(document.getElementById('registerUsernameInput').value.trim());
+    const usn = sanitizeInput(document.getElementById('registerUsnInput').value.trim()).toUpperCase();
+    const fullName = sanitizeInput(document.getElementById('registerFullNameInput').value.trim());
     const password = document.getElementById('registerPasswordInput').value;
+    const confirmPassword = document.getElementById('registerConfirmPasswordInput').value;
     const mobile = sanitizeInput(document.getElementById('registerMobileInput').value.trim());
+    const email = sanitizeInput(document.getElementById('registerEmailInput').value.trim());
+    const gender = sanitizeInput(document.getElementById('registerGenderInput').value);
     const errElem = document.getElementById('registerError');
     errElem.textContent = '';
 
-    if (!username || !password) {
-      errElem.textContent = 'Please enter username and password.';
+    const usnRegex = /^1MJ[A-Z0-9]{7}$/;
+    if (!usnRegex.test(usn)) {
+      errElem.textContent = 'Invalid USN. Use format 1MJ******* (all capital letters).';
+      return;
+    }
+
+    if (!usn || !fullName || !password || !confirmPassword || !mobile || !email || !gender) {
+      errElem.textContent = 'Please fill all fields.';
+      return;
+    }
+
+    if (!/^[A-Za-z0-9]+$/.test(usn)) {
+      errElem.textContent = 'Please enter a valid USN.';
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      errElem.textContent = 'Passwords do not match.';
       return;
     }
 
     if (!/^\d{10}$/.test(mobile)) {
       errElem.textContent = 'Please enter a valid 10-digit mobile number.';
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errElem.textContent = 'Please enter a valid email address.';
       return;
     }
 
@@ -631,7 +686,7 @@
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password, mobile })
+      body: JSON.stringify({ usn, fullName, password, mobile, email, gender })
     })
     .then(async response => {
       const data = await response.json().catch(() => ({}));
@@ -641,10 +696,15 @@
       return data;
     })
     .then(() => {
-      document.getElementById('usernameInput').value = username;
+      document.getElementById('usernameInput').value = usn;
       document.getElementById('passwordInput').value = password;
+      document.getElementById('registerUsnInput').value = '';
+      document.getElementById('registerFullNameInput').value = '';
       document.getElementById('registerPasswordInput').value = '';
+      document.getElementById('registerConfirmPasswordInput').value = '';
       document.getElementById('registerMobileInput').value = '';
+      document.getElementById('registerEmailInput').value = '';
+      document.getElementById('registerGenderInput').value = '';
       showLoginForm();
       attemptLogin('user');
     })
@@ -857,86 +917,83 @@
               box.style.textShadow = '1px 1px 6px rgba(0,0,0,0.7)';
             }
 
+            const cap = (event.capacity != null && Number(event.capacity) > 0) ? Number(event.capacity) : 0;
+            const currentCount = (event.registrations && Array.isArray(event.registrations)) ? event.registrations.length : 0;
+            const isFull = (cap > 0 && currentCount >= cap);
+            const capLabel = cap > 0 ? `${currentCount}/${cap} participants` : `${currentCount} participants`;
+
             box.innerHTML = `
               <h3>${sanitizeInput(event.name)}</h3>
               <p>${sanitizeInput(event.description)}</p>
-              <button class="registerBtn" aria-label="Register for ${sanitizeInput(event.name)}">Register</button>
-              <div class="registrationFormContainer" style="display:none;">
-                <form onsubmit="return false;" class="registrationForm" aria-label="Registration form for ${sanitizeInput(event.name)}">
-                  <label for="regUsername-${event.id}">Username:</label>
-                  <input type="text" id="regUsername-${event.id}" name="regUsername" required placeholder="Your username" />
-                  <label for="regMobile-${event.id}">Mobile Number:</label>
-                  <input type="tel" id="regMobile-${event.id}" name="regMobile" pattern="[0-9]{10}" maxlength="10" required placeholder="10-digit mobile number" />
-                  <small style="color: #666; font-size: 12px;">Please enter a valid 10-digit mobile number</small>
-                  <button type="submit">Submit</button>
-                  <div class="regMsg" role="alert" aria-live="assertive"></div>
-                </form>
-              </div>
+              <p style="margin:6px 0; font-size: 13px;">${sanitizeInput(capLabel)}</p>
+              <button class="registerBtn" aria-label="Register for ${sanitizeInput(event.name)}" ${isFull ? 'disabled' : ''}>${isFull ? 'Event Full' : 'Register'}</button>
+              <div class="regMsg" role="alert" aria-live="assertive"></div>
             `;
 
             const registerBtn = box.querySelector('.registerBtn');
-            const regFormContainer = box.querySelector('.registrationFormContainer');
-            const regForm = box.querySelector('.registrationForm');
             const regMsg = box.querySelector('.regMsg');
 
             registerBtn.addEventListener('click', () => {
+              if (isFull) {
+                regMsg.style.color = 'red';
+                regMsg.textContent = 'Event is full';
+                return;
+              }
               if (currentUser && currentUser.role === 'user') {
-                regFormContainer.style.display = regFormContainer.style.display === 'none' ? 'block' : 'none';
                 regMsg.textContent = '';
+
+                const ok = confirm(`Confirm registration for ${event.name}?`);
+                if (!ok) {
+                  return;
+                }
+
+                fetch(`${API_BASE_URL}/events/${event.id}/register`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                  },
+                  body: JSON.stringify({})
+                })
+                .then(async (response) => {
+                  let data = null;
+                  try {
+                    data = await response.json();
+                  } catch (e) {
+                    data = { message: 'Request failed' };
+                  }
+
+                  if (!response.ok) {
+                    if (response.status === 401) {
+                      data = data && data.message ? data : { message: 'Session expired. Please login again.' };
+                      try { logout(); } catch (e) {}
+                    }
+                  }
+
+                  return data;
+                })
+                .then(data => {
+                  if (data.message === 'Registration successful') {
+                    regMsg.style.color = 'green';
+                    regMsg.textContent = 'Registration successful!';
+                    populateNotifications();
+                    setTimeout(() => {
+                      regMsg.textContent = '';
+                    }, 2000);
+                  } else {
+                    const msg = data && data.message ? data.message : 'Registration failed';
+                    const isError = msg.toLowerCase().includes('full') || msg.toLowerCase().includes('failed') || msg.toLowerCase().includes('ended') || msg.toLowerCase().includes('not started') || msg.toLowerCase().includes('already') || msg.toLowerCase().includes('missing') || msg.toLowerCase().includes('invalid');
+                    regMsg.style.color = isError ? 'red' : 'green';
+                    regMsg.textContent = msg;
+                  }
+                })
+                .catch(() => {
+                  regMsg.style.color = 'red';
+                  regMsg.textContent = 'Registration failed. Please try again.';
+                });
               } else {
                 alert('Only logged-in users can register for events.');
               }
-            });
-
-            regForm.addEventListener('submit', () => {
-              regMsg.textContent = '';
-              const inputUsername = sanitizeInput(regForm.regUsername.value.trim());
-              const inputMobile = sanitizeInput(regForm.regMobile.value.trim());
-
-              if (inputUsername !== currentUser.username) {
-                regMsg.style.color = 'red';
-                regMsg.textContent = `Username must be your logged-in username (${sanitizeInput(currentUser.username)}).`;
-                return false;
-              }
-
-              // Validate mobile number (must be exactly 10 digits)
-              if (!/^\d{10}$/.test(inputMobile)) {
-                regMsg.style.color = 'red';
-                regMsg.textContent = 'Please enter a valid 10-digit mobile number.';
-                return false;
-              }
-
-              // Call backend API to register
-              fetch(`${API_BASE_URL}/events/${event.id}/register`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify({ username: inputUsername, mobile: inputMobile })
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.message === 'Registration successful') {
-                  regMsg.style.color = 'green';
-                  regMsg.textContent = 'Registration successful!';
-                  regForm.reset();
-                  populateNotifications();
-                  setTimeout(() => {
-                    regFormContainer.style.display = 'none';
-                    regMsg.textContent = '';
-                  }, 2000);
-                } else {
-                  regMsg.style.color = 'green';
-                  regMsg.textContent = data.message;
-                }
-              })
-              .catch(error => {
-                regMsg.style.color = 'red';
-                regMsg.textContent = 'Registration failed. Please try again.';
-              });
-
-              return false;
             });
 
             eventsListElem.appendChild(box);

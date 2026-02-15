@@ -34,25 +34,79 @@ public class AuthController {
             Map<String, Object> response = authService.login(username, password);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            String msg = e.getMessage();
+            if (msg == null || msg.isBlank()) {
+                msg = "Login failed";
+            }
             Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
+            error.put("error", msg);
             return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg == null || msg.isBlank()) {
+                msg = "Server error";
+            }
+            Map<String, String> error = new HashMap<>();
+            error.put("error", msg);
+            return ResponseEntity.status(500).body(error);
         }
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
+    public ResponseEntity<?> register(@RequestBody Map<String, String> payload) {
         try {
+            String usn = payload.get("usn");
+            String fullName = payload.get("fullName");
+            String password = payload.get("password");
+            String mobile = payload.get("mobile");
+            String email = payload.get("email");
+            String gender = payload.get("gender");
+
             User registeredUser = authService.register(
-                user.getUsername(), 
-                user.getPassword(), 
-                user.getMobile()
+                usn,
+                fullName,
+                password,
+                mobile,
+                email,
+                gender
             );
             
             Map<String, Object> response = new HashMap<>();
             response.put("message", "User registered successfully");
             response.put("username", registeredUser.getUsername());
             
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @PostMapping("/register-admin")
+    public ResponseEntity<?> registerAdmin(@RequestBody Map<String, String> payload) {
+        try {
+            String usn = payload.get("usn");
+            String fullName = payload.get("fullName");
+            String password = payload.get("password");
+            String mobile = payload.get("mobile");
+            String email = payload.get("email");
+            String gender = payload.get("gender");
+            String clubId = payload.get("clubId");
+
+            User registeredUser = authService.registerAdmin(
+                    usn,
+                    fullName,
+                    password,
+                    mobile,
+                    email,
+                    gender,
+                    clubId
+            );
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Admin registered successfully");
+            response.put("username", registeredUser.getUsername());
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();

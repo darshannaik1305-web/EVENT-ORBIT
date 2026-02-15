@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Super Admin - Event Management</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; color: #111; }
+
+    header { padding: 14px 18px; background: #111827; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 1.1rem; }
+
+    main { max-width: 1200px; margin: 18px auto; padding: 0 14px 40px; }
+
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+
+    label { display:block; font-weight: 600; margin-top: 10px; font-size: .9rem; }
+    input, textarea, select { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 10px; border: 1px solid #d1d5db; outline: none; }
+    textarea { min-height: 90px; resize: vertical; }
+
+    .btnRow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    button { border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .primary { background: #2563eb; color: #fff; }
+    .danger { background: #dc2626; color: #fff; }
+    .muted { background: #6b7280; color: #fff; }
+    .good { background: #16a34a; color: #fff; }
+
+    .small { font-size: .85rem; color: #6b7280; margin-top: 6px; }
+    .err { color: #dc2626; font-weight: 600; margin-top: 10px; white-space: pre-wrap; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    th { font-size: .85rem; color: #374151; }
+    td { font-size: .92rem; }
+
+    .pill { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+    .pill.admin { background:#111827; color:#fff; }
+    .pill.club_admin { background:#2563eb; color:#fff; }
+    .pill.user { background:#e5e7eb; color:#111827; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Super Admin Panel</h1>
+    <div class="btnRow" style="margin-top:0;">
+      <button class="muted" id="logoutBtn" style="display:none;" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card" id="loginCard">
+      <h2 style="margin-bottom:10px;">Super Admin Login</h2>
+      <div class="small">Only global ADMIN accounts can access this page.</div>
+      <label for="adminUsername">Username</label>
+      <input id="adminUsername" type="text" autocomplete="username" />
+      <label for="adminPassword">Password</label>
+      <input id="adminPassword" type="password" autocomplete="current-password" />
+      <div class="btnRow">
+        <button class="primary" type="button" id="loginBtn">Login</button>
+      </div>
+      <div class="err" id="loginErr"></div>
+    </div>
+
+    <div id="app" style="display:none;">
+      <div class="row">
+        <div class="card">
+          <h2 style="margin-bottom:8px;">Clubs</h2>
+          <div class="btnRow">
+            <button class="primary" type="button" id="refreshClubsBtn">Refresh Clubs</button>
+          </div>
+
+          <h3 style="margin-top:12px;">Add Club</h3>
+          <label for="clubName">Name</label>
+          <input id="clubName" type="text" />
+          <label for="clubImageUrl">Image URL</label>
+          <input id="clubImageUrl" type="text" />
+          <div class="btnRow">
+            <button class="good" type="button" id="addClubBtn">Add Club</button>
+          </div>
+          <div class="err" id="clubsErr"></div>
+
+          <h3 style="margin-top:14px;">Existing Clubs</h3>
+          <div style="overflow:auto; margin-top:8px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Image URL</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="clubsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:8px;">Events</h2>
+          <div class="btnRow">
+            <button class="primary" type="button" id="refreshEventsBtn">Refresh Events</button>
+          </div>
+
+          <h3 style="margin-top:12px;">Add Event</h3>
+          <label for="eventClub">Club</label>
+          <select id="eventClub"></select>
+          <label for="eventName">Name</label>
+          <input id="eventName" type="text" />
+          <label for="eventDesc">Description</label>
+          <textarea id="eventDesc"></textarea>
+          <label for="eventRegStart">Registration Start</label>
+          <input id="eventRegStart" type="datetime-local" />
+          <label for="eventRegEnd">Registration End</label>
+          <input id="eventRegEnd" type="datetime-local" />
+          <label for="eventCapacity">Max Participants (0 = unlimited)</label>
+          <input id="eventCapacity" type="number" min="0" step="1" placeholder="0" />
+          <label for="eventBg">Background Image URL (optional)</label>
+          <input id="eventBg" type="text" />
+          <div class="btnRow">
+            <button class="good" type="button" id="addEventBtn">Add Event</button>
+          </div>
+          <div class="err" id="eventsErr"></div>
+
+          <h3 style="margin-top:14px;">Existing Events</h3>
+          <div style="overflow:auto; margin-top:8px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Club</th>
+                  <th>Reg Window</th>
+                  <th>Capacity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="eventsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:8px;">Club Admins</h2>
+        <div class="btnRow">
+          <button class="primary" type="button" id="refreshClubAdminsBtn">Refresh Club Admins</button>
+        </div>
+
+        <h3 style="margin-top:12px;">Create Club Admin</h3>
+        <div class="small">Maximum 2 club admins per club.</div>
+
+        <label for="caUsn">USN</label>
+        <input id="caUsn" type="text" minlength="10" maxlength="10" pattern="1MJ[A-Z0-9]{7}" title="USN must be in format 1MJ******* (all caps)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" />
+
+        <label for="caFullName">Full Name</label>
+        <input id="caFullName" type="text" />
+
+        <label for="caEmail">Gmail</label>
+        <input id="caEmail" type="email" autocomplete="email" />
+
+        <label for="caMobile">Mobile No</label>
+        <input id="caMobile" type="tel" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number" />
+
+        <label for="caClub">Which Club Admin</label>
+        <select id="caClub"></select>
+
+        <label for="caGender">Gender</label>
+        <select id="caGender">
+          <option value="">Select</option>
+          <option value="MALE">Male</option>
+          <option value="FEMALE">Female</option>
+          <option value="OTHER">Other</option>
+        </select>
+
+        <label for="caPassword">Password</label>
+        <input id="caPassword" type="password" autocomplete="new-password" />
+
+        <div class="btnRow">
+          <button class="good" type="button" id="createClubAdminBtn">Create Club Admin</button>
+        </div>
+        <div class="err" id="clubAdminsErr"></div>
+
+        <h3 style="margin-top:14px;">Existing Club Admins</h3>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>USN</th>
+                <th>Name</th>
+                <th>Mobile</th>
+                <th>Email</th>
+                <th>Club</th>
+                <th>Enabled</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clubAdminsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:8px;">All Users</h2>
+        <div class="btnRow">
+          <button class="primary" type="button" id="refreshUsersBtn">Refresh Users</button>
+        </div>
+        <div class="small">You can remove non-global-admin accounts. (Global ADMIN delete is blocked.)</div>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>USN</th>
+                <th>Role</th>
+                <th>Mobile</th>
+                <th>Email</th>
+                <th>Club</th>
+                <th>Enabled</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+        <div class="err" id="usersErr"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const API_BASE_URL = '/api';
+    const LS_TOKEN = 'cem_superadmin_token';
+
+    let token = localStorage.getItem(LS_TOKEN) || null;
+    let clubsCache = [];
+
+    function authHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+    }
+
+    function setLoggedInState(loggedIn) {
+      document.getElementById('loginCard').style.display = loggedIn ? 'none' : 'block';
+      document.getElementById('app').style.display = loggedIn ? 'block' : 'none';
+      document.getElementById('logoutBtn').style.display = loggedIn ? 'inline-block' : 'none';
+    }
+
+    async function apiJson(url, options = {}) {
+      const res = await fetch(url, options);
+      const rawText = await res.text();
+      let data = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch (e) {
+        data = {};
+      }
+
+      if (!res.ok) {
+        const candidate = data.error || data.message || rawText;
+        const msg = (candidate && String(candidate).trim()) ? String(candidate) : `Request failed (${res.status})`;
+        throw new Error(msg);
+      }
+
+      return data;
+    }
+
+    function normalizeToIsoSeconds(datetimeLocalValue) {
+      if (!datetimeLocalValue) return '';
+      const s = String(datetimeLocalValue).trim();
+      if (!s) return '';
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) {
+        return `${s}:00`;
+      }
+      return s;
+    }
+
+    function fmtDateTime(val) {
+      if (!val) return '';
+      try {
+        return new Date(val).toLocaleString();
+      } catch {
+        return String(val);
+      }
+    }
+
+    async function login() {
+      const username = document.getElementById('adminUsername').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      document.getElementById('loginErr').textContent = '';
+
+      const data = await apiJson(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const role = (data.role || '').toUpperCase();
+      if (role !== 'ADMIN') {
+        throw new Error('This account is not a global ADMIN');
+      }
+
+      token = data.token;
+      localStorage.setItem(LS_TOKEN, token);
+      setLoggedInState(true);
+      await refreshAll();
+    }
+
+    function logout() {
+      token = null;
+      localStorage.removeItem(LS_TOKEN);
+      setLoggedInState(false);
+    }
+
+    async function loadClubs() {
+      clubsCache = await apiJson(`${API_BASE_URL}/clubs`);
+
+      const clubSelect = document.getElementById('eventClub');
+      const caClubSelect = document.getElementById('caClub');
+      clubSelect.innerHTML = '';
+      caClubSelect.innerHTML = '';
+
+      for (const c of clubsCache) {
+        const opt1 = document.createElement('option');
+        opt1.value = c.id;
+        opt1.textContent = c.name;
+        clubSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = c.id;
+        opt2.textContent = c.name;
+        caClubSelect.appendChild(opt2);
+      }
+
+      const tbody = document.getElementById('clubsTbody');
+      tbody.innerHTML = '';
+      for (const c of clubsCache) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><b>${c.name}</b></td>
+          <td>${c.imageUrl || ''}</td>
+          <td>
+            <div class="btnRow">
+              <button class="danger" type="button" data-action="delete">Delete</button>
+            </div>
+          </td>
+        `;
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete club ${c.name}?`)) return;
+          await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadClubs();
+          await loadEvents();
+          await loadClubAdmins();
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function addClub() {
+      const err = document.getElementById('clubsErr');
+      err.textContent = '';
+      const name = document.getElementById('clubName').value.trim();
+      const imageUrl = document.getElementById('clubImageUrl').value.trim();
+      if (!name) throw new Error('Club name is required');
+
+      await apiJson(`${API_BASE_URL}/clubs`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name, imageUrl })
+      });
+
+      document.getElementById('clubName').value = '';
+      document.getElementById('clubImageUrl').value = '';
+      await loadClubs();
+    }
+
+    async function loadEvents() {
+      const events = await apiJson(`${API_BASE_URL}/events`);
+      const tbody = document.getElementById('eventsTbody');
+      tbody.innerHTML = '';
+
+      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
+
+      for (const e of events) {
+        const tr = document.createElement('tr');
+        const clubName = clubNameById.get(e.clubId) || e.clubId;
+        const regWindow = `${fmtDateTime(e.regStart)}\n→ ${fmtDateTime(e.regEnd)}`;
+        const cap = (e.capacity == null ? '' : String(e.capacity));
+
+        tr.innerHTML = `
+          <td><b>${e.name}</b></td>
+          <td>${clubName}</td>
+          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${regWindow}</pre></td>
+          <td>${cap}</td>
+          <td>
+            <div class="btnRow">
+              <button class="danger" type="button" data-action="delete">Delete</button>
+            </div>
+          </td>
+        `;
+
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete event ${e.name}?`)) return;
+          await apiJson(`${API_BASE_URL}/events/${e.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadEvents();
+        });
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function addEvent() {
+      const err = document.getElementById('eventsErr');
+      err.textContent = '';
+
+      const clubId = document.getElementById('eventClub').value;
+      const name = document.getElementById('eventName').value.trim();
+      const description = document.getElementById('eventDesc').value.trim();
+      const regStart = normalizeToIsoSeconds(document.getElementById('eventRegStart').value);
+      const regEnd = normalizeToIsoSeconds(document.getElementById('eventRegEnd').value);
+      const capacityVal = document.getElementById('eventCapacity').value;
+      const capacity = capacityVal === '' ? null : Number(capacityVal);
+      const bgImageUrl = document.getElementById('eventBg').value.trim();
+
+      if (!clubId) throw new Error('Club is required');
+      if (!name) throw new Error('Event name is required');
+      if (!regStart || !regEnd) throw new Error('regStart and regEnd are required');
+      if (capacity != null && (Number.isNaN(capacity) || capacity < 0)) throw new Error('capacity must be >= 0');
+
+      await apiJson(`${API_BASE_URL}/events`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ clubId, name, description, regStart, regEnd, capacity, bgImageUrl })
+      });
+
+      document.getElementById('eventName').value = '';
+      document.getElementById('eventDesc').value = '';
+      document.getElementById('eventRegStart').value = '';
+      document.getElementById('eventRegEnd').value = '';
+      document.getElementById('eventCapacity').value = '';
+      document.getElementById('eventBg').value = '';
+
+      await loadEvents();
+    }
+
+    async function loadClubAdmins() {
+      const users = await apiJson(`${API_BASE_URL}/admin/club-admins`, { headers: authHeaders() });
+      const tbody = document.getElementById('clubAdminsTbody');
+      tbody.innerHTML = '';
+
+      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
+
+      for (const u of users) {
+        const tr = document.createElement('tr');
+        const clubName = clubNameById.get(u.adminClubId) || (u.adminClubId || '');
+        tr.innerHTML = `
+          <td><b>${u.username}</b></td>
+          <td>${u.fullName || ''}</td>
+          <td>${u.mobile || ''}</td>
+          <td>${u.email || ''}</td>
+          <td>${clubName}</td>
+          <td>${u.enabled ? 'Yes' : 'No'}</td>
+          <td>
+            <div class="btnRow">
+              <button class="danger" type="button" data-action="delete">Delete</button>
+            </div>
+          </td>
+        `;
+
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete club admin ${u.username}?`)) return;
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadClubAdmins();
+        });
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function createClubAdmin() {
+      const err = document.getElementById('clubAdminsErr');
+      err.textContent = '';
+
+      const usn = String(document.getElementById('caUsn').value || '').trim().toUpperCase();
+      const fullName = String(document.getElementById('caFullName').value || '').trim();
+      const email = String(document.getElementById('caEmail').value || '').trim();
+      const mobile = String(document.getElementById('caMobile').value || '').trim();
+      const clubId = document.getElementById('caClub').value;
+      const gender = document.getElementById('caGender').value;
+      const password = document.getElementById('caPassword').value;
+
+      if (!/^1MJ[A-Z0-9]{7}$/.test(usn)) throw new Error('Invalid USN. Use format 1MJ******* (all capital letters).');
+      if (!fullName) throw new Error('Full name is required');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Email is invalid');
+      if (!/^\d{10}$/.test(mobile)) throw new Error('Mobile must be 10 digits');
+      if (!clubId) throw new Error('Club is required');
+      if (!gender) throw new Error('Gender is required');
+      if (!password) throw new Error('Password is required');
+
+      await apiJson(`${API_BASE_URL}/admin/club-admins`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ usn, fullName, email, mobile, gender, clubId, password })
+      });
+
+      document.getElementById('caUsn').value = '';
+      document.getElementById('caFullName').value = '';
+      document.getElementById('caEmail').value = '';
+      document.getElementById('caMobile').value = '';
+      document.getElementById('caGender').value = '';
+      document.getElementById('caPassword').value = '';
+
+      await loadClubAdmins();
+    }
+
+    async function loadUsers() {
+      const users = await apiJson(`${API_BASE_URL}/admin/users`, { headers: authHeaders() });
+      const tbody = document.getElementById('usersTbody');
+      tbody.innerHTML = '';
+
+      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
+
+      for (const u of users) {
+        const tr = document.createElement('tr');
+        const role = String(u.role || '').toUpperCase();
+        const roleClass = role === 'ADMIN' ? 'admin' : (role === 'CLUB_ADMIN' ? 'club_admin' : 'user');
+        const clubName = clubNameById.get(u.adminClubId) || (u.adminClubId || '');
+
+        tr.innerHTML = `
+          <td><b>${u.username}</b></td>
+          <td><span class="pill ${roleClass}">${role}</span></td>
+          <td>${u.mobile || ''}</td>
+          <td>${u.email || ''}</td>
+          <td>${clubName}</td>
+          <td>${u.enabled ? 'Yes' : 'No'}</td>
+          <td>
+            <div class="btnRow">
+              <button class="danger" type="button" data-action="delete">Delete</button>
+            </div>
+          </td>
+        `;
+
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete user ${u.username}?`)) return;
+          await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadUsers();
+          await loadClubAdmins();
+        });
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function refreshAll() {
+      await loadClubs();
+      await loadEvents();
+      await loadClubAdmins();
+      await loadUsers();
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      try {
+        await login();
+      } catch (e) {
+        document.getElementById('loginErr').textContent = e.message;
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+
+    document.getElementById('refreshClubsBtn').addEventListener('click', async () => {
+      await loadClubs();
+    });
+
+    document.getElementById('addClubBtn').addEventListener('click', async () => {
+      try {
+        document.getElementById('clubsErr').textContent = '';
+        await addClub();
+      } catch (e) {
+        document.getElementById('clubsErr').textContent = e.message;
+      }
+    });
+
+    document.getElementById('refreshEventsBtn').addEventListener('click', async () => {
+      await loadEvents();
+    });
+
+    document.getElementById('addEventBtn').addEventListener('click', async () => {
+      try {
+        document.getElementById('eventsErr').textContent = '';
+        await addEvent();
+      } catch (e) {
+        document.getElementById('eventsErr').textContent = e.message;
+      }
+    });
+
+    document.getElementById('refreshClubAdminsBtn').addEventListener('click', async () => {
+      await loadClubAdmins();
+    });
+
+    document.getElementById('createClubAdminBtn').addEventListener('click', async () => {
+      try {
+        document.getElementById('clubAdminsErr').textContent = '';
+        await createClubAdmin();
+      } catch (e) {
+        document.getElementById('clubAdminsErr').textContent = e.message;
+      }
+    });
+
+    document.getElementById('refreshUsersBtn').addEventListener('click', async () => {
+      await loadUsers();
+    });
+
+    (async function init() {
+      if (token) {
+        setLoggedInState(true);
+        try {
+          await refreshAll();
+        } catch {
+          logout();
+        }
+      } else {
+        setLoggedInState(false);
+      }
+    })();
+  </script>
+</body>
+</html>

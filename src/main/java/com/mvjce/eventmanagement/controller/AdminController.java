@@ -2,6 +2,7 @@ package com.mvjce.eventmanagement.controller;
 
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.repository.UserRepository;
+import com.mvjce.eventmanagement.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -24,6 +25,9 @@ public class AdminController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private AuthService authService;
+
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> listUsers() {
         List<Map<String, Object>> users = userRepository.findAll().stream()
@@ -33,11 +37,74 @@ public class AdminController {
                     m.put("username", u.getUsername());
                     m.put("role", u.getRole());
                     m.put("mobile", u.getMobile());
+                    m.put("fullName", u.getFullName());
+                    m.put("email", u.getEmail());
+                    m.put("gender", u.getGender());
+                    m.put("adminClubId", u.getAdminClubId());
                     m.put("enabled", u.isEnabled());
                     return m;
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/club-admins")
+    public ResponseEntity<List<Map<String, Object>>> listClubAdmins() {
+        List<Map<String, Object>> users = userRepository.findAll().stream()
+                .filter(u -> u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN"))
+                .map(u -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", u.getId());
+                    m.put("username", u.getUsername());
+                    m.put("role", u.getRole());
+                    m.put("mobile", u.getMobile());
+                    m.put("fullName", u.getFullName());
+                    m.put("email", u.getEmail());
+                    m.put("gender", u.getGender());
+                    m.put("adminClubId", u.getAdminClubId());
+                    m.put("enabled", u.isEnabled());
+                    return m;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(users);
+    }
+
+    @PostMapping("/club-admins")
+    public ResponseEntity<?> createClubAdmin(@RequestBody Map<String, String> payload) {
+        try {
+            String usn = payload.get("usn");
+            String fullName = payload.get("fullName");
+            String password = payload.get("password");
+            String mobile = payload.get("mobile");
+            String email = payload.get("email");
+            String gender = payload.get("gender");
+            String clubId = payload.get("clubId");
+
+            User saved = authService.registerAdmin(usn, fullName, password, mobile, email, gender, clubId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Club admin created",
+                    "id", saved.getId(),
+                    "username", saved.getUsername(),
+                    "role", saved.getRole(),
+                    "adminClubId", saved.getAdminClubId(),
+                    "enabled", saved.isEnabled()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<?> deleteUser(@NonNull @PathVariable String id) {
+        return userRepository.findById(id)
+                .map(u -> {
+                    if (u.getRole() != null && u.getRole().equalsIgnoreCase("ADMIN")) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Cannot delete global admin"));
+                    }
+                    userRepository.deleteById(id);
+                    return ResponseEntity.ok(Map.of("message", "User deleted"));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PatchMapping("/users/{id}/enabled")
@@ -75,7 +142,8 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("message", "mobile must be a valid 10-digit number"));
         }
 
-        if (userRepository.existsByUsername(username)) {
+        String normalizedUsername = username.trim().toUpperCase();
+        if (userRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
             return ResponseEntity.badRequest().body(Map.of("message", "Username already exists"));
         }
 
@@ -84,7 +152,7 @@ public class AdminController {
         }
 
         User user = new User();
-        user.setUsername(username);
+        user.setUsername(normalizedUsername);
         user.setPassword(passwordEncoder.encode(password));
         user.setMobile(mobile);
         user.setRole(role);

@@ -1,4 +1,5 @@
 com\mvjce\eventmanagement\model\Club.class
+com\mvjce\eventmanagement\model\EventRegistration.class
 com\mvjce\eventmanagement\service\JWTService.class
 com\mvjce\eventmanagement\EventManagementApplication.class
 com\mvjce\eventmanagement\repository\UserRepository.class
@@ -10,8 +11,8 @@ com\mvjce\eventmanagement\config\SecurityConfig.class
 com\mvjce\eventmanagement\service\AuthService.class
 com\mvjce\eventmanagement\service\UserDetailsServiceImpl.class
 com\mvjce\eventmanagement\controller\AuthController.class
-com\mvjce\eventmanagement\model\Event$EventRegistration.class
 com\mvjce\eventmanagement\config\DataInitializer.class
+com\mvjce\eventmanagement\controller\AdminController.class
 com\mvjce\eventmanagement\model\User.class
 com\mvjce\eventmanagement\repository\ClubRepository.class
 com\mvjce\eventmanagement\model\Event.class

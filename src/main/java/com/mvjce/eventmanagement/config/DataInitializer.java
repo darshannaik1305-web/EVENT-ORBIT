@@ -30,7 +30,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        User admin = userRepository.findByUsername("admin").orElse(null);
+        User admin = userRepository.findByUsernameIgnoreCase("admin").orElse(null);
         if (admin == null) {
             admin = new User();
             admin.setUsername("admin");
@@ -45,7 +45,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         userRepository.save(admin);
 
-        User student = userRepository.findByUsername("student").orElse(null);
+        User student = userRepository.findByUsernameIgnoreCase("student").orElse(null);
         if (student == null) {
             student = new User();
             student.setUsername("student");

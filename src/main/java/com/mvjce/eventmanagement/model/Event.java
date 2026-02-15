@@ -1,22 +1,38 @@
 package com.mvjce.eventmanagement.model;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Document(collection = "events")
+@Entity
+@Table(name = "events")
 public class Event {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    @Column(nullable = false)
     private String name;
     private String description;
+
+    @Column(nullable = false)
     private String clubId;
     private LocalDateTime regStart;
     private LocalDateTime regEnd;
     private String bgImageUrl;
+    private Integer capacity;
+
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<EventRegistration> registrations = new ArrayList<>();
 
     private String createdBy;
@@ -93,6 +109,14 @@ public class Event {
         this.bgImageUrl = bgImageUrl;
     }
 
+    public Integer getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
+    }
+
     public List<EventRegistration> getRegistrations() {
         return registrations;
     }
@@ -131,45 +155,5 @@ public class Event {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    // Inner class for event registrations
-    public static class EventRegistration {
-        private String username;
-        private String mobile;
-        private LocalDateTime registrationTime;
-
-        public EventRegistration() {}
-
-        public EventRegistration(String username, String mobile) {
-            this.username = username;
-            this.mobile = mobile;
-            this.registrationTime = LocalDateTime.now();
-        }
-
-        // Getters and Setters
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getMobile() {
-            return mobile;
-        }
-
-        public void setMobile(String mobile) {
-            this.mobile = mobile;
-        }
-
-        public LocalDateTime getRegistrationTime() {
-            return registrationTime;
-        }
-
-        public void setRegistrationTime(LocalDateTime registrationTime) {
-            this.registrationTime = registrationTime;
-        }
     }
 }

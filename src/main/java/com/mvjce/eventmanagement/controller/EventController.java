@@ -1,7 +1,10 @@
 package com.mvjce.eventmanagement.controller;
 
 import com.mvjce.eventmanagement.model.Event;
+import com.mvjce.eventmanagement.model.EventRegistration;
+import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.repository.EventRepository;
+import com.mvjce.eventmanagement.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -21,6 +24,39 @@ public class EventController {
 
     @Autowired
     private EventRepository eventRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private User getActorUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String actorUsername = auth != null ? auth.getName() : null;
+        if (actorUsername == null || actorUsername.isBlank()) {
+            return null;
+        }
+        return userRepository.findByUsernameIgnoreCase(actorUsername.trim()).orElse(null);
+    }
+
+    private boolean isGlobalAdmin(User user) {
+        return user != null && user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN");
+    }
+
+    private boolean isClubAdmin(User user) {
+        return user != null && user.getRole() != null && user.getRole().equalsIgnoreCase("CLUB_ADMIN");
+    }
+
+    private boolean canManageEvent(User actor, Event event) {
+        if (isGlobalAdmin(actor)) {
+            return true;
+        }
+        if (isClubAdmin(actor)) {
+            return actor.getAdminClubId() != null
+                    && event != null
+                    && event.getClubId() != null
+                    && actor.getAdminClubId().equals(event.getClubId());
+        }
+        return false;
+    }
 
     @GetMapping
     public ResponseEntity<List<Event>> getAllEvents() {
@@ -44,8 +80,19 @@ public class EventController {
 
     @PostMapping
     public ResponseEntity<Event> createEvent(@RequestBody Event event) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String actor = auth != null ? auth.getName() : "unknown";
+        User actorUser = getActorUser();
+        String actor = actorUser != null ? actorUser.getUsername() : "unknown";
+
+        if (actorUser != null && isClubAdmin(actorUser)) {
+            if (event.getClubId() == null || actorUser.getAdminClubId() == null || !actorUser.getAdminClubId().equals(event.getClubId())) {
+                return ResponseEntity.status(403).<Event>build();
+            }
+        }
+
+        if (event.getCapacity() != null && event.getCapacity() < 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
         event.setCreatedBy(actor);
         event.setCreatedAt(LocalDateTime.now());
         event.setUpdatedBy(actor);
@@ -56,16 +103,24 @@ public class EventController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Event> updateEvent(@NonNull @PathVariable String id, @RequestBody Event event) {
+        if (event.getCapacity() != null && event.getCapacity() < 0) {
+            return ResponseEntity.badRequest().build();
+        }
         return eventRepository.findById(id)
                 .map(existingEvent -> {
+                    User actorUser = getActorUser();
+                    if (!canManageEvent(actorUser, existingEvent)) {
+                        return ResponseEntity.status(403).<Event>build();
+                    }
+
                     existingEvent.setName(event.getName());
                     existingEvent.setDescription(event.getDescription());
                     existingEvent.setRegStart(event.getRegStart());
                     existingEvent.setRegEnd(event.getRegEnd());
                     existingEvent.setBgImageUrl(event.getBgImageUrl());
+                    existingEvent.setCapacity(event.getCapacity());
 
-                    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                    String actor = auth != null ? auth.getName() : "unknown";
+                    String actor = actorUser != null ? actorUser.getUsername() : "unknown";
                     existingEvent.setUpdatedBy(actor);
                     existingEvent.setUpdatedAt(LocalDateTime.now());
 
@@ -90,10 +145,14 @@ public class EventController {
 
         return eventRepository.findById(id)
                 .map(existingEvent -> {
+                    User actorUser = getActorUser();
+                    if (!canManageEvent(actorUser, existingEvent)) {
+                        return ResponseEntity.status(403).build();
+                    }
+
                     existingEvent.setRegEnd(newRegEnd);
 
-                    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                    String actor = auth != null ? auth.getName() : "unknown";
+                    String actor = actorUser != null ? actorUser.getUsername() : "unknown";
                     existingEvent.setUpdatedBy(actor);
                     existingEvent.setUpdatedAt(LocalDateTime.now());
 
@@ -105,31 +164,72 @@ public class EventController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEvent(@NonNull @PathVariable String id) {
-        if (eventRepository.existsById(id)) {
-            eventRepository.deleteById(id);
-            return ResponseEntity.ok().build();
+        var existingOpt = eventRepository.findById(id);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        User actorUser = getActorUser();
+        if (!canManageEvent(actorUser, existingOpt.get())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        eventRepository.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/register")
     public ResponseEntity<?> registerForEvent(@NonNull @PathVariable String id, @RequestBody Map<String, String> registration) {
         return eventRepository.findById(id)
                 .map(event -> {
-                    String username = registration.get("username");
-                    String mobile = registration.get("mobile");
-                    
-                    // Validate mobile number (must be exactly 10 digits)
+                    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                    String actorUsername = auth != null ? auth.getName() : null;
+                    if (actorUsername == null || actorUsername.isBlank()) {
+                        return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+                    }
+
+                    User user = userRepository.findByUsernameIgnoreCase(actorUsername.trim()).orElse(null);
+                    if (user == null) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
+                    }
+
+                    String username = user.getUsername();
+                    String fullName = user.getFullName();
+                    String email = user.getEmail();
+                    String mobile = user.getMobile();
+
+                    if (username == null || username.isBlank()) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "USN is missing for this user"));
+                    }
+                    if (fullName == null || fullName.isBlank()) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Full name is missing for this user"));
+                    }
+                    if (email == null || email.isBlank()) {
+                        return ResponseEntity.badRequest().body(Map.of("message", "Email is missing for this user"));
+                    }
                     if (mobile == null || !mobile.matches("\\d{10}")) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "Please enter a valid 10-digit mobile number"));
+                        return ResponseEntity.badRequest().body(Map.of("message", "Mobile number is missing or invalid for this user"));
                     }
                     
-                    // Check if user is already registered (by mobile number only)
+                    if (event.getRegistrations() == null) {
+                        event.setRegistrations(new java.util.ArrayList<>());
+                    }
+
+                    // Check if user is already registered (by username or mobile)
                     boolean alreadyRegistered = event.getRegistrations().stream()
-                            .anyMatch(reg -> reg.getMobile().equals(mobile));
+                            .anyMatch(reg -> (reg.getUsername() != null && reg.getUsername().equalsIgnoreCase(username))
+                                    || (reg.getMobile() != null && reg.getMobile().equals(mobile)));
                     
                     if (alreadyRegistered) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "This mobile number is already registered for this event"));
+                        return ResponseEntity.badRequest().body(Map.of("message", "You are already registered for this event"));
+                    }
+
+                    Integer cap = event.getCapacity();
+                    if (cap != null && cap > 0) {
+                        int currentCount = event.getRegistrations() != null ? event.getRegistrations().size() : 0;
+                        if (currentCount >= cap) {
+                            return ResponseEntity.badRequest().body(Map.of("message", "Event is full"));
+                        }
                     }
                     
                     // Check registration period
@@ -142,10 +242,47 @@ public class EventController {
                     }
                     
                     // Add registration
-                    event.getRegistrations().add(new Event.EventRegistration(username, mobile));
+                    event.getRegistrations().add(new EventRegistration(event, username, fullName, email, mobile));
                     eventRepository.save(event);
                     
                     return ResponseEntity.ok(Map.of("message", "Registration successful"));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/registrations")
+    public ResponseEntity<?> listRegistrations(@NonNull @PathVariable String id) {
+        return eventRepository.findById(id)
+                .map(event -> {
+                    User actorUser = getActorUser();
+                    if (!canManageEvent(actorUser, event)) {
+                        return ResponseEntity.status(403).build();
+                    }
+                    return ResponseEntity.ok(event.getRegistrations() == null ? List.of() : event.getRegistrations());
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{eventId}/registrations/{registrationId}")
+    public ResponseEntity<?> removeRegistration(@NonNull @PathVariable String eventId, @NonNull @PathVariable String registrationId) {
+        return eventRepository.findById(eventId)
+                .map(event -> {
+                    User actorUser = getActorUser();
+                    if (!canManageEvent(actorUser, event)) {
+                        return ResponseEntity.status(403).build();
+                    }
+
+                    if (event.getRegistrations() == null || event.getRegistrations().isEmpty()) {
+                        return ResponseEntity.notFound().build();
+                    }
+
+                    boolean removed = event.getRegistrations().removeIf(r -> registrationId.equals(r.getId()));
+                    if (!removed) {
+                        return ResponseEntity.notFound().build();
+                    }
+
+                    eventRepository.save(event);
+                    return ResponseEntity.ok(Map.of("message", "Participant removed"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
