@@ -97,7 +97,7 @@
         </div>
 
         <div class="card">
-          <h2 style="margin-bottom:8px;">Events</h2>
+          <h2 style="margin-bottom:8px;">Active Events</h2>
           <div class="btnRow">
             <button class="primary" type="button" id="refreshEventsBtn">Refresh Events</button>
           </div>
@@ -122,8 +122,8 @@
           </div>
           <div class="err" id="eventsErr"></div>
 
-          <h3 style="margin-top:14px;">Existing Events</h3>
-          <div class="small">Extend registration end date using the Extend button.</div>
+          <h3 style="margin-top:14px;">Existing Active Events</h3>
+          <div class="small">Events that are still open for registration.</div>
           <div style="overflow:auto; margin-top:8px;">
             <table>
               <thead>
@@ -219,6 +219,15 @@
           <br/>
           - Audit fields are stored in database.
         </div>
+        <hr style="margin: 16px 0; border: 1px solid #e5e7eb;">
+        <h3 style="margin-bottom:8px;">Cleanup Orphaned Winners</h3>
+        <div class="small" style="margin-bottom:10px;">
+          Delete winners whose events have been deleted.
+        </div>
+        <div class="btnRow">
+          <button class="danger" type="button" id="cleanupWinnersBtn">Cleanup Orphaned Winners</button>
+        </div>
+        <div id="cleanupResult" class="small" style="margin-top:8px; color: #16a34a;"></div>
       </div>
     </div>
   </main>
@@ -283,6 +292,44 @@
         <button class="muted" type="button" id="dlgExtendCancelBtn">Cancel</button>
       </div>
       <div class="err" id="dlgExtendErr"></div>
+    </div>
+  </dialog>
+
+  <dialog id="winnersDialog">
+    <div class="dialogHeader"><h3>🏆 Manage Winners</h3></div>
+    <div class="dialogBody">
+      <div class="small" id="winnersDialogSub"></div>
+      
+      <h4 style="margin-top:12px; margin-bottom:8px;">Add Winner</h4>
+      <label for="winnerUsername">Student USN</label>
+      <input id="winnerUsername" type="text" placeholder="Enter student USN" />
+      <label for="winnerPosition">Position</label>
+      <select id="winnerPosition">
+        <option value="">Select Position</option>
+        <option value="FIRST">1st Position</option>
+        <option value="SECOND">2nd Position</option>
+        <option value="THIRD">3rd Position</option>
+      </select>
+      <div class="btnRow">
+        <button class="good" type="button" id="addWinnerBtn">Add Winner</button>
+      </div>
+      <div class="err" id="winnerErr"></div>
+
+      <h4 style="margin-top:16px; margin-bottom:8px;">Current Winners</h4>
+      <div style="overflow:auto; margin-top:8px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Position</th>
+              <th>Name</th>
+              <th>USN</th>
+              <th>Contact</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="winnersTbody"></tbody>
+        </table>
+      </div>
     </div>
   </dialog>
 
@@ -438,11 +485,16 @@
         });
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!confirm(`Delete club ${c.name}?`)) return;
-          await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-          });
-          await loadClubs();
+          try {
+            await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            alert('Club deleted successfully');
+            await loadClubs();
+          } catch (e) {
+            alert('Error deleting club: ' + e.message);
+          }
         });
         tbody.appendChild(tr);
       }
@@ -736,6 +788,7 @@
         const isAdmin = (u.role || '').toUpperCase() === 'ADMIN';
         const roleClass = isAdmin ? 'admin' : 'student';
         const toggleBtn = isAdmin ? '' : `<button class="primary" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>`;
+        const deleteBtn = isAdmin ? '' : `<button class="danger" type="button" data-action="delete">Delete</button>`;
         tr.innerHTML = `
           <td><b>${u.username}</b></td>
           <td><span class="pill ${roleClass}">${u.role}</span></td>
@@ -744,6 +797,7 @@
           <td>
             <div class="btnRow">
               ${toggleBtn}
+              ${deleteBtn}
             </div>
           </td>
         `;
@@ -754,6 +808,17 @@
               method: 'PATCH',
               headers: authHeaders(),
               body: JSON.stringify({ enabled: !u.enabled })
+            });
+            await loadUsers();
+          });
+        }
+        const deleteBtnEl = tr.querySelector('[data-action="delete"]');
+        if (deleteBtnEl) {
+          deleteBtnEl.addEventListener('click', async () => {
+            if (!confirm(`Delete student ${u.username}? This will remove their login access permanently.`)) return;
+            await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
+              method: 'DELETE',
+              headers: authHeaders()
             });
             await loadUsers();
           });
@@ -833,6 +898,30 @@
     if (ru) ru.addEventListener('click', async () => { await loadUsers(); });
     const rca = document.getElementById('refreshClubAdminsBtn');
     if (rca) rca.addEventListener('click', async () => { await loadUsers(); });
+    
+    // Cleanup orphaned winners button
+    const cleanupBtn = document.getElementById('cleanupWinnersBtn');
+    if (cleanupBtn) {
+      cleanupBtn.addEventListener('click', async () => {
+        if (!confirm('This will delete all winners whose events no longer exist. Continue?')) return;
+        try {
+          cleanupBtn.disabled = true;
+          cleanupBtn.textContent = 'Cleaning...';
+          const result = await apiJson(`${API_BASE_URL}/admin/cleanup-winners`, {
+            method: 'POST',
+            headers: authHeaders()
+          });
+          document.getElementById('cleanupResult').textContent = result.deletedWinners || 'Cleanup completed';
+        } catch (e) {
+          document.getElementById('cleanupResult').textContent = 'Error: ' + e.message;
+          document.getElementById('cleanupResult').style.color = '#dc2626';
+        } finally {
+          cleanupBtn.disabled = false;
+          cleanupBtn.textContent = 'Cleanup Orphaned Winners';
+        }
+      });
+    }
+    
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const eventDlg = document.getElementById('eventDialog');

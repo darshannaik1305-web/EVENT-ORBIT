@@ -5,6 +5,8 @@ import com.mvjce.eventmanagement.model.EventRegistration;
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.repository.EventRepository;
 import com.mvjce.eventmanagement.repository.UserRepository;
+import com.mvjce.eventmanagement.repository.WinnerRepository;
+import com.mvjce.eventmanagement.service.JWTService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -12,10 +14,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Comparator;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/events")
@@ -28,13 +31,46 @@ public class EventController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private JWTService jwtService;
+
+    @Autowired
+    private WinnerRepository winnerRepository;
+
     private User getActorUser() {
+        // First try to get user from Spring Security context (for regular users)
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String actorUsername = auth != null ? auth.getName() : null;
-        if (actorUsername == null || actorUsername.isBlank()) {
-            return null;
+        if (actorUsername != null && !actorUsername.isBlank()) {
+            return userRepository.findByUsernameIgnoreCase(actorUsername.trim()).orElse(null);
         }
-        return userRepository.findByUsernameIgnoreCase(actorUsername.trim()).orElse(null);
+        
+        // If no Spring Security context, this might be an admin API call with token
+        // For now, return null and handle admin authentication at endpoint level
+        return null;
+    }
+
+    private User getActorUserFromToken(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        System.out.println("DEBUG: Authorization header: " + (authorization != null ? authorization.substring(0, Math.min(20, authorization.length())) + "..." : "null"));
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            String token = authorization.substring(7);
+            try {
+                // Extract username from token
+                String username = jwtService.extractUsername(token);
+                System.out.println("DEBUG: Extracted username from token: " + username);
+                if (username != null && !username.isBlank()) {
+                    User user = userRepository.findByUsernameIgnoreCase(username).orElse(null);
+                    System.out.println("DEBUG: Found user: " + (user != null ? user.getUsername() : "null"));
+                    return user;
+                }
+            } catch (Exception e) {
+                // Token validation failed
+                System.out.println("DEBUG: Token validation failed: " + e.getMessage());
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return null;
     }
 
     private boolean isGlobalAdmin(User user) {
@@ -58,10 +94,74 @@ public class EventController {
         return false;
     }
 
+    private boolean isEventFull(Event event) {
+        if (event.getCapacity() == null || event.getCapacity() <= 0) {
+            return false; // Unlimited capacity
+        }
+        int registrationsCount = event.getRegistrations() != null ? event.getRegistrations().size() : 0;
+        return registrationsCount >= event.getCapacity();
+    }
+
+    private boolean isEventExpiredOrFull(Event event, LocalDateTime now) {
+        // Check if registration deadline passed
+        boolean deadlineExpired = event.getRegEnd() != null && now.isAfter(event.getRegEnd());
+        // Check if capacity is full
+        boolean capacityFull = isEventFull(event);
+        return deadlineExpired || capacityFull;
+    }
+
     @GetMapping
     public ResponseEntity<List<Event>> getAllEvents() {
         List<Event> events = eventRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Filter out expired and full events for regular users
+        events = events.stream()
+                .filter(event -> !isEventExpiredOrFull(event, now))
+                .collect(Collectors.toList());
+        
         events.sort(Comparator.comparing(Event::getRegStart, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<List<Event>> getActiveEvents() {
+        List<Event> events = eventRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Only return active events (not expired and not full)
+        events = events.stream()
+                .filter(event -> !isEventExpiredOrFull(event, now))
+                .collect(Collectors.toList());
+        
+        events.sort(Comparator.comparing(Event::getRegStart, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/expired")
+    public ResponseEntity<List<Event>> getExpiredEvents(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        User actorUser = getActorUserFromToken(authorization);
+        if (actorUser == null || (!isGlobalAdmin(actorUser) && !isClubAdmin(actorUser))) {
+            return ResponseEntity.status(403).build();
+        }
+
+        List<Event> events = eventRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Only return expired events OR full events
+        events = events.stream()
+                .filter(event -> isEventExpiredOrFull(event, now))
+                .collect(Collectors.toList());
+        
+        // If club admin, filter by their club
+        if (isClubAdmin(actorUser)) {
+            events = events.stream()
+                    .filter(event -> actorUser.getAdminClubId() != null && 
+                                   actorUser.getAdminClubId().equals(event.getClubId()))
+                    .collect(Collectors.toList());
+        }
+        
+        events.sort(Comparator.comparing(Event::getRegEnd, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
         return ResponseEntity.ok(events);
     }
 
@@ -79,14 +179,32 @@ public class EventController {
     }
 
     @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody Event event) {
-        User actorUser = getActorUser();
+    public ResponseEntity<Event> createEvent(@RequestBody Event event, @RequestHeader(value = "Authorization", required = false) String authorization) {
+        System.out.println("DEBUG: Creating event with auth header: " + (authorization != null ? "present" : "null"));
+        User actorUser = getActorUserFromToken(authorization);
+        System.out.println("DEBUG: actorUser from token: " + (actorUser != null ? actorUser.getUsername() : "null"));
+        if (actorUser == null) {
+            // Try regular authentication
+            actorUser = getActorUser();
+            System.out.println("DEBUG: actorUser from Spring Security: " + (actorUser != null ? actorUser.getUsername() : "null"));
+        }
         String actor = actorUser != null ? actorUser.getUsername() : "unknown";
+        System.out.println("DEBUG: Final actor: " + actor);
+
+        if (actorUser == null) {
+            System.out.println("DEBUG: No actor user found, returning 403");
+            return ResponseEntity.status(403).<Event>build();
+        }
 
         if (actorUser != null && isClubAdmin(actorUser)) {
+            System.out.println("DEBUG: User is CLUB_ADMIN, checking club permissions");
+            System.out.println("DEBUG: event.clubId = " + event.getClubId());
+            System.out.println("DEBUG: actorUser.adminClubId = " + actorUser.getAdminClubId());
             if (event.getClubId() == null || actorUser.getAdminClubId() == null || !actorUser.getAdminClubId().equals(event.getClubId())) {
+                System.out.println("DEBUG: Club admin permission check FAILED - returning 403");
                 return ResponseEntity.status(403).<Event>build();
             }
+            System.out.println("DEBUG: Club admin permission check PASSED");
         }
 
         if (event.getCapacity() != null && event.getCapacity() < 0) {
@@ -175,6 +293,10 @@ public class EventController {
         }
 
         eventRepository.deleteById(id);
+        
+        // Delete all winners associated with this event
+        winnerRepository.deleteByEventId(id);
+        
         return ResponseEntity.ok().build();
     }
 
@@ -215,10 +337,9 @@ public class EventController {
                         event.setRegistrations(new java.util.ArrayList<>());
                     }
 
-                    // Check if user is already registered (by username or mobile)
+                    // Check if user is already registered (by username only - each user has unique USN)
                     boolean alreadyRegistered = event.getRegistrations().stream()
-                            .anyMatch(reg -> (reg.getUsername() != null && reg.getUsername().equalsIgnoreCase(username))
-                                    || (reg.getMobile() != null && reg.getMobile().equals(mobile)));
+                            .anyMatch(reg -> reg.getUsername() != null && reg.getUsername().equalsIgnoreCase(username));
                     
                     if (alreadyRegistered) {
                         return ResponseEntity.badRequest().body(Map.of("message", "You are already registered for this event"));

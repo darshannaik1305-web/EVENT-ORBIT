@@ -1,4 +1,6 @@
+D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\model\Winner.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\model\EventRegistration.java
+D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\controller\WinnerController.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\repository\ClubRepository.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\model\User.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\service\UserDetailsServiceImpl.java
@@ -11,6 +13,7 @@ D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\controlle
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\repository\UserRepository.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\service\JWTService.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\model\Event.java
+D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\repository\WinnerRepository.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\service\AuthService.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\model\Club.java
 D:\New folder\Event Management\src\main\java\com\mvjce\eventmanagement\controller\AdminController.java

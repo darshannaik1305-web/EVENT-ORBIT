@@ -4,6 +4,7 @@ import com.mvjce.eventmanagement.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     long countByRoleAndAdminClubId(String role, String adminClubId);
 
     long countByRoleAndAdminClubIdAndEnabledTrue(String role, String adminClubId);
+
+    List<User> findByRoleIgnoreCase(String role);
 }

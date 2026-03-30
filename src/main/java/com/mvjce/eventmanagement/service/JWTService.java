@@ -70,4 +70,25 @@ public class JWTService {
         final String extractedUsername = extractUsername(token);
         return (extractedUsername.equals(username) && !isTokenExpired(token));
     }
+
+    public Map<String, Object> validateTokenAndGetUser(String token) {
+        try {
+            final String extractedUsername = extractUsername(token);
+            if (extractedUsername != null && !extractedUsername.isBlank() && !isTokenExpired(token)) {
+                return Map.of(
+                    "username", extractedUsername,
+                    "valid", true
+                );
+            }
+        } catch (Exception e) {
+            return Map.of(
+                    "username", null,
+                    "valid", false
+                );
+        }
+        return Map.of(
+                "username", null,
+                "valid", false
+            );
+    }
 }

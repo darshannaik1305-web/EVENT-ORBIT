@@ -143,7 +143,7 @@
         </div>
 
         <div class="card">
-          <h2 style="margin-bottom:8px;">Events</h2>
+          <h2 style="margin-bottom:8px;">Active Events</h2>
           <div class="btnRow">
             <button class="primary" type="button" id="refreshEventsBtn">Refresh Events</button>
           </div>
@@ -168,8 +168,8 @@
           </div>
           <div class="err" id="eventsErr"></div>
 
-          <h3 style="margin-top:14px;">Existing Events</h3>
-          <div class="small">Extend registration end date using the Extend button.</div>
+          <h3 style="margin-top:14px;">Existing Active Events</h3>
+          <div class="small">Events that are still open for registration.</div>
           <div style="overflow:auto; margin-top:8px;">
             <table>
               <thead>
@@ -183,6 +183,26 @@
                 </tr>
               </thead>
               <tbody id="eventsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:8px;">🕐 Expired Events</h2>
+          <div class="small">Manage events whose registration deadline has passed.</div>
+          <div style="overflow:auto; margin-top:8px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Description</th>
+                  <th>Expired On</th>
+                  <th>Participants</th>
+                  <th>Winners</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="expiredEventsTbody"></tbody>
             </table>
           </div>
         </div>
@@ -280,10 +300,53 @@
       <label for="dlgExtendRegEnd">New Registration End</label>
       <input id="dlgExtendRegEnd" type="datetime-local" />
       <div class="btnRow">
-        <button class="primary" type="button" id="dlgExtendBtn">Extend</button>
-        <button class="muted" type="button" id="dlgExtendCancelBtn">Cancel</button>
+        <button class="primary" type="button" id="extendSaveBtn">Extend</button>
+        <button class="muted" type="button" id="extendCancelBtn">Cancel</button>
       </div>
       <div class="err" id="dlgExtendErr"></div>
+    </div>
+  </dialog>
+
+  <dialog id="winnersDialog">
+    <div class="dialogHeader" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>🏆 Manage Winners</h3>
+      <button type="button" class="secondary" onclick="document.getElementById('winnersDialog').close()">✕ Close</button>
+    </div>
+    <div class="dialogBody">
+      <div class="small" id="winnersDialogSub"></div>
+      
+      <h4 style="margin-top:12px; margin-bottom:8px;">Add Winner</h4>
+      <label for="winnerUsername">Select Participant</label>
+      <select id="winnerUsername">
+        <option value="">Select a participant</option>
+      </select>
+      <label for="winnerPosition">Position</label>
+      <select id="winnerPosition">
+        <option value="">Select Position</option>
+        <option value="FIRST">1st Position</option>
+        <option value="SECOND">2nd Position</option>
+        <option value="THIRD">3rd Position</option>
+      </select>
+      <div class="btnRow">
+        <button class="good" type="button" id="addWinnerBtn">Add Winner</button>
+      </div>
+      <div class="err" id="winnerErr"></div>
+
+      <h4 style="margin-top:16px; margin-bottom:8px;">Current Winners</h4>
+      <div style="overflow:auto; margin-top:8px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Position</th>
+              <th>Name</th>
+              <th>USN</th>
+              <th>Contact</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="winnersTbody"></tbody>
+        </table>
+      </div>
     </div>
   </dialog>
 
@@ -303,6 +366,7 @@
     }
 
     function authHeaders() {
+      console.log('DEBUG: adminToken =', adminToken);
       return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
@@ -319,9 +383,11 @@
         const eventDlg = document.getElementById('eventDialog');
         const extendDlg = document.getElementById('extendDialog');
         const participantsDlg = document.getElementById('participantsDialog');
+        const winnersDlg = document.getElementById('winnersDialog');
         try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (e) {}
         try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (e) {}
         try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (e) {}
+        try { if (winnersDlg && winnersDlg.open) winnersDlg.close(); } catch (e) {}
       }
 
       if (loggedIn && isClubAdmin()) {
@@ -338,7 +404,10 @@
     }
 
     async function apiJson(url, options = {}) {
+      console.log('DEBUG apiJson: URL =', url);
+      console.log('DEBUG apiJson: headers =', options.headers);
       const res = await fetch(url, options);
+      console.log('DEBUG apiJson: response status =', res.status);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = data.error || data.message || `Request failed (${res.status})`;
@@ -366,6 +435,8 @@
       adminToken = data.token;
       adminRole = role;
       adminClubId = data.adminClubId || null;
+
+      console.log('DEBUG login: token received =', data.token ? 'YES (length: ' + data.token.length + ')' : 'NO');
 
       if (role === 'CLUB_ADMIN' && !adminClubId) {
         throw new Error('This club admin account is missing club mapping. Please re-register the club admin.');
@@ -642,15 +713,24 @@
     }
 
     async function loadEvents() {
-      const events = await apiJson(`${API_BASE_URL}/events`);
-      const tbody = document.getElementById('eventsTbody');
-      tbody.innerHTML = '';
+      const [activeEvents, expiredEvents] = await Promise.all([
+        apiJson(`${API_BASE_URL}/events/active`, { headers: authHeaders() }),
+        apiJson(`${API_BASE_URL}/events/expired`, { headers: authHeaders() })
+      ]);
+      
+      const activeTbody = document.getElementById('eventsTbody');
+      const expiredTbody = document.getElementById('expiredEventsTbody');
+      activeTbody.innerHTML = '';
+      expiredTbody.innerHTML = '';
 
       const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
 
-      const filtered = isClubAdmin() && adminClubId ? events.filter(ev => ev.clubId === adminClubId) : events;
+      // Filter events based on admin role
+      const filteredActive = isClubAdmin() && adminClubId ? activeEvents.filter(ev => ev.clubId === adminClubId) : activeEvents;
+      const filteredExpired = isClubAdmin() && adminClubId ? expiredEvents.filter(ev => ev.clubId === adminClubId) : expiredEvents;
 
-      for (const e of filtered) {
+      // Load active events
+      for (const e of filteredActive) {
         const tr = document.createElement('tr');
         const audit = `createdBy: ${e.createdBy || ''}\ncreatedAt: ${fmtDateTime(e.createdAt)}\nupdatedBy: ${e.updatedBy || ''}\nupdatedAt: ${fmtDateTime(e.updatedAt)}`;
         const regWindow = `${fmtDateTime(e.regStart)}\n→ ${fmtDateTime(e.regEnd)}`;
@@ -696,11 +776,77 @@
           await loadEvents();
         });
 
-        tbody.appendChild(tr);
+        activeTbody.appendChild(tr);
+      }
+
+      // Load expired events
+      for (const e of filteredExpired) {
+        const tr = document.createElement('tr');
+        const audit = `createdBy: ${e.createdBy || ''}\ncreatedAt: ${fmtDateTime(e.createdAt)}\nupdatedBy: ${e.updatedBy || ''}\nupdatedAt: ${fmtDateTime(e.updatedAt)}`;
+        const clubName = clubNameById.get(e.clubId) || e.clubId;
+
+        const regs = Array.isArray(e.registrations) ? e.registrations : [];
+        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : 0;
+        const participantsLabel = cap > 0 ? `${regs.length}/${cap}` : `${regs.length}`;
+        
+        tr.innerHTML = `
+          <td><b>${e.name}</b><div class="small">Club: ${clubName}</div></td>
+          <td>${e.description || ''}</td>
+          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#dc2626;">${fmtDateTime(e.regEnd)}</pre></td>
+          <td><b>${participantsLabel}</b><div class="small">participants</div></td>
+          <td><span id="winnersCount-${e.id}">Loading...</span></td>
+          <td>
+            <div class="btnRow">
+              <button class="muted" type="button" data-action="edit">Edit</button>
+              <button class="primary" type="button" data-action="participants">Participants</button>
+              <button class="good" type="button" data-action="winners">🏆 Winners</button>
+              <button class="primary" type="button" data-action="extend">Extend</button>
+              <button class="danger" type="button" data-action="delete">Delete</button>
+            </div>
+          </td>
+        `;
+
+        tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
+          await openEditEventDialog(e, clubName);
+        });
+
+        tr.querySelector('[data-action="participants"]').addEventListener('click', async () => {
+          await openParticipantsDialog(e, clubName);
+        });
+
+        tr.querySelector('[data-action="winners"]').addEventListener('click', async () => {
+          await openWinnersDialog(e, clubName);
+        });
+
+        tr.querySelector('[data-action="extend"]').addEventListener('click', async () => {
+          await openExtendDialog(e, clubName);
+        });
+
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete event ${e.name}?`)) return;
+          await apiJson(`${API_BASE_URL}/events/${e.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+          });
+          await loadEvents();
+        });
+
+        expiredTbody.appendChild(tr);
+        
+        // Load winners count for this event
+        try {
+          const winners = await apiJson(`${API_BASE_URL}/winners/event/${e.id}`, { headers: authHeaders() });
+          document.getElementById(`winnersCount-${e.id}`).textContent = `${winners.length} winner${winners.length !== 1 ? 's' : ''}`;
+        } catch (err) {
+          document.getElementById(`winnersCount-${e.id}`).textContent = '0 winners';
+        }
       }
     }
 
     async function addEvent() {
+      console.log('DEBUG addEvent: adminToken =', adminToken);
+      console.log('DEBUG addEvent: adminToken from localStorage =', localStorage.getItem('admin_token'));
+      
       if (isClubAdmin() && !adminClubId) {
         throw new Error('Club admin is not mapped to a club. Please logout and login again.');
       }
@@ -847,10 +993,117 @@
         }
       };
 
-      document.getElementById('dlgExtendBtn').onclick = onExtend;
-      document.getElementById('dlgExtendCancelBtn').onclick = onCancel;
+      document.getElementById('extendSaveBtn').onclick = onExtend;
+      document.getElementById('extendCancelBtn').onclick = onCancel;
 
       dlg.showModal();
+    }
+
+    async function openWinnersDialog(eventObj, clubName) {
+      const dlg = document.getElementById('winnersDialog');
+      const err = document.getElementById('winnerErr');
+      err.textContent = '';
+      
+      document.getElementById('winnersDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
+      
+      // Populate participants dropdown
+      const usernameSelect = document.getElementById('winnerUsername');
+      usernameSelect.innerHTML = '<option value="">Select a participant</option>';
+      
+      if (eventObj.registrations && eventObj.registrations.length > 0) {
+        eventObj.registrations.forEach(reg => {
+          const option = document.createElement('option');
+          option.value = reg.username;
+          option.textContent = `${reg.fullName || reg.username} (${reg.username})`;
+          usernameSelect.appendChild(option);
+        });
+      }
+      
+      document.getElementById('winnerPosition').value = '';
+      
+      await loadWinnersForEvent(eventObj.id);
+
+      const onCancel = () => {
+        dlg.close();
+      };
+
+      const onAddWinner = async () => {
+        try {
+          err.textContent = '';
+          const username = document.getElementById('winnerUsername').value.trim().toUpperCase();
+          const position = document.getElementById('winnerPosition').value;
+
+          if (!username) {
+            err.textContent = 'Please select a participant';
+            return;
+          }
+          if (!position) {
+            err.textContent = 'Position is required';
+            return;
+          }
+
+          await apiJson(`${API_BASE_URL}/winners`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ eventId: eventObj.id, username, position })
+          });
+
+          document.getElementById('winnerUsername').value = '';
+          document.getElementById('winnerPosition').value = '';
+          await loadWinnersForEvent(eventObj.id);
+          await loadEvents(); // Refresh winners count
+        } catch (e) {
+          err.textContent = e.message;
+        }
+      };
+
+      // Clear previous listeners and add new ones
+      const addWinnerBtn = document.getElementById('addWinnerBtn');
+      addWinnerBtn.replaceWith(addWinnerBtn.cloneNode(true));
+      document.getElementById('addWinnerBtn').addEventListener('click', onAddWinner);
+      
+      dlg.showModal();
+    }
+
+    async function loadWinnersForEvent(eventId) {
+      const tbody = document.getElementById('winnersTbody');
+      tbody.innerHTML = '';
+
+      try {
+        const winners = await apiJson(`${API_BASE_URL}/winners/event/${eventId}`, { headers: authHeaders() });
+        
+        if (winners.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="small">No winners added yet</td></tr>';
+          return;
+        }
+
+        for (const w of winners) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><span class="pill" style="background: ${w.position === 'FIRST' ? '#fbbf24' : w.position === 'SECOND' ? '#d1d5db' : '#f97316'}; color: ${w.position === 'SECOND' ? '#111' : '#fff'}">${w.positionDisplayName}</span></td>
+            <td><b>${w.fullName}</b></td>
+            <td>${w.username}</td>
+            <td><small>${w.email}<br>${w.mobile}</small></td>
+            <td>
+              <button class="danger" type="button" data-action="delete-winner" data-winner-id="${w.id}">Remove</button>
+            </td>
+          `;
+
+          tr.querySelector('[data-action="delete-winner"]').addEventListener('click', async () => {
+            if (!confirm(`Remove ${w.fullName} as ${w.positionDisplayName}?`)) return;
+            await apiJson(`${API_BASE_URL}/winners/${w.id}`, {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            await loadWinnersForEvent(eventId);
+            await loadEvents(); // Refresh winners count
+          });
+
+          tbody.appendChild(tr);
+        }
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" class="small">Error loading winners</td></tr>';
+      }
     }
 
     async function loadUsers() {
@@ -934,8 +1187,10 @@
       const eventDlg = document.getElementById('eventDialog');
       const extendDlg = document.getElementById('extendDialog');
       const participantsDlg = document.getElementById('participantsDialog');
+      const winnersDlg = document.getElementById('winnersDialog');
       try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (err) {}
       try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (err) {}
+      try { if (winnersDlg && winnersDlg.open) winnersDlg.close(); } catch (err) {}
       try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (err) {}
     });
 

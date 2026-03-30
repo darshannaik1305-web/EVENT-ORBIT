@@ -1,7 +1,9 @@
 package com.mvjce.eventmanagement.controller;
 
 import com.mvjce.eventmanagement.model.User;
+import com.mvjce.eventmanagement.repository.EventRepository;
 import com.mvjce.eventmanagement.repository.UserRepository;
+import com.mvjce.eventmanagement.repository.WinnerRepository;
 import com.mvjce.eventmanagement.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,12 @@ public class AdminController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private WinnerRepository winnerRepository;
+
+    @Autowired
+    private EventRepository eventRepository;
 
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> listUsers() {
@@ -188,6 +196,26 @@ public class AdminController {
                 "username", saved.getUsername(),
                 "role", saved.getRole(),
                 "enabled", saved.isEnabled()
+        ));
+    }
+
+    @PostMapping("/cleanup-winners")
+    public ResponseEntity<?> cleanupOrphanedWinners() {
+        List<com.mvjce.eventmanagement.model.Winner> allWinners = winnerRepository.findAll();
+        int deletedCount = 0;
+        
+        for (com.mvjce.eventmanagement.model.Winner winner : allWinners) {
+            // Check if the event still exists
+            if (!eventRepository.existsById(winner.getEventId())) {
+                winnerRepository.deleteById(winner.getId());
+                deletedCount++;
+            }
+        }
+        
+        return ResponseEntity.ok(Map.of(
+                "message", "Cleanup completed",
+                "deletedCount", deletedCount,
+                "deletedWinners", deletedCount + " orphaned winner(s) removed"
         ));
     }
 }

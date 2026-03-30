@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/admin.html", "/superadmin.html").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/clubs/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/winners/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/events/*/registrations").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/events/*/registrations/*").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
