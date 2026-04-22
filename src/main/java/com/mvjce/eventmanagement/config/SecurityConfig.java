@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/clubs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/winners/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/teams/event/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/events/*/registrations").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/events/*/registrations/*").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()

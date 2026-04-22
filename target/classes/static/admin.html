@@ -3,132 +3,236 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin - Event Management</title>
+  <title>Admin Dashboard - Event Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --secondary: #a855f7;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #10b981;
+      --dark: #0f172a;
+      --dark-glass: rgba(15, 23, 42, 0.8);
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; color: #111; }
+    
+    body { 
+      font-family: 'Outfit', sans-serif; 
+      background-color: var(--dark); 
+      color: var(--text-main); 
+      line-height: 1.5;
+    }
+    
+    body::before {
+      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
+                  radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+      z-index: -1; pointer-events: none;
+    }
 
-    header { padding: 14px 18px; background: #111827; color: #fff; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 1.1rem; }
+    header { 
+      background: var(--dark-glass); 
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 1rem 2rem; 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    header h1 { font-size: 1.25rem; font-weight: 600; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    main { max-width: 1100px; margin: 18px auto; padding: 0 14px 40px; }
+    main { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
 
-    .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { 
+      background: var(--glass); 
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius); 
+      padding: 1.5rem; 
+      margin-bottom: 1.5rem; 
+      border: 1px solid var(--glass-border);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
     @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
-    label { display:block; font-weight: 600; margin-top: 10px; font-size: .9rem; }
-    input, textarea, select { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 10px; border: 1px solid #d1d5db; outline: none; }
+    h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; }
+    h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 1rem; color: var(--primary); }
+
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-weight: 500; margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+    input, textarea, select { 
+      width: 100%; padding: 0.625rem 0.875rem; 
+      border-radius: var(--radius-sm); border: 1px solid var(--glass-border); 
+      background: rgba(0,0,0,0.2); color: white;
+      font-family: inherit; font-size: 0.875rem; transition: all 0.2s;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
+    input:disabled, textarea:disabled, select:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(0,0,0,0.4); }
     textarea { min-height: 90px; resize: vertical; }
+    select option { background: var(--dark); color: white; }
 
-    .btnRow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-    button { border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
-    .primary { background: #2563eb; color: #fff; }
-    .danger { background: #dc2626; color: #fff; }
-    .muted { background: #6b7280; color: #fff; }
-    .good { background: #16a34a; color: #fff; }
+    .btnRow { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    button { 
+      border: none; padding: 0.6rem 1.2rem; border-radius: 999px; 
+      font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+    }
+    .primary { background: linear-gradient(135deg, #6366f1, #a855f7); color: white; }
+    .primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
+    .danger { background: var(--danger); color: white; }
+    .danger:hover { background: var(--danger-hover); transform: translateY(-1px); }
+    .muted { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); }
+    .muted:hover { background: rgba(255,255,255,0.1); }
+    .good { background: var(--success); color: white; }
+    .good:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-    .small { font-size: .85rem; color: #6b7280; margin-top: 6px; }
-    .err { color: #dc2626; font-weight: 600; margin-top: 10px; }
+    .small { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .err { color: #f87171; font-weight: 500; margin-top: 0.75rem; font-size: 0.85rem; }
 
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-    th { font-size: .85rem; color: #374151; }
-    td { font-size: .92rem; }
+    .table-container { overflow-x: auto; margin-top: 1rem; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th, td { text-align: left; padding: 1rem; border-bottom: 1px solid var(--glass-border); }
+    th { font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    td { font-size: 0.875rem; vertical-align: top; }
+    tr:hover td { background-color: rgba(255,255,255,0.02); }
 
-    .pill { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: .8rem; font-weight: 700; }
-    .pill.admin { background:#111827; color:#fff; }
-    .pill.user { background:#e5e7eb; color:#111827; }
+    .pill { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .pill.admin { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+    .pill.user { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+    .pill.first { background: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+    .pill.second { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .pill.third { background: rgba(217, 119, 6, 0.2); color: #f59e0b; }
 
-    dialog { border: none; border-radius: 12px; padding: 0; width: min(560px, 95vw); box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
-    dialog::backdrop { background: rgba(17,24,39,0.55); }
-    .dialogBody { padding: 16px; }
-    .dialogHeader { padding: 14px 16px; background: #111827; color: #fff; border-top-left-radius: 12px; border-top-right-radius: 12px; }
-    .dialogHeader h3 { font-size: 1rem; }
+    #loginCard, #adminRegisterCard { max-width: 450px; margin: 4rem auto; text-align: center; }
+    #loginCard h2, #adminRegisterCard h2 { border: none; margin-bottom: 0.5rem; }
+    
+    dialog { 
+      border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 0; width: min(600px, 95vw); 
+      background: var(--dark); color: var(--text-main); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); 
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+    .dialogHeader { padding: 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
+    .dialogHeader h3 { margin: 0; }
+    .dialogBody { padding: 1.5rem; max-height: 70vh; overflow-y: auto;}
+
+    .text-gradient { background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Admin Panel</h1>
+    <h1>Admin Portal</h1>
     <div class="btnRow" style="margin-top:0;">
-      <button class="muted" id="logoutBtn" style="display:none;" type="button">Logout</button>
+      <button class="muted" id="logoutBtn" style="display:none;" type="button">Sign Out</button>
     </div>
   </header>
 
   <main>
     <div class="card" id="loginCard">
-      <h2 style="margin-bottom:10px;">Admin Login</h2>
-      <div class="small" style="margin-top:6px;">Want to register as a Club Admin? <a href="#" id="showAdminRegisterLink">Register here</a></div>
-      <label for="adminUsername">Username</label>
-      <input id="adminUsername" type="text" autocomplete="username" />
-      <label for="adminPassword">Password</label>
-      <input id="adminPassword" type="password" autocomplete="current-password" />
-      <div class="btnRow">
-        <button class="primary" type="button" id="loginBtn">Login</button>
+      <h2><span class="text-gradient">Admin Login</span></h2>
+      <div class="small" style="margin-top:6px; margin-bottom: 1.5rem;">Want to register as a Club Admin? <a href="#" id="showAdminRegisterLink" style="color:var(--primary);">Register here</a></div>
+      <div class="form-group" style="text-align: left;">
+        <label for="adminUsername">Username</label>
+        <input id="adminUsername" type="text" autocomplete="username" />
+      </div>
+      <div class="form-group" style="text-align: left;">
+        <label for="adminPassword">Password</label>
+        <input id="adminPassword" type="password" autocomplete="current-password" />
+      </div>
+      <div class="btnRow" style="justify-content: center; margin-top: 1.5rem;">
+        <button class="primary" style="width: 100%;" type="button" id="loginBtn">Log In</button>
       </div>
       <div class="err" id="loginErr"></div>
     </div>
 
     <div class="card" id="adminRegisterCard" style="display:none;">
-      <h2 style="margin-bottom:10px;">Club Admin Registration</h2>
-      <div class="small">Each club can have a maximum of <b>2</b> admins.</div>
+      <h2><span class="text-gradient">Club Admin Registration</span></h2>
+      <div class="small" style="margin-bottom: 1.5rem;">Each club can have a maximum of <b>2</b> admins.</div>
 
-      <label for="regAdminUsn">USN</label>
-      <input id="regAdminUsn" type="text" minlength="10" maxlength="10" pattern="1MJ[A-Z0-9]{7}" title="USN must be in format 1MJ******* (all caps)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" />
+      <div class="form-group" style="text-align: left;">
+        <label for="regAdminUsn">USN</label>
+        <input id="regAdminUsn" type="text" minlength="10" maxlength="10" pattern="1MJ[A-Z0-9]{7}" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" />
+      </div>
+      <div class="form-group" style="text-align: left;">
+        <label for="regAdminFullName">Full Name</label>
+        <input id="regAdminFullName" type="text" />
+      </div>
+      <div class="grid-2">
+        <div class="form-group" style="text-align: left;">
+          <label for="regAdminEmail">Email</label>
+          <input id="regAdminEmail" type="email" autocomplete="email" />
+        </div>
+        <div class="form-group" style="text-align: left;">
+          <label for="regAdminMobile">Mobile No</label>
+          <input id="regAdminMobile" type="tel" pattern="[0-9]{10}" maxlength="10" />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group" style="text-align: left;">
+          <label for="regAdminClub">Target Club</label>
+          <select id="regAdminClub"></select>
+        </div>
+        <div class="form-group" style="text-align: left;">
+          <label for="regAdminGender">Gender</label>
+          <select id="regAdminGender">
+            <option value="">Select</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="text-align: left;">
+        <label for="regAdminPassword">Password</label>
+        <input id="regAdminPassword" type="password" autocomplete="new-password" />
+      </div>
+      <div class="form-group" style="text-align: left;">
+        <label for="regAdminConfirmPassword">Confirm Password</label>
+        <input id="regAdminConfirmPassword" type="password" autocomplete="new-password" />
+      </div>
 
-      <label for="regAdminFullName">Full Name</label>
-      <input id="regAdminFullName" type="text" />
-
-      <label for="regAdminEmail">Gmail</label>
-      <input id="regAdminEmail" type="email" autocomplete="email" />
-
-      <label for="regAdminMobile">Mobile No</label>
-      <input id="regAdminMobile" type="tel" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number" />
-
-      <label for="regAdminClub">Which Club Admin</label>
-      <select id="regAdminClub"></select>
-
-      <label for="regAdminGender">Gender</label>
-      <select id="regAdminGender">
-        <option value="">Select</option>
-        <option value="MALE">Male</option>
-        <option value="FEMALE">Female</option>
-        <option value="OTHER">Other</option>
-      </select>
-
-      <label for="regAdminPassword">Password</label>
-      <input id="regAdminPassword" type="password" autocomplete="new-password" />
-
-      <label for="regAdminConfirmPassword">Confirm Password</label>
-      <input id="regAdminConfirmPassword" type="password" autocomplete="new-password" />
-
-      <div class="btnRow">
-        <button class="good" type="button" id="registerAdminBtn">Register</button>
-        <button class="muted" type="button" id="cancelAdminRegisterBtn">Back</button>
+      <div class="btnRow" style="justify-content: center; margin-top: 1.5rem;">
+        <button class="primary" type="button" id="registerAdminBtn" style="flex:1;">Submit Request</button>
+        <button class="muted" type="button" id="cancelAdminRegisterBtn" style="flex:1;">Cancel</button>
       </div>
       <div class="err" id="adminRegisterErr"></div>
     </div>
 
     <div id="adminApp" style="display:none;">
       <div class="row">
+        <!-- CLUBS CARD -->
         <div class="card" id="clubsCard">
-          <h2 style="margin-bottom:8px;">Clubs</h2>
-          <div class="btnRow">
-            <button class="primary" type="button" id="refreshClubsBtn">Refresh Clubs</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+            <h2 style="margin: 0; border: none; padding: 0;">Clubs Management</h2>
+            <button class="muted" type="button" id="refreshClubsBtn">Refresh</button>
           </div>
 
-          <h3 style="margin-top:12px;">Add Club</h3>
-          <label for="clubName">Name</label>
-          <input id="clubName" type="text" />
-          <label for="clubImageUrl">Image URL</label>
-          <input id="clubImageUrl" type="text" />
-          <div class="btnRow">
-            <button class="good" type="button" id="addClubBtn">Add Club</button>
+          <h3>Add Club</h3>
+          <div class="form-group">
+            <label for="clubName">Name</label>
+            <input id="clubName" type="text" />
           </div>
+          <div class="form-group">
+            <label for="clubImageUrl">Image URL</label>
+            <input id="clubImageUrl" type="text" />
+          </div>
+          <button class="good" type="button" id="addClubBtn">Create Club</button>
 
-          <h3 style="margin-top:14px;">Existing Clubs</h3>
-          <div class="small">Edit/Delete buttons are per club.</div>
-          <div style="overflow:auto; margin-top:8px;">
+          <h3 style="margin-top:2rem;">Existing Clubs</h3>
+          <div class="table-container">
             <table>
               <thead>
                 <tr>
@@ -142,43 +246,81 @@
           </div>
         </div>
 
+        <!-- ACTIVE EVENTS CARD -->
         <div class="card">
-          <h2 style="margin-bottom:8px;">Active Events</h2>
-          <div class="btnRow">
-            <button class="primary" type="button" id="refreshEventsBtn">Refresh Events</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+            <h2 style="margin: 0; border: none; padding: 0;">Active Events</h2>
+            <button class="muted" type="button" id="refreshEventsBtn">Refresh</button>
           </div>
 
-          <h3 style="margin-top:12px;">Add Event</h3>
-          <label for="eventClub">Club</label>
-          <select id="eventClub"></select>
-          <label for="eventName">Name</label>
-          <input id="eventName" type="text" />
-          <label for="eventDesc">Description</label>
-          <textarea id="eventDesc"></textarea>
-          <label for="eventRegStart">Registration Start</label>
-          <input id="eventRegStart" type="datetime-local" />
-          <label for="eventRegEnd">Registration End</label>
-          <input id="eventRegEnd" type="datetime-local" />
-          <label for="eventCapacity">Max Participants (0 = unlimited)</label>
-          <input id="eventCapacity" type="number" min="0" step="1" placeholder="0" />
-          <label for="eventBg">Background Image URL (optional)</label>
-          <input id="eventBg" type="text" />
-          <div class="btnRow">
-            <button class="good" type="button" id="addEventBtn">Add Event</button>
+          <h3>Publish New Event</h3>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="eventClub">Club</label>
+              <select id="eventClub"></select>
+            </div>
+            <div class="form-group">
+              <label for="eventName">Name</label>
+              <input id="eventName" type="text" />
+            </div>
           </div>
+          
+          <div class="form-group">
+            <label for="eventDesc">Description</label>
+            <textarea id="eventDesc"></textarea>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="eventRegStart">Registration Start</label>
+              <input id="eventRegStart" type="datetime-local" />
+            </div>
+            <div class="form-group">
+              <label for="eventRegEnd">Registration End</label>
+              <input id="eventRegEnd" type="datetime-local" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="eventType">Event Type</label>
+              <select id="eventType" onchange="toggleTeamFields('eventType', 'teamFields')">
+                <option value="INDIVIDUAL">Individual</option>
+                <option value="GROUP">Team (Group)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="eventCapacity">Capacity (Max Participants/Teams)</label>
+              <input id="eventCapacity" type="number" min="0" placeholder="0 for unlimited" />
+            </div>
+          </div>
+
+          <div class="grid-2" id="teamFields" style="display: none;">
+            <div class="form-group">
+              <label for="eventMinMembers">Min Team Members</label>
+              <input id="eventMinMembers" type="number" min="1" value="1" />
+            </div>
+            <div class="form-group">
+              <label for="eventMaxMembers">Max Team Members</label>
+              <input id="eventMaxMembers" type="number" min="1" value="4" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="eventBg">Background Image URL (optional)</label>
+            <input id="eventBg" type="text" />
+          </div>
+          <button class="good" type="button" id="addEventBtn">Publish Event</button>
           <div class="err" id="eventsErr"></div>
 
-          <h3 style="margin-top:14px;">Existing Active Events</h3>
-          <div class="small">Events that are still open for registration.</div>
-          <div style="overflow:auto; margin-top:8px;">
+          <h3 style="margin-top:2rem;">Ongoing Registrations</h3>
+          <div class="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Event</th>
-                  <th>Description</th>
+                  <th>Event Info</th>
                   <th>Reg Window</th>
                   <th>Participants</th>
-                  <th>Audit</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -187,15 +329,15 @@
           </div>
         </div>
 
-        <div class="card">
-          <h2 style="margin-bottom:8px;">🕐 Expired Events</h2>
-          <div class="small">Manage events whose registration deadline has passed.</div>
-          <div style="overflow:auto; margin-top:8px;">
+        <!-- EXPIRED EVENTS CARD -->
+        <div class="card" style="grid-column: 1 / -1;">
+          <h2 style="margin-bottom:8px;">Expired / Closed Events</h2>
+          <div class="small">Manage events whose registration deadline has passed. Announce winners here.</div>
+          <div class="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Event</th>
-                  <th>Description</th>
+                  <th>Event Info</th>
                   <th>Expired On</th>
                   <th>Participants</th>
                   <th>Winners</th>
@@ -208,13 +350,13 @@
         </div>
       </div>
 
+      <!-- USERS CARD -->
       <div class="card" id="usersCard">
-        <h2 style="margin-bottom:8px;">Users</h2>
-        <div class="btnRow">
-          <button class="primary" type="button" id="refreshUsersBtn">Refresh Users</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+          <h2 style="margin: 0; border: none; padding: 0;">User Management</h2>
+          <button class="muted" type="button" id="refreshUsersBtn">Refresh</button>
         </div>
-        <div class="small">You can enable/disable student accounts. (Admins should remain enabled.)</div>
-        <div style="overflow:auto; margin-top:8px;">
+        <div class="table-container">
           <table>
             <thead>
               <tr>
@@ -230,38 +372,69 @@
         </div>
       </div>
 
-      <div class="card">
-        <h2 style="margin-bottom:8px;">Notes</h2>
-        <div class="small">
-          - Club/Event create/edit/delete requires ADMIN token.
-          <br/>
-          - Extend registration end date uses `PATCH /api/events/{id}/extend-reg-end`.
-          <br/>
-          - Audit fields are stored in MongoDB (`createdBy`, `createdAt`, `updatedBy`, `updatedAt`).
-        </div>
-      </div>
-
     </div>
   </main>
 
+  <!-- MODALS -->
   <dialog id="eventDialog">
-    <div class="dialogHeader"><h3 id="eventDialogTitle">Edit Event</h3></div>
+    <div class="dialogHeader">
+      <h3 id="eventDialogTitle">Edit Event</h3>
+      <button class="muted" onclick="document.getElementById('eventDialog').close()" style="padding: 4px 8px;">✕</button>
+    </div>
     <div class="dialogBody">
-      <div class="small" id="eventDialogSub"></div>
-      <label for="dlgEventName">Name</label>
-      <input id="dlgEventName" type="text" />
-      <label for="dlgEventDesc">Description</label>
-      <textarea id="dlgEventDesc"></textarea>
-      <label for="dlgEventRegStart">Registration Start</label>
-      <input id="dlgEventRegStart" type="datetime-local" />
-      <label for="dlgEventRegEnd">Registration End</label>
-      <input id="dlgEventRegEnd" type="datetime-local" />
-      <label for="dlgEventCapacity">Max Participants (0 = unlimited)</label>
-      <input id="dlgEventCapacity" type="number" min="0" step="1" placeholder="0" />
-      <label for="dlgEventBg">Background Image URL</label>
-      <input id="dlgEventBg" type="text" />
+      <div class="small" id="eventDialogSub" style="margin-bottom: 1rem;"></div>
+      
+      <div class="form-group">
+        <label for="dlgEventName">Name</label>
+        <input id="dlgEventName" type="text" />
+      </div>
+      <div class="form-group">
+        <label for="dlgEventDesc">Description</label>
+        <textarea id="dlgEventDesc"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="dlgEventRegStart">Registration Start</label>
+          <input id="dlgEventRegStart" type="datetime-local" />
+        </div>
+        <div class="form-group">
+          <label for="dlgEventRegEnd">Registration End</label>
+          <input id="dlgEventRegEnd" type="datetime-local" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="dlgEventType">Event Type</label>
+          <select id="dlgEventType" onchange="toggleTeamFields('dlgEventType', 'dlgTeamFields')">
+            <option value="INDIVIDUAL">Individual</option>
+            <option value="GROUP">Team (Group)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="dlgEventCapacity">Capacity (Max Participants/Teams)</label>
+          <input id="dlgEventCapacity" type="number" min="0" placeholder="0 = unlimited" />
+        </div>
+      </div>
+
+      <div class="grid-2" id="dlgTeamFields" style="display: none;">
+        <div class="form-group">
+          <label for="dlgEventMinMembers">Min Team Members</label>
+          <input id="dlgEventMinMembers" type="number" min="1" />
+        </div>
+        <div class="form-group">
+          <label for="dlgEventMaxMembers">Max Team Members</label>
+          <input id="dlgEventMaxMembers" type="number" min="1" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="dlgEventBg">Background Image URL</label>
+        <input id="dlgEventBg" type="text" />
+      </div>
+      
       <div class="btnRow">
-        <button class="primary" type="button" id="dlgSaveBtn">Save</button>
+        <button class="primary" type="button" id="dlgSaveBtn">Save Changes</button>
         <button class="muted" type="button" id="dlgCancelBtn">Cancel</button>
       </div>
       <div class="err" id="dlgErr"></div>
@@ -269,38 +442,42 @@
   </dialog>
 
   <dialog id="participantsDialog">
-    <div class="dialogHeader"><h3 id="participantsDialogTitle">Participants</h3></div>
+    <div class="dialogHeader">
+      <h3 id="participantsDialogTitle">Participants</h3>
+      <button class="muted" onclick="document.getElementById('participantsDialog').close()" style="padding: 4px 8px;">✕</button>
+    </div>
     <div class="dialogBody">
       <div class="small" id="participantsDialogSub"></div>
-      <div style="overflow:auto; margin-top:10px;">
+      <div class="table-container">
         <table>
           <thead>
             <tr>
               <th>USN</th>
               <th>Name</th>
-              <th>Mobile</th>
-              <th>Email</th>
+              <th>Mobile / Email</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="participantsTbody"></tbody>
         </table>
       </div>
-      <div class="btnRow" style="margin-top: 12px;">
-        <button class="muted" type="button" id="participantsCloseBtn">Close</button>
-      </div>
       <div class="err" id="participantsErr"></div>
     </div>
   </dialog>
 
   <dialog id="extendDialog">
-    <div class="dialogHeader"><h3>Extend Registration End</h3></div>
+    <div class="dialogHeader">
+      <h3>Extend Registration End</h3>
+      <button class="muted" onclick="document.getElementById('extendDialog').close()" style="padding: 4px 8px;">✕</button>
+    </div>
     <div class="dialogBody">
-      <div class="small" id="extendDialogSub"></div>
-      <label for="dlgExtendRegEnd">New Registration End</label>
-      <input id="dlgExtendRegEnd" type="datetime-local" />
+      <div class="small" id="extendDialogSub" style="margin-bottom: 1rem;"></div>
+      <div class="form-group">
+        <label for="dlgExtendRegEnd">New Registration End</label>
+        <input id="dlgExtendRegEnd" type="datetime-local" />
+      </div>
       <div class="btnRow">
-        <button class="primary" type="button" id="extendSaveBtn">Extend</button>
+        <button class="primary" type="button" id="extendSaveBtn">Extend Deadline</button>
         <button class="muted" type="button" id="extendCancelBtn">Cancel</button>
       </div>
       <div class="err" id="dlgExtendErr"></div>
@@ -308,38 +485,43 @@
   </dialog>
 
   <dialog id="winnersDialog">
-    <div class="dialogHeader" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="dialogHeader">
       <h3>🏆 Manage Winners</h3>
-      <button type="button" class="secondary" onclick="document.getElementById('winnersDialog').close()">✕ Close</button>
+      <button class="muted" onclick="document.getElementById('winnersDialog').close()" style="padding: 4px 8px;">✕</button>
     </div>
     <div class="dialogBody">
       <div class="small" id="winnersDialogSub"></div>
       
-      <h4 style="margin-top:12px; margin-bottom:8px;">Add Winner</h4>
-      <label for="winnerUsername">Select Participant</label>
-      <select id="winnerUsername">
-        <option value="">Select a participant</option>
-      </select>
-      <label for="winnerPosition">Position</label>
-      <select id="winnerPosition">
-        <option value="">Select Position</option>
-        <option value="FIRST">1st Position</option>
-        <option value="SECOND">2nd Position</option>
-        <option value="THIRD">3rd Position</option>
-      </select>
-      <div class="btnRow">
-        <button class="good" type="button" id="addWinnerBtn">Add Winner</button>
+      <h3 style="margin-top:1rem;">Add Winner</h3>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="winnerUsername">Select Participant/Team Leader</label>
+          <select id="winnerUsername">
+            <option value="">Select a participant</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="winnerPosition">Position</label>
+          <select id="winnerPosition">
+            <option value="">Select Position</option>
+            <option value="FIRST">1st Position</option>
+            <option value="SECOND">2nd Position</option>
+            <option value="THIRD">3rd Position</option>
+          </select>
+        </div>
+      </div>
+      <div class="btnRow" style="margin-top: 0;">
+        <button class="good" type="button" id="addWinnerBtn">Announce Winner</button>
       </div>
       <div class="err" id="winnerErr"></div>
 
-      <h4 style="margin-top:16px; margin-bottom:8px;">Current Winners</h4>
-      <div style="overflow:auto; margin-top:8px;">
+      <h3 style="margin-top:2rem;">Current Winners</h3>
+      <div class="table-container">
         <table>
           <thead>
             <tr>
               <th>Position</th>
               <th>Name</th>
-              <th>USN</th>
               <th>Contact</th>
               <th>Actions</th>
             </tr>
@@ -354,19 +536,24 @@
     const API_BASE_URL = '/api';
     const LS_ADMIN_TOKEN = 'cem_admin_token';
     const LS_ADMIN_ROLE = 'cem_admin_role';
-    const LS_ADMIN_CLUB_ID = 'cem_admin_club_id';
+    const LS_ADMIN_CLUB_IDS = 'cem_admin_club_ids';
 
     let adminToken = localStorage.getItem(LS_ADMIN_TOKEN) || null;
     let adminRole = localStorage.getItem(LS_ADMIN_ROLE) || null;
-    let adminClubId = localStorage.getItem(LS_ADMIN_CLUB_ID) || null;
+    let adminClubIds = [];
+    try { adminClubIds = JSON.parse(localStorage.getItem(LS_ADMIN_CLUB_IDS) || '[]'); } catch(e) {}
     let clubsCache = [];
+
+    function toggleTeamFields(selectId, fieldsId) {
+      const type = document.getElementById(selectId).value;
+      document.getElementById(fieldsId).style.display = type === 'GROUP' ? 'grid' : 'none';
+    }
 
     function isClubAdmin() {
       return String(adminRole || '').toUpperCase() === 'CLUB_ADMIN';
     }
 
     function authHeaders() {
-      console.log('DEBUG: adminToken =', adminToken);
       return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
@@ -380,14 +567,10 @@
       document.getElementById('logoutBtn').style.display = loggedIn ? 'inline-block' : 'none';
 
       if (loggedIn) {
-        const eventDlg = document.getElementById('eventDialog');
-        const extendDlg = document.getElementById('extendDialog');
-        const participantsDlg = document.getElementById('participantsDialog');
-        const winnersDlg = document.getElementById('winnersDialog');
-        try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (e) {}
-        try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (e) {}
-        try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (e) {}
-        try { if (winnersDlg && winnersDlg.open) winnersDlg.close(); } catch (e) {}
+        try { document.getElementById('eventDialog').close(); } catch (e) {}
+        try { document.getElementById('extendDialog').close(); } catch (e) {}
+        try { document.getElementById('participantsDialog').close(); } catch (e) {}
+        try { document.getElementById('winnersDialog').close(); } catch (e) {}
       }
 
       if (loggedIn && isClubAdmin()) {
@@ -404,10 +587,7 @@
     }
 
     async function apiJson(url, options = {}) {
-      console.log('DEBUG apiJson: URL =', url);
-      console.log('DEBUG apiJson: headers =', options.headers);
       const res = await fetch(url, options);
-      console.log('DEBUG apiJson: response status =', res.status);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = data.error || data.message || `Request failed (${res.status})`;
@@ -434,21 +614,19 @@
 
       adminToken = data.token;
       adminRole = role;
-      adminClubId = data.adminClubId || null;
+      adminClubIds = data.adminClubIds || [];
+      if (data.adminClubId && adminClubIds.length === 0) {
+        adminClubIds.push(data.adminClubId);
+      }
 
-      console.log('DEBUG login: token received =', data.token ? 'YES (length: ' + data.token.length + ')' : 'NO');
-
-      if (role === 'CLUB_ADMIN' && !adminClubId) {
+      if (role === 'CLUB_ADMIN' && adminClubIds.length === 0) {
         throw new Error('This club admin account is missing club mapping. Please re-register the club admin.');
       }
 
       localStorage.setItem(LS_ADMIN_TOKEN, adminToken);
       localStorage.setItem(LS_ADMIN_ROLE, adminRole);
-      if (adminClubId) {
-        localStorage.setItem(LS_ADMIN_CLUB_ID, adminClubId);
-      } else {
-        localStorage.removeItem(LS_ADMIN_CLUB_ID);
-      }
+      localStorage.setItem(LS_ADMIN_CLUB_IDS, JSON.stringify(adminClubIds));
+      
       setLoggedInState(true);
       await refreshAll();
     }
@@ -485,38 +663,9 @@
       const password = document.getElementById('regAdminPassword').value;
       const confirmPassword = document.getElementById('regAdminConfirmPassword').value;
 
-      if (!/^1MJ[A-Z0-9]{7}$/.test(usn)) {
-        err.textContent = 'Invalid USN. Use format 1MJ******* (all capital letters).';
-        return;
-      }
-      if (!fullName) {
-        err.textContent = 'Full name is required.';
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        err.textContent = 'Please enter a valid email address.';
-        return;
-      }
-      if (!/^\d{10}$/.test(mobile)) {
-        err.textContent = 'Please enter a valid 10-digit mobile number.';
-        return;
-      }
-      if (!clubId) {
-        err.textContent = 'Please select a club.';
-        return;
-      }
-      if (!gender) {
-        err.textContent = 'Please select gender.';
-        return;
-      }
-      if (!password) {
-        err.textContent = 'Password is required.';
-        return;
-      }
-      if (password !== confirmPassword) {
-        err.textContent = 'Passwords do not match.';
-        return;
-      }
+      if (!/^1MJ[A-Z0-9]{7}$/.test(usn)) { err.textContent = 'Invalid USN. Use format 1MJ*******'; return; }
+      if (!fullName || !email || !mobile || !clubId || !gender || !password) { err.textContent = 'All fields required.'; return; }
+      if (password !== confirmPassword) { err.textContent = 'Passwords do not match.'; return; }
 
       await apiJson(`${API_BASE_URL}/auth/register-admin`, {
         method: 'POST',
@@ -527,91 +676,27 @@
       alert('Request submitted. Superadmin must approve before you can login.');
       document.getElementById('adminUsername').value = usn;
       document.getElementById('adminPassword').value = '';
-      document.getElementById('regAdminUsn').value = '';
-      document.getElementById('regAdminFullName').value = '';
-      document.getElementById('regAdminEmail').value = '';
-      document.getElementById('regAdminMobile').value = '';
-      document.getElementById('regAdminGender').value = '';
-      document.getElementById('regAdminPassword').value = '';
-      document.getElementById('regAdminConfirmPassword').value = '';
       setRegisterAdminState(false);
     }
 
     function logoutAdmin() {
-      adminToken = null;
-      adminRole = null;
-      adminClubId = null;
+      adminToken = null; adminRole = null; adminClubIds = [];
       localStorage.removeItem(LS_ADMIN_TOKEN);
       localStorage.removeItem(LS_ADMIN_ROLE);
-      localStorage.removeItem(LS_ADMIN_CLUB_ID);
+      localStorage.removeItem(LS_ADMIN_CLUB_IDS);
       setLoggedInState(false);
     }
 
     function fmtDateTime(val) {
-      if (!val) return '';
-      try {
-        return new Date(val).toLocaleString();
-      } catch {
-        return String(val);
-      }
-    }
-
-    async function openParticipantsDialog(eventObj, clubName) {
-      const dlg = document.getElementById('participantsDialog');
-      const tbody = document.getElementById('participantsTbody');
-      const err = document.getElementById('participantsErr');
-      err.textContent = '';
-      tbody.innerHTML = '';
-
-      document.getElementById('participantsDialogTitle').textContent = 'Participants';
-      document.getElementById('participantsDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
-
-      try {
-        const regs = await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations`, { headers: authHeaders() });
-        if (!Array.isArray(regs) || regs.length === 0) {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td colspan="5" class="small">No participants</td>`;
-          tbody.appendChild(tr);
-        } else {
-          for (const r of regs) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td><b>${r.username || ''}</b></td>
-              <td>${r.fullName || ''}</td>
-              <td>${r.mobile || ''}</td>
-              <td>${r.email || ''}</td>
-              <td>
-                <button class="danger" type="button" data-action="remove">Remove</button>
-              </td>
-            `;
-
-            tr.querySelector('[data-action="remove"]').addEventListener('click', async () => {
-              if (!confirm(`Remove ${r.username || 'participant'} from ${eventObj.name}?`)) return;
-              await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations/${r.id}`, {
-                method: 'DELETE',
-                headers: authHeaders()
-              });
-              await loadEvents();
-              await openParticipantsDialog(eventObj, clubName);
-            });
-
-            tbody.appendChild(tr);
-          }
-        }
-      } catch (e) {
-        err.textContent = e.message;
-      }
-
-      document.getElementById('participantsCloseBtn').onclick = () => dlg.close();
-      dlg.showModal();
+      if (!val) return 'N/A';
+      try { return new Date(val).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); } 
+      catch { return String(val); }
     }
 
     function toDatetimeLocalValue(val) {
       if (!val) return '';
       const s = String(val);
-      if (s.length >= 16) {
-        return s.substring(0, 16);
-      }
+      if (s.length >= 16) return s.substring(0, 16);
       return s;
     }
 
@@ -619,17 +704,15 @@
       if (!datetimeLocalValue) return '';
       const s = String(datetimeLocalValue).trim();
       if (!s) return '';
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) {
-        return `${s}:00`;
-      }
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) return `${s}:00`;
       return s;
     }
 
     async function loadClubs() {
       clubsCache = await apiJson(`${API_BASE_URL}/clubs`);
 
-      if (isClubAdmin() && adminClubId) {
-        clubsCache = clubsCache.filter(c => c.id === adminClubId);
+      if (isClubAdmin() && adminClubIds.length > 0) {
+        clubsCache = clubsCache.filter(c => adminClubIds.includes(c.id));
       }
 
       const clubSelect = document.getElementById('eventClub');
@@ -641,15 +724,13 @@
         clubSelect.appendChild(opt);
       }
 
-      if (isClubAdmin() && adminClubId) {
-        if (clubSelect.options.length === 0) {
-          const opt = document.createElement('option');
-          opt.value = adminClubId;
-          opt.textContent = 'Your Club';
-          clubSelect.appendChild(opt);
+      if (isClubAdmin() && adminClubIds.length > 0) {
+        if (adminClubIds.length === 1) {
+          clubSelect.value = adminClubIds[0];
+          clubSelect.disabled = true;
+        } else {
+          clubSelect.disabled = false;
         }
-        clubSelect.value = adminClubId;
-        clubSelect.disabled = true;
       } else {
         clubSelect.disabled = false;
       }
@@ -657,41 +738,40 @@
       const tbody = document.getElementById('clubsTbody');
       tbody.innerHTML = '';
 
-      if (isClubAdmin()) {
-        return;
-      }
+      if (isClubAdmin()) return;
 
       for (const c of clubsCache) {
         const tr = document.createElement('tr');
-        const audit = `createdBy: ${c.createdBy || ''}\ncreatedAt: ${fmtDateTime(c.createdAt)}\nupdatedBy: ${c.updatedBy || ''}\nupdatedAt: ${fmtDateTime(c.updatedAt)}`;
         tr.innerHTML = `
-          <td><b>${c.name}</b><div class="small">${c.imageUrl || ''}</div></td>
-          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${audit}</pre></td>
           <td>
-            <div class="btnRow">
+            <div style="font-weight: 600;">${c.name}</div>
+            <div class="small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${c.imageUrl || 'No image'}</div>
+          </td>
+          <td>
+            <div class="small">By: ${c.createdBy || '-'}</div>
+            <div class="small">On: ${fmtDateTime(c.createdAt)}</div>
+          </td>
+          <td>
+            <div class="btnRow" style="margin-top:0;">
               <button class="muted" type="button" data-action="edit">Edit</button>
-              <button class="danger" type="button" data-action="delete">Delete</button>
+              <button class="danger" type="button" data-action="delete">Del</button>
             </div>
           </td>
         `;
         tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
           const newName = prompt('Club name', c.name);
-          if (newName === null) return;
+          if (!newName) return;
           const newImageUrl = prompt('Image URL', c.imageUrl || '');
           if (newImageUrl === null) return;
           await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
-            method: 'PUT',
-            headers: authHeaders(),
+            method: 'PUT', headers: authHeaders(),
             body: JSON.stringify({ name: newName, imageUrl: newImageUrl })
           });
           await loadClubs();
         });
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!confirm(`Delete club ${c.name}?`)) return;
-          await apiJson(`${API_BASE_URL}/clubs/${c.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-          });
+          await apiJson(`${API_BASE_URL}/clubs/${c.id}`, { method: 'DELETE', headers: authHeaders() });
           await loadClubs();
         });
         tbody.appendChild(tr);
@@ -703,8 +783,7 @@
       const imageUrl = document.getElementById('clubImageUrl').value.trim();
       if (!name) throw new Error('Club name is required');
       await apiJson(`${API_BASE_URL}/clubs`, {
-        method: 'POST',
-        headers: authHeaders(),
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ name, imageUrl })
       });
       document.getElementById('clubName').value = '';
@@ -725,118 +804,79 @@
 
       const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
 
-      // Filter events based on admin role
-      const filteredActive = isClubAdmin() && adminClubId ? activeEvents.filter(ev => ev.clubId === adminClubId) : activeEvents;
-      const filteredExpired = isClubAdmin() && adminClubId ? expiredEvents.filter(ev => ev.clubId === adminClubId) : expiredEvents;
+      const filteredActive = isClubAdmin() && adminClubIds.length > 0 ? activeEvents.filter(ev => adminClubIds.includes(ev.clubId)) : activeEvents;
+      const filteredExpired = isClubAdmin() && adminClubIds.length > 0 ? expiredEvents.filter(ev => adminClubIds.includes(ev.clubId)) : expiredEvents;
 
-      // Load active events
+      // Active
       for (const e of filteredActive) {
         const tr = document.createElement('tr');
-        const audit = `createdBy: ${e.createdBy || ''}\ncreatedAt: ${fmtDateTime(e.createdAt)}\nupdatedBy: ${e.updatedBy || ''}\nupdatedAt: ${fmtDateTime(e.updatedAt)}`;
-        const regWindow = `${fmtDateTime(e.regStart)}\n→ ${fmtDateTime(e.regEnd)}`;
         const clubName = clubNameById.get(e.clubId) || e.clubId;
-
         const regs = Array.isArray(e.registrations) ? e.registrations : [];
-        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : 0;
-        const participantsLabel = cap > 0 ? `${regs.length}/${cap}` : `${regs.length}`;
+        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : '∞';
+        
         tr.innerHTML = `
-          <td><b>${e.name}</b><div class="small">Club: ${clubName}</div></td>
-          <td>${e.description || ''}</td>
-          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${regWindow}</pre></td>
-          <td><b>${participantsLabel}</b><div class="small">participants</div></td>
-          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${audit}</pre></td>
           <td>
-            <div class="btnRow">
+            <div style="font-weight: 600;">${e.name}</div>
+            <div class="small">Club: ${clubName} | ${e.type === 'GROUP' ? 'Team' : 'Individual'}</div>
+          </td>
+          <td>
+            <div class="small">Start: ${fmtDateTime(e.regStart)}</div>
+            <div class="small">End: ${fmtDateTime(e.regEnd)}</div>
+          </td>
+          <td><span class="pill user">${regs.length} / ${cap}</span></td>
+          <td>
+            <div class="btnRow" style="margin-top:0;">
               <button class="muted" type="button" data-action="edit">Edit</button>
-              <button class="primary" type="button" data-action="participants">Participants</button>
-              <button class="primary" type="button" data-action="extend">Extend</button>
-              <button class="danger" type="button" data-action="delete">Delete</button>
+              <button class="muted" type="button" data-action="participants">Attendees</button>
+              <button class="primary" type="button" data-action="extend">+ Time</button>
+              <button class="danger" type="button" data-action="delete">Del</button>
             </div>
           </td>
         `;
 
-        tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
-          await openEditEventDialog(e, clubName);
-        });
-
-        tr.querySelector('[data-action="extend"]').addEventListener('click', async () => {
-          await openExtendDialog(e, clubName);
-        });
-
-        tr.querySelector('[data-action="participants"]').addEventListener('click', async () => {
-          await openParticipantsDialog(e, clubName);
-        });
-
+        tr.querySelector('[data-action="edit"]').addEventListener('click', () => openEditEventDialog(e, clubName));
+        tr.querySelector('[data-action="extend"]').addEventListener('click', () => openExtendDialog(e, clubName));
+        tr.querySelector('[data-action="participants"]').addEventListener('click', () => openParticipantsDialog(e, clubName));
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!confirm(`Delete event ${e.name}?`)) return;
-          await apiJson(`${API_BASE_URL}/events/${e.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-          });
+          await apiJson(`${API_BASE_URL}/events/${e.id}`, { method: 'DELETE', headers: authHeaders() });
           await loadEvents();
         });
-
         activeTbody.appendChild(tr);
       }
 
-      // Load expired events
+      // Expired
       for (const e of filteredExpired) {
         const tr = document.createElement('tr');
-        const audit = `createdBy: ${e.createdBy || ''}\ncreatedAt: ${fmtDateTime(e.createdAt)}\nupdatedBy: ${e.updatedBy || ''}\nupdatedAt: ${fmtDateTime(e.updatedAt)}`;
         const clubName = clubNameById.get(e.clubId) || e.clubId;
-
         const regs = Array.isArray(e.registrations) ? e.registrations : [];
-        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : 0;
-        const participantsLabel = cap > 0 ? `${regs.length}/${cap}` : `${regs.length}`;
+        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : '∞';
         
         tr.innerHTML = `
-          <td><b>${e.name}</b><div class="small">Club: ${clubName}</div></td>
-          <td>${e.description || ''}</td>
-          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#dc2626;">${fmtDateTime(e.regEnd)}</pre></td>
-          <td><b>${participantsLabel}</b><div class="small">participants</div></td>
-          <td><span id="winnersCount-${e.id}">Loading...</span></td>
           <td>
-            <div class="btnRow">
-              <button class="muted" type="button" data-action="edit">Edit</button>
-              <button class="primary" type="button" data-action="participants">Participants</button>
+            <div style="font-weight: 600;">${e.name}</div>
+            <div class="small">Club: ${clubName}</div>
+          </td>
+          <td><div class="small" style="color:var(--danger)">${fmtDateTime(e.regEnd)}</div></td>
+          <td><span class="pill user">${regs.length} / ${cap}</span></td>
+          <td><span class="pill admin" id="winnersCount-${e.id}">Loading...</span></td>
+          <td>
+            <div class="btnRow" style="margin-top:0;">
+              <button class="muted" type="button" data-action="participants">Attendees</button>
               <button class="good" type="button" data-action="winners">🏆 Winners</button>
               <button class="primary" type="button" data-action="extend">Extend</button>
-              <button class="danger" type="button" data-action="delete">Delete</button>
             </div>
           </td>
         `;
 
-        tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
-          await openEditEventDialog(e, clubName);
-        });
-
-        tr.querySelector('[data-action="participants"]').addEventListener('click', async () => {
-          await openParticipantsDialog(e, clubName);
-        });
-
-        tr.querySelector('[data-action="winners"]').addEventListener('click', async () => {
-          await openWinnersDialog(e, clubName);
-        });
-
-        tr.querySelector('[data-action="extend"]').addEventListener('click', async () => {
-          await openExtendDialog(e, clubName);
-        });
-
-        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-          if (!confirm(`Delete event ${e.name}?`)) return;
-          await apiJson(`${API_BASE_URL}/events/${e.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-          });
-          await loadEvents();
-        });
-
+        tr.querySelector('[data-action="participants"]').addEventListener('click', () => openParticipantsDialog(e, clubName));
+        tr.querySelector('[data-action="winners"]').addEventListener('click', () => openWinnersDialog(e, clubName));
+        tr.querySelector('[data-action="extend"]').addEventListener('click', () => openExtendDialog(e, clubName));
         expiredTbody.appendChild(tr);
         
-        // Load winners count for this event
         try {
           const winners = await apiJson(`${API_BASE_URL}/winners/event/${e.id}`, { headers: authHeaders() });
-          document.getElementById(`winnersCount-${e.id}`).textContent = `${winners.length} winner${winners.length !== 1 ? 's' : ''}`;
+          document.getElementById(`winnersCount-${e.id}`).textContent = `${winners.length} winner(s)`;
         } catch (err) {
           document.getElementById(`winnersCount-${e.id}`).textContent = '0 winners';
         }
@@ -844,38 +884,31 @@
     }
 
     async function addEvent() {
-      console.log('DEBUG addEvent: adminToken =', adminToken);
-      console.log('DEBUG addEvent: adminToken from localStorage =', localStorage.getItem('admin_token'));
+      if (isClubAdmin() && adminClubIds.length === 0) throw new Error('Club admin not mapped. Please login again.');
       
-      if (isClubAdmin() && !adminClubId) {
-        throw new Error('Club admin is not mapped to a club. Please logout and login again.');
-      }
-      const clubId = (isClubAdmin() && adminClubId) ? adminClubId : document.getElementById('eventClub').value;
+      const clubId = document.getElementById('eventClub').value;
       const name = document.getElementById('eventName').value.trim();
       const description = document.getElementById('eventDesc').value.trim();
       const regStart = normalizeToIsoSeconds(document.getElementById('eventRegStart').value);
       const regEnd = normalizeToIsoSeconds(document.getElementById('eventRegEnd').value);
+      const type = document.getElementById('eventType').value;
       const capacityVal = document.getElementById('eventCapacity').value;
       const capacity = capacityVal === '' ? null : Number(capacityVal);
       const bgImageUrl = document.getElementById('eventBg').value.trim();
+      
+      const payload = { clubId, name, description, regStart, regEnd, capacity, type, bgImageUrl };
+      
+      if (type === 'GROUP') {
+        const minM = document.getElementById('eventMinMembers').value;
+        const maxM = document.getElementById('eventMaxMembers').value;
+        if(minM) payload.minMembers = Number(minM);
+        if(maxM) payload.maxMembers = Number(maxM);
+      }
 
-      if (!clubId) throw new Error('Club is required');
-      if (!name) throw new Error('Event name is required');
-      if (!regStart || !regEnd) throw new Error('regStart and regEnd are required');
-      if (capacity != null && (Number.isNaN(capacity) || capacity < 0)) throw new Error('capacity must be >= 0');
+      if (!clubId || !name || !regStart || !regEnd) throw new Error('Required fields missing.');
 
       await apiJson(`${API_BASE_URL}/events`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          clubId,
-          name,
-          description,
-          regStart,
-          regEnd,
-          capacity,
-          bgImageUrl
-        })
+        method: 'POST', headers: authHeaders(), body: JSON.stringify(payload)
       });
 
       document.getElementById('eventName').value = '';
@@ -884,7 +917,6 @@
       document.getElementById('eventRegEnd').value = '';
       document.getElementById('eventCapacity').value = '';
       document.getElementById('eventBg').value = '';
-
       await loadEvents();
     }
 
@@ -892,218 +924,163 @@
       const dlg = document.getElementById('eventDialog');
       const err = document.getElementById('dlgErr');
       err.textContent = '';
-
-      document.getElementById('eventDialogTitle').textContent = 'Edit Event';
-      document.getElementById('eventDialogSub').textContent = `Club: ${clubName}`;
-
+      document.getElementById('eventDialogSub').textContent = `Editing: ${eventObj.name}`;
       document.getElementById('dlgEventName').value = eventObj.name || '';
       document.getElementById('dlgEventDesc').value = eventObj.description || '';
       document.getElementById('dlgEventRegStart').value = toDatetimeLocalValue(eventObj.regStart);
       document.getElementById('dlgEventRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
       document.getElementById('dlgEventCapacity').value = (eventObj.capacity == null ? '' : String(eventObj.capacity));
       document.getElementById('dlgEventBg').value = eventObj.bgImageUrl || '';
+      
+      document.getElementById('dlgEventType').value = eventObj.type || 'INDIVIDUAL';
+      toggleTeamFields('dlgEventType', 'dlgTeamFields');
+      document.getElementById('dlgEventMinMembers').value = eventObj.minMembers || '';
+      document.getElementById('dlgEventMaxMembers').value = eventObj.maxMembers || '';
 
-      const onCancel = () => {
-        dlg.close();
-      };
-
-      const onSave = async () => {
+      document.getElementById('dlgSaveBtn').onclick = async () => {
         try {
-          err.textContent = '';
-          const name = document.getElementById('dlgEventName').value.trim();
-          const description = document.getElementById('dlgEventDesc').value.trim();
-          const regStart = normalizeToIsoSeconds(document.getElementById('dlgEventRegStart').value);
-          const regEnd = normalizeToIsoSeconds(document.getElementById('dlgEventRegEnd').value);
-          const capacityVal = document.getElementById('dlgEventCapacity').value;
-          const capacity = capacityVal === '' ? null : Number(capacityVal);
-          const bgImageUrl = document.getElementById('dlgEventBg').value.trim();
-
-          if (!name) {
-            err.textContent = 'Event name is required';
-            return;
-          }
-          if (!regStart || !regEnd) {
-            err.textContent = 'Registration start and end are required';
-            return;
-          }
-          if (capacity != null && (Number.isNaN(capacity) || capacity < 0)) {
-            err.textContent = 'capacity must be >= 0';
-            return;
+          const payload = {
+            name: document.getElementById('dlgEventName').value.trim(),
+            description: document.getElementById('dlgEventDesc').value.trim(),
+            regStart: normalizeToIsoSeconds(document.getElementById('dlgEventRegStart').value),
+            regEnd: normalizeToIsoSeconds(document.getElementById('dlgEventRegEnd').value),
+            bgImageUrl: document.getElementById('dlgEventBg').value.trim(),
+            type: document.getElementById('dlgEventType').value
+          };
+          const cap = document.getElementById('dlgEventCapacity').value;
+          payload.capacity = cap === '' ? null : Number(cap);
+          
+          if(payload.type === 'GROUP'){
+            const minM = document.getElementById('dlgEventMinMembers').value;
+            const maxM = document.getElementById('dlgEventMaxMembers').value;
+            if(minM) payload.minMembers = Number(minM);
+            if(maxM) payload.maxMembers = Number(maxM);
           }
 
           await apiJson(`${API_BASE_URL}/events/${eventObj.id}`, {
-            method: 'PUT',
-            headers: authHeaders(),
-            body: JSON.stringify({
-              name,
-              description,
-              regStart,
-              regEnd,
-              capacity,
-              bgImageUrl
-            })
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify(payload)
           });
-          dlg.close();
-          await loadEvents();
-        } catch (e) {
-          err.textContent = e.message;
-        }
+          dlg.close(); await loadEvents();
+        } catch(e) { err.textContent = e.message; }
       };
-
-      const saveBtn = document.getElementById('dlgSaveBtn');
-      const cancelBtn = document.getElementById('dlgCancelBtn');
-
-      saveBtn.onclick = onSave;
-      cancelBtn.onclick = onCancel;
-
+      document.getElementById('dlgCancelBtn').onclick = () => dlg.close();
       dlg.showModal();
     }
 
     async function openExtendDialog(eventObj, clubName) {
       const dlg = document.getElementById('extendDialog');
-      const err = document.getElementById('dlgExtendErr');
-      err.textContent = '';
-
-      document.getElementById('extendDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
+      document.getElementById('dlgExtendErr').textContent = '';
+      document.getElementById('extendDialogSub').textContent = `Event: ${eventObj.name}`;
       document.getElementById('dlgExtendRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
 
-      const onCancel = () => {
-        dlg.close();
-      };
-
-      const onExtend = async () => {
+      document.getElementById('extendSaveBtn').onclick = async () => {
         try {
-          err.textContent = '';
           const regEnd = normalizeToIsoSeconds(document.getElementById('dlgExtendRegEnd').value);
-          if (!regEnd) {
-            err.textContent = 'New registration end is required';
-            return;
-          }
-
           await apiJson(`${API_BASE_URL}/events/${eventObj.id}/extend-reg-end`, {
-            method: 'PATCH',
-            headers: authHeaders(),
-            body: JSON.stringify({ regEnd })
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ regEnd })
           });
-
-          dlg.close();
-          await loadEvents();
-        } catch (e) {
-          err.textContent = e.message;
-        }
+          dlg.close(); await loadEvents();
+        } catch (e) { document.getElementById('dlgExtendErr').textContent = e.message; }
       };
+      document.getElementById('extendCancelBtn').onclick = () => dlg.close();
+      dlg.showModal();
+    }
 
-      document.getElementById('extendSaveBtn').onclick = onExtend;
-      document.getElementById('extendCancelBtn').onclick = onCancel;
+    async function openParticipantsDialog(eventObj, clubName) {
+      const dlg = document.getElementById('participantsDialog');
+      const tbody = document.getElementById('participantsTbody');
+      document.getElementById('participantsErr').textContent = '';
+      tbody.innerHTML = '';
+      document.getElementById('participantsDialogSub').textContent = `${eventObj.name}`;
 
+      try {
+        const regs = await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations`, { headers: authHeaders() });
+        if (!Array.isArray(regs) || regs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="small" style="text-align:center;">No participants yet</td></tr>`;
+        } else {
+          for (const r of regs) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><div style="font-weight:600;">${r.username || ''}</div></td>
+              <td>${r.fullName || ''}</td>
+              <td><div class="small">${r.mobile || ''}</div><div class="small">${r.email || ''}</div></td>
+              <td><button class="danger" type="button" data-action="remove">Rem</button></td>
+            `;
+            tr.querySelector('[data-action="remove"]').onclick = async () => {
+              if (!confirm(`Remove ${r.username}?`)) return;
+              await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations/${r.id}`, { method: 'DELETE', headers: authHeaders() });
+              await loadEvents(); await openParticipantsDialog(eventObj, clubName);
+            };
+            tbody.appendChild(tr);
+          }
+        }
+      } catch (e) { document.getElementById('participantsErr').textContent = e.message; }
       dlg.showModal();
     }
 
     async function openWinnersDialog(eventObj, clubName) {
       const dlg = document.getElementById('winnersDialog');
-      const err = document.getElementById('winnerErr');
-      err.textContent = '';
+      document.getElementById('winnerErr').textContent = '';
+      document.getElementById('winnersDialogSub').textContent = `${eventObj.name}`;
       
-      document.getElementById('winnersDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
-      
-      // Populate participants dropdown
-      const usernameSelect = document.getElementById('winnerUsername');
-      usernameSelect.innerHTML = '<option value="">Select a participant</option>';
-      
-      if (eventObj.registrations && eventObj.registrations.length > 0) {
+      const sel = document.getElementById('winnerUsername');
+      sel.innerHTML = '<option value="">Select a participant</option>';
+      if (eventObj.registrations) {
         eventObj.registrations.forEach(reg => {
-          const option = document.createElement('option');
-          option.value = reg.username;
-          option.textContent = `${reg.fullName || reg.username} (${reg.username})`;
-          usernameSelect.appendChild(option);
+          const opt = document.createElement('option');
+          opt.value = reg.username; opt.textContent = `${reg.fullName || reg.username} (${reg.username})`;
+          sel.appendChild(opt);
         });
       }
-      
       document.getElementById('winnerPosition').value = '';
       
       await loadWinnersForEvent(eventObj.id);
 
-      const onCancel = () => {
-        dlg.close();
-      };
-
-      const onAddWinner = async () => {
+      const addBtn = document.getElementById('addWinnerBtn');
+      addBtn.replaceWith(addBtn.cloneNode(true));
+      document.getElementById('addWinnerBtn').onclick = async () => {
         try {
-          err.textContent = '';
-          const username = document.getElementById('winnerUsername').value.trim().toUpperCase();
+          const username = document.getElementById('winnerUsername').value;
           const position = document.getElementById('winnerPosition').value;
-
-          if (!username) {
-            err.textContent = 'Please select a participant';
-            return;
-          }
-          if (!position) {
-            err.textContent = 'Position is required';
-            return;
-          }
-
+          if (!username || !position) throw new Error('Select both participant and position.');
           await apiJson(`${API_BASE_URL}/winners`, {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({ eventId: eventObj.id, username, position })
+            method: 'POST', headers: authHeaders(), body: JSON.stringify({ eventId: eventObj.id, username, position })
           });
-
           document.getElementById('winnerUsername').value = '';
           document.getElementById('winnerPosition').value = '';
           await loadWinnersForEvent(eventObj.id);
-          await loadEvents(); // Refresh winners count
-        } catch (e) {
-          err.textContent = e.message;
-        }
+          await loadEvents(); 
+        } catch (e) { document.getElementById('winnerErr').textContent = e.message; }
       };
-
-      // Clear previous listeners and add new ones
-      const addWinnerBtn = document.getElementById('addWinnerBtn');
-      addWinnerBtn.replaceWith(addWinnerBtn.cloneNode(true));
-      document.getElementById('addWinnerBtn').addEventListener('click', onAddWinner);
-      
       dlg.showModal();
     }
 
     async function loadWinnersForEvent(eventId) {
       const tbody = document.getElementById('winnersTbody');
       tbody.innerHTML = '';
-
       try {
         const winners = await apiJson(`${API_BASE_URL}/winners/event/${eventId}`, { headers: authHeaders() });
-        
         if (winners.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" class="small">No winners added yet</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" class="small" style="text-align:center;">No winners added</td></tr>';
           return;
         }
-
         for (const w of winners) {
           const tr = document.createElement('tr');
+          const posClass = w.position === 'FIRST' ? 'first' : (w.position === 'SECOND' ? 'second' : 'third');
           tr.innerHTML = `
-            <td><span class="pill" style="background: ${w.position === 'FIRST' ? '#fbbf24' : w.position === 'SECOND' ? '#d1d5db' : '#f97316'}; color: ${w.position === 'SECOND' ? '#111' : '#fff'}">${w.positionDisplayName}</span></td>
-            <td><b>${w.fullName}</b></td>
-            <td>${w.username}</td>
-            <td><small>${w.email}<br>${w.mobile}</small></td>
-            <td>
-              <button class="danger" type="button" data-action="delete-winner" data-winner-id="${w.id}">Remove</button>
-            </td>
+            <td><span class="pill ${posClass}">${w.positionDisplayName}</span></td>
+            <td><div style="font-weight:600">${w.fullName}</div><div class="small">${w.username}</div></td>
+            <td><div class="small">${w.mobile}</div></td>
+            <td><button class="danger" type="button" data-action="del-winner" data-id="${w.id}">Del</button></td>
           `;
-
-          tr.querySelector('[data-action="delete-winner"]').addEventListener('click', async () => {
-            if (!confirm(`Remove ${w.fullName} as ${w.positionDisplayName}?`)) return;
-            await apiJson(`${API_BASE_URL}/winners/${w.id}`, {
-              method: 'DELETE',
-              headers: authHeaders()
-            });
-            await loadWinnersForEvent(eventId);
-            await loadEvents(); // Refresh winners count
-          });
-
+          tr.querySelector('[data-action="del-winner"]').onclick = async () => {
+            if(!confirm(`Remove ${w.fullName}?`)) return;
+            await apiJson(`${API_BASE_URL}/winners/${w.id}`, { method: 'DELETE', headers: authHeaders() });
+            await loadWinnersForEvent(eventId); await loadEvents();
+          };
           tbody.appendChild(tr);
         }
-      } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="5" class="small">Error loading winners</td></tr>';
-      }
+      } catch (err) { tbody.innerHTML = '<tr><td colspan="4">Error</td></tr>'; }
     }
 
     async function loadUsers() {
@@ -1115,31 +1092,24 @@
       const users = await apiJson(`${API_BASE_URL}/admin/users`, { headers: authHeaders() });
       const tbody = document.getElementById('usersTbody');
       tbody.innerHTML = '';
-
       for (const u of users) {
         const tr = document.createElement('tr');
         const roleClass = (u.role || '').toUpperCase() === 'ADMIN' ? 'admin' : 'user';
         tr.innerHTML = `
-          <td><b>${u.username}</b></td>
+          <td><div style="font-weight:600">${u.username}</div></td>
           <td><span class="pill ${roleClass}">${u.role}</span></td>
-          <td>${u.mobile || ''}</td>
+          <td><div class="small">${u.mobile || ''}</div></td>
           <td>${u.enabled ? 'Yes' : 'No'}</td>
           <td>
-            <div class="btnRow">
-              <button class="primary" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>
-            </div>
+            <button class="muted" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>
           </td>
         `;
-
-        tr.querySelector('[data-action="toggle"]').addEventListener('click', async () => {
+        tr.querySelector('[data-action="toggle"]').onclick = async () => {
           await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
-            method: 'PATCH',
-            headers: authHeaders(),
-            body: JSON.stringify({ enabled: !u.enabled })
+            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ enabled: !u.enabled })
           });
           await loadUsers();
-        });
-
+        };
         tbody.appendChild(tr);
       }
     }
@@ -1151,86 +1121,40 @@
     }
 
     document.getElementById('loginBtn').addEventListener('click', async () => {
-      try {
-        await loginAdmin();
-      } catch (e) {
-        document.getElementById('loginErr').textContent = e.message;
-      }
+      try { await loginAdmin(); } catch (e) { document.getElementById('loginErr').textContent = e.message; }
     });
-
+    document.getElementById('adminPassword').addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('loginBtn').click(); });
+    
     document.getElementById('showAdminRegisterLink').addEventListener('click', async (e) => {
-      e.preventDefault();
-      setRegisterAdminState(true);
-      try {
-        await loadClubsForAdminRegistration();
-      } catch (err) {
-        document.getElementById('adminRegisterErr').textContent = err.message;
-      }
+      e.preventDefault(); setRegisterAdminState(true);
+      try { await loadClubsForAdminRegistration(); } catch (err) { document.getElementById('adminRegisterErr').textContent = err.message; }
     });
-
-    document.getElementById('cancelAdminRegisterBtn').addEventListener('click', () => {
-      setRegisterAdminState(false);
-    });
-
+    document.getElementById('cancelAdminRegisterBtn').addEventListener('click', () => setRegisterAdminState(false));
     document.getElementById('registerAdminBtn').addEventListener('click', async () => {
-      try {
-        await registerAdmin();
-      } catch (e) {
-        document.getElementById('adminRegisterErr').textContent = e.message;
-      }
+      try { await registerAdmin(); } catch (e) { document.getElementById('adminRegisterErr').textContent = e.message; }
     });
 
     document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
+    document.getElementById('refreshClubsBtn').addEventListener('click', loadClubs);
+    document.getElementById('addClubBtn').addEventListener('click', async () => { try { await addClub(); } catch (e) { alert(e.message); } });
+    document.getElementById('refreshEventsBtn').addEventListener('click', loadEvents);
+    document.getElementById('addEventBtn').addEventListener('click', async () => {
+      try { document.getElementById('eventsErr').textContent = ''; await addEvent(); } 
+      catch (e) { document.getElementById('eventsErr').textContent = e.message; }
+    });
+    document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      const eventDlg = document.getElementById('eventDialog');
-      const extendDlg = document.getElementById('extendDialog');
-      const participantsDlg = document.getElementById('participantsDialog');
-      const winnersDlg = document.getElementById('winnersDialog');
-      try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (err) {}
-      try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (err) {}
-      try { if (winnersDlg && winnersDlg.open) winnersDlg.close(); } catch (err) {}
-      try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (err) {}
-    });
-
-    document.getElementById('refreshClubsBtn').addEventListener('click', async () => {
-      await loadClubs();
-    });
-
-    document.getElementById('addClubBtn').addEventListener('click', async () => {
-      try {
-        await addClub();
-      } catch (e) {
-        alert(e.message);
-      }
-    });
-
-    document.getElementById('refreshEventsBtn').addEventListener('click', async () => {
-      await loadEvents();
-    });
-
-    document.getElementById('addEventBtn').addEventListener('click', async () => {
-      try {
-        document.getElementById('eventsErr').textContent = '';
-        await addEvent();
-      } catch (e) {
-        document.getElementById('eventsErr').textContent = e.message;
-      }
-    });
-
-    document.getElementById('refreshUsersBtn').addEventListener('click', async () => {
-      await loadUsers();
+      ['eventDialog','extendDialog','participantsDialog','winnersDialog'].forEach(id => {
+        try { const d = document.getElementById(id); if(d && d.open) d.close(); } catch(err){}
+      });
     });
 
     (async function init() {
       if (adminToken) {
         setLoggedInState(true);
-        try {
-          await refreshAll();
-        } catch {
-          logoutAdmin();
-        }
+        try { await refreshAll(); } catch { logoutAdmin(); }
       } else {
         setLoggedInState(false);
       }

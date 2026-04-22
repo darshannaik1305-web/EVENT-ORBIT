@@ -6,38 +6,208 @@
   <title>Super Admin</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; color: #111; }
-    header { padding: 14px 18px; background: #111827; color: #fff; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 1.1rem; }
-    main { max-width: 1100px; margin: 18px auto; padding: 0 14px 40px; }
-    .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #111;
+      min-height: 100vh;
+    }
+    header {
+      padding: 16px 24px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    main {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 20px 40px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
     @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
-    label { display:block; font-weight: 600; margin-top: 10px; font-size: .9rem; }
-    input, textarea, select { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 10px; border: 1px solid #d1d5db; outline: none; }
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 12px;
+    }
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #16213e;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #374151;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px 14px;
+      margin-top: 6px;
+      border-radius: 10px;
+      border: 2px solid #e5e7eb;
+      outline: none;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      background: #fff;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
     textarea { min-height: 90px; resize: vertical; }
-    .btnRow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-    button { border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
-    .primary { background: #2563eb; color: #fff; }
-    .danger { background: #dc2626; color: #fff; }
-    .good { background: #16a34a; color: #fff; }
-    .muted { background: #6b7280; color: #fff; }
-    .small { font-size: .85rem; color: #6b7280; margin-top: 6px; }
-    .err { color: #dc2626; font-weight: 600; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-    th { font-size: .85rem; color: #374151; }
-    td { font-size: .92rem; }
-    dialog { border: none; border-radius: 12px; padding: 0; width: min(560px, 95vw); box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
-    dialog::backdrop { background: rgba(17,24,39,0.55); }
-    .dialogBody { padding: 16px; }
-    .dialogHeader { padding: 14px 16px; background: #111827; color: #fff; border-top-left-radius: 12px; border-top-right-radius: 12px; }
-    .dialogHeader h3 { font-size: 1rem; }
-    .pill { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: .8rem; font-weight: 700; }
-    .pill.admin { background: #3b82f6; color: #fff; }
-    .pill.club-admin { background: #10b981; color: #fff; }
-    .pill.student { background: #6b7280; color: #fff; }
-    .pill.disabled { background: #ef4444; color: #fff; }
+    .btnRow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    button {
+      border: none;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    .primary:hover {
+      background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+    .danger {
+      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+      color: #fff;
+    }
+    .danger:hover {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    .good {
+      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+      color: #fff;
+    }
+    .good:hover {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .muted {
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+      color: #fff;
+    }
+    .muted:hover {
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    }
+    .small {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+    .err {
+      color: #ef4444;
+      font-weight: 600;
+      margin-top: 10px;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 14px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+    th {
+      font-size: 0.85rem;
+      color: #374151;
+      font-weight: 700;
+      background: #f8fafc;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    td {
+      font-size: 0.93rem;
+    }
+    tr:hover td {
+      background: #f8fafc;
+    }
+    dialog {
+      border: none;
+      border-radius: 16px;
+      padding: 0;
+      width: min(560px, 95vw);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    }
+    dialog::backdrop {
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .dialogBody {
+      padding: 20px;
+      background: #fff;
+    }
+    .dialogHeader {
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+    }
+    .dialogHeader h3 {
+      font-size: 1.1rem;
+      margin: 0;
+      color: #fff;
+    }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .pill.admin { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; }
+    .pill.club-admin { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; }
+    .pill.student { background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%); color: #fff; }
+    .pill.disabled { background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: #fff; }
   </style>
   <link rel="icon" href="data:;base64,=" />
 </head>
@@ -64,81 +234,34 @@
     </div>
 
     <div id="superAdminApp" style="display:none;">
-      <div class="row">
-        <div class="card" id="clubsCard">
-          <h2 style="margin-bottom:8px;">Clubs</h2>
-          <div class="btnRow">
-            <button class="primary" type="button" id="refreshClubsBtn">Refresh Clubs</button>
-          </div>
-
-          <h3 style="margin-top:12px;">Add Club</h3>
-          <label for="clubName">Name</label>
-          <input id="clubName" type="text" />
-          <label for="clubImageUrl">Image URL</label>
-          <input id="clubImageUrl" type="text" />
-          <div class="btnRow">
-            <button class="good" type="button" id="addClubBtn">Add Club</button>
-          </div>
-
-          <h3 style="margin-top:14px;">Existing Clubs</h3>
-          <div class="small">Edit/Delete buttons are per club.</div>
-          <div style="overflow:auto; margin-top:8px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Audit</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="clubsTbody"></tbody>
-            </table>
-          </div>
+      <div class="card" id="clubsCard">
+        <h2 style="margin-bottom:8px;">Clubs</h2>
+        <div class="btnRow">
+          <button class="primary" type="button" id="refreshClubsBtn">Refresh Clubs</button>
         </div>
 
-        <div class="card">
-          <h2 style="margin-bottom:8px;">Active Events</h2>
-          <div class="btnRow">
-            <button class="primary" type="button" id="refreshEventsBtn">Refresh Events</button>
-          </div>
+        <h3 style="margin-top:12px;">Add Club</h3>
+        <label for="clubName">Name</label>
+        <input id="clubName" type="text" />
+        <label for="clubImageUrl">Image URL</label>
+        <input id="clubImageUrl" type="text" />
+        <div class="btnRow">
+          <button class="good" type="button" id="addClubBtn">Add Club</button>
+        </div>
 
-          <h3 style="margin-top:12px;">Add Event</h3>
-          <label for="eventClub">Club</label>
-          <select id="eventClub"></select>
-          <label for="eventName">Name</label>
-          <input id="eventName" type="text" />
-          <label for="eventDesc">Description</label>
-          <textarea id="eventDesc"></textarea>
-          <label for="eventRegStart">Registration Start</label>
-          <input id="eventRegStart" type="datetime-local" />
-          <label for="eventRegEnd">Registration End</label>
-          <input id="eventRegEnd" type="datetime-local" />
-          <label for="eventCapacity">Max Participants (0 = unlimited)</label>
-          <input id="eventCapacity" type="number" min="0" step="1" placeholder="0" />
-          <label for="eventBg">Background Image URL (optional)</label>
-          <input id="eventBg" type="text" />
-          <div class="btnRow">
-            <button class="good" type="button" id="addEventBtn">Add Event</button>
-          </div>
-          <div class="err" id="eventsErr"></div>
-
-          <h3 style="margin-top:14px;">Existing Active Events</h3>
-          <div class="small">Events that are still open for registration.</div>
-          <div style="overflow:auto; margin-top:8px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Description</th>
-                  <th>Reg Window</th>
-                  <th>Participants</th>
-                  <th>Audit</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="eventsTbody"></tbody>
-            </table>
-          </div>
+        <h3 style="margin-top:14px;">Existing Clubs</h3>
+        <div class="small">Edit/Delete buttons are per club.</div>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Audit</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clubsTbody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -232,69 +355,6 @@
     </div>
   </main>
 
-  <dialog id="eventDialog">
-    <div class="dialogHeader"><h3 id="eventDialogTitle">Edit Event</h3></div>
-    <div class="dialogBody">
-      <div class="small" id="eventDialogSub"></div>
-      <label for="dlgEventName">Name</label>
-      <input id="dlgEventName" type="text" />
-      <label for="dlgEventDesc">Description</label>
-      <textarea id="dlgEventDesc"></textarea>
-      <label for="dlgEventRegStart">Registration Start</label>
-      <input id="dlgEventRegStart" type="datetime-local" />
-      <label for="dlgEventRegEnd">Registration End</label>
-      <input id="dlgEventRegEnd" type="datetime-local" />
-      <label for="dlgEventCapacity">Max Participants (0 = unlimited)</label>
-      <input id="dlgEventCapacity" type="number" min="0" step="1" placeholder="0" />
-      <label for="dlgEventBg">Background Image URL</label>
-      <input id="dlgEventBg" type="text" />
-      <div class="btnRow">
-        <button class="primary" type="button" id="dlgSaveBtn">Save</button>
-        <button class="muted" type="button" id="dlgCancelBtn">Cancel</button>
-      </div>
-      <div class="err" id="dlgErr"></div>
-    </div>
-  </dialog>
-
-  <dialog id="participantsDialog">
-    <div class="dialogHeader"><h3 id="participantsDialogTitle">Participants</h3></div>
-    <div class="dialogBody">
-      <div class="small" id="participantsDialogSub"></div>
-      <div style="overflow:auto; margin-top:10px;">
-        <table>
-          <thead>
-            <tr>
-              <th>USN</th>
-              <th>Name</th>
-              <th>Mobile</th>
-              <th>Email</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="participantsTbody"></tbody>
-        </table>
-      </div>
-      <div class="btnRow" style="margin-top: 12px;">
-        <button class="muted" type="button" id="participantsCloseBtn">Close</button>
-      </div>
-      <div class="err" id="participantsErr"></div>
-    </div>
-  </dialog>
-
-  <dialog id="extendDialog">
-    <div class="dialogHeader"><h3>Extend Registration End</h3></div>
-    <div class="dialogBody">
-      <div class="small" id="extendDialogSub"></div>
-      <label for="dlgExtendRegEnd">New Registration End</label>
-      <input id="dlgExtendRegEnd" type="datetime-local" />
-      <div class="btnRow">
-        <button class="primary" type="button" id="dlgExtendBtn">Extend</button>
-        <button class="muted" type="button" id="dlgExtendCancelBtn">Cancel</button>
-      </div>
-      <div class="err" id="dlgExtendErr"></div>
-    </div>
-  </dialog>
-
   <dialog id="winnersDialog">
     <div class="dialogHeader"><h3>🏆 Manage Winners</h3></div>
     <div class="dialogBody">
@@ -357,12 +417,10 @@
       if (app) app.style.display = loggedIn ? 'block' : 'none';
       document.getElementById('logoutBtn').style.display = loggedIn ? 'inline-block' : 'none';
       if (loggedIn) {
-        const eventDlg = document.getElementById('eventDialog');
-        const extendDlg = document.getElementById('extendDialog');
-        const participantsDlg = document.getElementById('participantsDialog');
-        try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (e) {}
-        try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (e) {}
-        try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (e) {}
+        try {
+          const winnersDlg = document.getElementById('winnersDialog');
+          if (winnersDlg && winnersDlg.open) winnersDlg.close();
+        } catch (e) {}
       }
     }
 
@@ -514,213 +572,6 @@
       await loadClubs();
     }
 
-    async function loadEvents() {
-      const events = await apiJson(`${API_BASE_URL}/events`);
-      const tbody = document.getElementById('eventsTbody');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-
-      const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
-
-      for (const e of events) {
-        const tr = document.createElement('tr');
-        const audit = `createdBy: ${e.createdBy || ''}\\ncreatedAt: ${fmtDateTime(e.createdAt)}\\nupdatedBy: ${e.updatedBy || ''}\\nupdatedAt: ${fmtDateTime(e.updatedAt)}`;
-        const regWindow = `${fmtDateTime(e.regStart)}\\n→ ${fmtDateTime(e.regEnd)}`;
-        const clubName = clubNameById.get(e.clubId) || e.clubId;
-        const regs = Array.isArray(e.registrations) ? e.registrations : [];
-        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : 0;
-        const participantsLabel = cap > 0 ? `${regs.length}/${cap}` : `${regs.length}`;
-        tr.innerHTML = `
-          <td><b>${e.name}</b><div class="small">Club: ${clubName}</div></td>
-          <td>${e.description || ''}</td>
-          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${regWindow}</pre></td>
-          <td><b>${participantsLabel}</b><div class="small">participants</div></td>
-          <td><pre style="white-space:pre-wrap; font-size:.8rem; color:#374151;">${audit}</pre></td>
-          <td>
-            <div class="btnRow">
-              <button class="muted" type="button" data-action="edit">Edit</button>
-              <button class="primary" type="button" data-action="participants">Participants</button>
-              <button class="primary" type="button" data-action="extend">Extend</button>
-              <button class="danger" type="button" data-action="delete">Delete</button>
-            </div>
-          </td>
-        `;
-
-        tr.querySelector('[data-action="edit"]').addEventListener('click', async () => {
-          await openEditEventDialog(e, clubName);
-        });
-        tr.querySelector('[data-action="participants"]').addEventListener('click', async () => {
-          await openParticipantsDialog(e, clubName);
-        });
-        tr.querySelector('[data-action="extend"]').addEventListener('click', async () => {
-          await openExtendDialog(e, clubName);
-        });
-        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-          if (!confirm(`Delete event ${e.name}?`)) return;
-          await apiJson(`${API_BASE_URL}/events/${e.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-          });
-          await loadEvents();
-        });
-        tbody.appendChild(tr);
-      }
-    }
-
-    async function addEvent() {
-      const clubId = document.getElementById('eventClub').value;
-      const name = document.getElementById('eventName').value.trim();
-      const description = document.getElementById('eventDesc').value.trim();
-      const regStart = normalizeToIsoSeconds(document.getElementById('eventRegStart').value);
-      const regEnd = normalizeToIsoSeconds(document.getElementById('eventRegEnd').value);
-      const capacityVal = document.getElementById('eventCapacity').value;
-      const capacity = capacityVal === '' ? null : Number(capacityVal);
-      const bgImageUrl = document.getElementById('eventBg').value.trim();
-
-      if (!clubId) throw new Error('Club is required');
-      if (!name) throw new Error('Event name is required');
-      if (!regStart || !regEnd) throw new Error('regStart and regEnd are required');
-      if (capacity != null && (Number.isNaN(capacity) || capacity < 0)) throw new Error('capacity must be >= 0');
-
-      await apiJson(`${API_BASE_URL}/events`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          clubId,
-          name,
-          description,
-          regStart,
-          regEnd,
-          capacity,
-          bgImageUrl
-        })
-      });
-
-      document.getElementById('eventName').value = '';
-      document.getElementById('eventDesc').value = '';
-      document.getElementById('eventRegStart').value = '';
-      document.getElementById('eventRegEnd').value = '';
-      document.getElementById('eventCapacity').value = '';
-      document.getElementById('eventBg').value = '';
-
-      await loadEvents();
-    }
-
-    async function openParticipantsDialog(eventObj, clubName) {
-      const dlg = document.getElementById('participantsDialog');
-      const tbody = document.getElementById('participantsTbody');
-      const err = document.getElementById('participantsErr');
-      err.textContent = '';
-      tbody.innerHTML = '';
-      document.getElementById('participantsDialogTitle').textContent = 'Participants';
-      document.getElementById('participantsDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
-      try {
-        const regs = await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations`, { headers: authHeaders() });
-        if (!Array.isArray(regs) || regs.length === 0) {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td colspan="5" class="small">No participants</td>`;
-          tbody.appendChild(tr);
-        } else {
-          for (const r of regs) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td><b>${r.username || ''}</b></td>
-              <td>${r.fullName || ''}</td>
-              <td>${r.mobile || ''}</td>
-              <td>${r.email || ''}</td>
-              <td>
-                <button class="danger" type="button" data-action="remove">Remove</button>
-              </td>
-            `;
-            tr.querySelector('[data-action="remove"]').addEventListener('click', async () => {
-              if (!confirm(`Remove ${r.username || 'participant'} from ${eventObj.name}?`)) return;
-              await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations/${r.id}`, {
-                method: 'DELETE',
-                headers: authHeaders()
-              });
-              await loadEvents();
-              await openParticipantsDialog(eventObj, clubName);
-            });
-            tbody.appendChild(tr);
-          }
-        }
-      } catch (e) {
-        err.textContent = e.message;
-      }
-      document.getElementById('participantsCloseBtn').onclick = () => dlg.close();
-      dlg.showModal();
-    }
-
-    async function openEditEventDialog(eventObj, clubName) {
-      const dlg = document.getElementById('eventDialog');
-      const err = document.getElementById('dlgErr');
-      err.textContent = '';
-      document.getElementById('eventDialogTitle').textContent = 'Edit Event';
-      document.getElementById('eventDialogSub').textContent = `Club: ${clubName}`;
-      document.getElementById('dlgEventName').value = eventObj.name || '';
-      document.getElementById('dlgEventDesc').value = eventObj.description || '';
-      document.getElementById('dlgEventRegStart').value = toDatetimeLocalValue(eventObj.regStart);
-      document.getElementById('dlgEventRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
-      document.getElementById('dlgEventCapacity').value = (eventObj.capacity == null ? '' : String(eventObj.capacity));
-      document.getElementById('dlgEventBg').value = eventObj.bgImageUrl || '';
-      const onCancel = () => { dlg.close(); };
-      const onSave = async () => {
-        try {
-          err.textContent = '';
-          const name = document.getElementById('dlgEventName').value.trim();
-          const description = document.getElementById('dlgEventDesc').value.trim();
-          const regStart = normalizeToIsoSeconds(document.getElementById('dlgEventRegStart').value);
-          const regEnd = normalizeToIsoSeconds(document.getElementById('dlgEventRegEnd').value);
-          const capacityVal = document.getElementById('dlgEventCapacity').value;
-          const capacity = capacityVal === '' ? null : Number(capacityVal);
-          const bgImageUrl = document.getElementById('dlgEventBg').value.trim();
-          if (!name) { err.textContent = 'Event name is required'; return; }
-          if (!regStart || !regEnd) { err.textContent = 'Registration start and end are required'; return; }
-          if (capacity != null && (Number.isNaN(capacity) || capacity < 0)) { err.textContent = 'capacity must be >= 0'; return; }
-          await apiJson(`${API_BASE_URL}/events/${eventObj.id}`, {
-            method: 'PUT',
-            headers: authHeaders(),
-            body: JSON.stringify({ name, description, regStart, regEnd, capacity, bgImageUrl })
-          });
-          dlg.close();
-          await loadEvents();
-        } catch (e) {
-          err.textContent = e.message;
-        }
-      };
-      document.getElementById('dlgSaveBtn').onclick = onSave;
-      document.getElementById('dlgCancelBtn').onclick = onCancel;
-      dlg.showModal();
-    }
-
-    async function openExtendDialog(eventObj, clubName) {
-      const dlg = document.getElementById('extendDialog');
-      const err = document.getElementById('dlgExtendErr');
-      err.textContent = '';
-      document.getElementById('extendDialogSub').textContent = `${eventObj.name} (Club: ${clubName})`;
-      document.getElementById('dlgExtendRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
-      const onCancel = () => { dlg.close(); };
-      const onExtend = async () => {
-        try {
-          err.textContent = '';
-          const regEnd = normalizeToIsoSeconds(document.getElementById('dlgExtendRegEnd').value);
-          if (!regEnd) { err.textContent = 'New registration end is required'; return; }
-          await apiJson(`${API_BASE_URL}/events/${eventObj.id}/extend-reg-end`, {
-            method: 'PATCH',
-            headers: authHeaders(),
-            body: JSON.stringify({ regEnd })
-          });
-          dlg.close();
-          await loadEvents();
-        } catch (e) {
-          err.textContent = e.message;
-        }
-      };
-      document.getElementById('dlgExtendBtn').onclick = onExtend;
-      document.getElementById('dlgExtendCancelBtn').onclick = onCancel;
-      dlg.showModal();
-    }
-
     async function loadPendingClubAdmins() {
       const tbody = document.getElementById('pendingAdminsTbody');
       tbody.innerHTML = '';
@@ -735,7 +586,7 @@
       const clubNameById = new Map(clubs.map(c => [c.id, c.name]));
       for (const u of rows) {
         const tr = document.createElement('tr');
-        const clubName = clubNameById.get(u.adminClubId) || u.adminClubId || '';
+        const clubName = clubNameById.get(u.clubId) || u.clubId || '';
         tr.innerHTML = `
           <td><b>${u.username}</b></td>
           <td>${u.fullName || ''}</td>
@@ -750,7 +601,7 @@
           </td>
         `;
         tr.querySelector('[data-action="approve"]').addEventListener('click', async () => {
-          await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
+          await apiJson(`${API_BASE_URL}/admin/club-admins/${u.clubAdminId}/enabled`, {
             method: 'PATCH',
             headers: authHeaders(),
             body: JSON.stringify({ enabled: true })
@@ -759,7 +610,7 @@
         });
         tr.querySelector('[data-action="reject"]').addEventListener('click', async () => {
           if (!confirm(`Reject and delete request for ${u.username}?`)) return;
-          await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
+          await apiJson(`${API_BASE_URL}/admin/club-admins/${u.clubAdminId}`, {
             method: 'DELETE',
             headers: authHeaders()
           });
@@ -827,19 +678,46 @@
       }
 
       for (const u of clubAdmins) {
-        const tr = document.createElement('tr');
         const roleClass = u.enabled ? 'club-admin' : 'disabled';
-        const clubName = clubNameById.get(u.adminClubId) || u.adminClubId || '';
+        console.log('Processing club admin:', u.username, 'Clubs array:', u.clubs);
+        
+        // For club admins, show all clubs in a single row
+        const tr = document.createElement('tr');
+        
+        // Build clubs list with remove buttons
+        let clubsHtml = '';
+        if (u.clubs && u.clubs.length > 0) {
+          clubsHtml = '<div style="display: flex; flex-direction: column; gap: 6px;">';
+          clubsHtml += u.clubs.map(c => {
+            const clubName = clubNameById.get(c.clubId) || c.clubId || '';
+            const statusClass = c.enabled ? 'good' : 'small';
+            const statusText = c.enabled ? 'Approved' : 'Pending';
+            const statusColor = c.enabled ? '#16a34a' : '#ca8a04';
+            return `
+              <div style="display: flex; align-items: center; justify-content: space-between; background: #f3f4f6; padding: 6px 10px; border-radius: 6px; border-left: 3px solid ${statusColor};">
+                <span style="font-weight: 500;">${clubName}</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="${statusClass}" style="font-size: 12px;">${statusText}</span>
+                  <button class="danger" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;" type="button" data-action="remove-club" data-club-admin-id="${c.clubAdminId}" data-club-id="${c.clubId}">✕</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+          clubsHtml += '</div>';
+        } else {
+          clubsHtml = '<span class="small" style="color: #9ca3af;">No clubs assigned</span>';
+        }
+        
         tr.innerHTML = `
           <td><b>${u.username}</b></td>
           <td><span class="pill ${roleClass}">${u.role}</span></td>
           <td>${u.mobile || ''}</td>
-          <td>${clubName}</td>
+          <td>${clubsHtml}</td>
           <td>${u.enabled ? 'Yes' : 'No'}</td>
           <td>
             <div class="btnRow">
               <button class="primary" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>
-              <button class="danger" type="button" data-action="delete">Delete</button>
+              <button class="danger" type="button" data-action="delete">Delete User</button>
             </div>
           </td>
         `;
@@ -852,12 +730,32 @@
           await loadUsers();
         });
         tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-          if (!confirm(`Delete club admin ${u.username}?`)) return;
+          if (!confirm(`Delete club admin ${u.username}? This will remove their login access permanently.`)) return;
           await apiJson(`${API_BASE_URL}/admin/users/${u.id}`, {
             method: 'DELETE',
             headers: authHeaders()
           });
           await loadUsers();
+        });
+        tr.querySelectorAll('[data-action="remove-club"]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const clubAdminId = btn.dataset.clubAdminId;
+            const clubId = btn.dataset.clubId;
+            const clubName = clubNameById.get(clubId) || clubId;
+            if (!confirm(`Remove ${u.username} as admin of ${clubName}?`)) return;
+            try {
+              console.log('Deleting club admin mapping:', clubAdminId);
+              await apiJson(`${API_BASE_URL}/admin/club-admins/${clubAdminId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+              });
+              console.log('Delete successful, reloading users...');
+              await loadUsers();
+            } catch (e) {
+              console.error('Error removing club admin:', e);
+              alert('Error removing club admin: ' + e.message);
+            }
+          });
         });
         clubAdminsTbody.appendChild(tr);
       }
@@ -865,7 +763,6 @@
 
     async function refreshAll() {
       await loadClubs();
-      await loadEvents();
       await loadUsers();
       await loadPendingClubAdmins();
     }
@@ -886,13 +783,6 @@
     const ac = document.getElementById('addClubBtn');
     if (ac) ac.addEventListener('click', async () => {
       try { await addClub(); } catch (e) { alert(e.message); }
-    });
-    const re = document.getElementById('refreshEventsBtn');
-    if (re) re.addEventListener('click', async () => { await loadEvents(); });
-    const ae = document.getElementById('addEventBtn');
-    if (ae) ae.addEventListener('click', async () => {
-      try { document.getElementById('eventsErr').textContent = ''; await addEvent(); }
-      catch (e) { document.getElementById('eventsErr').textContent = e.message; }
     });
     const ru = document.getElementById('refreshUsersBtn');
     if (ru) ru.addEventListener('click', async () => { await loadUsers(); });
@@ -924,12 +814,10 @@
     
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      const eventDlg = document.getElementById('eventDialog');
-      const extendDlg = document.getElementById('extendDialog');
-      const participantsDlg = document.getElementById('participantsDialog');
-      try { if (participantsDlg && participantsDlg.open) participantsDlg.close(); } catch (err) {}
-      try { if (extendDlg && extendDlg.open) extendDlg.close(); } catch (err) {}
-      try { if (eventDlg && eventDlg.open) eventDlg.close(); } catch (err) {}
+      try { 
+        const winnersDlg = document.getElementById('winnersDialog');
+        if (winnersDlg && winnersDlg.open) winnersDlg.close(); 
+      } catch (err) {}
     });
 
     (async function init() {

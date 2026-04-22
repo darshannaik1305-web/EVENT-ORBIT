@@ -1,9 +1,14 @@
 package com.mvjce.eventmanagement.controller;
 
+import com.mvjce.eventmanagement.model.ClubAdmin;
 import com.mvjce.eventmanagement.model.Event;
+import com.mvjce.eventmanagement.model.EventType;
+import com.mvjce.eventmanagement.model.Team;
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.model.Winner;
+import com.mvjce.eventmanagement.repository.ClubAdminRepository;
 import com.mvjce.eventmanagement.repository.EventRepository;
+import com.mvjce.eventmanagement.repository.TeamRepository;
 import com.mvjce.eventmanagement.repository.UserRepository;
 import com.mvjce.eventmanagement.repository.WinnerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +37,12 @@ public class WinnerController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ClubAdminRepository clubAdminRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
     private User getActorUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String actorUsername = auth != null ? auth.getName() : null;
@@ -54,10 +65,12 @@ public class WinnerController {
             return true;
         }
         if (isClubAdmin(actor)) {
-            return actor.getAdminClubId() != null
-                    && event != null
-                    && event.getClubId() != null
-                    && actor.getAdminClubId().equals(event.getClubId());
+            // Check if user is admin for this specific club using ClubAdmin entries
+            if (event == null || event.getClubId() == null) {
+                return false;
+            }
+            List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actor.getUsername());
+            return clubAdmins.stream().anyMatch(ca -> ca.getClubId().equals(event.getClubId()));
         }
         return false;
     }
@@ -109,10 +122,25 @@ public class WinnerController {
             }
 
             // Check if user is registered for this event
-            boolean isRegistered = event.getRegistrations() != null && 
-                    event.getRegistrations().stream()
-                            .anyMatch(reg -> reg.getUsername() != null && 
-                                    reg.getUsername().equalsIgnoreCase(username.trim()));
+            boolean isRegistered = false;
+            
+            // For individual events, check individual registrations
+            if (event.getType() == null || EventType.INDIVIDUAL.equals(event.getType())) {
+                isRegistered = event.getRegistrations() != null && 
+                        event.getRegistrations().stream()
+                                .anyMatch(reg -> reg.getUsername() != null && 
+                                        reg.getUsername().equalsIgnoreCase(username.trim()));
+            } 
+            // For group events, check team memberships
+            else if (EventType.GROUP.equals(event.getType())) {
+                List<Team> teams = teamRepository.findByEventId(eventId);
+                isRegistered = teams != null && teams.stream()
+                        .anyMatch(team -> team.getMembers() != null && 
+                                team.getMembers().stream()
+                                        .anyMatch(member -> member.getUserId() != null && 
+                                                member.getUserId().equalsIgnoreCase(username.trim())));
+            }
+            
             if (!isRegistered) {
                 return ResponseEntity.badRequest().body(Map.of("message", "This user is not registered for this event"));
             }
@@ -158,6 +186,11 @@ public class WinnerController {
 
     @GetMapping("/event/{eventId}")
     public ResponseEntity<List<Map<String, Object>>> getWinnersByEvent(@NonNull @PathVariable String eventId) {
+        // Check if event exists
+        if (!eventRepository.existsById(eventId)) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+        
         List<Winner> winners = winnerRepository.findByEventIdOrderByPositionAsc(eventId);
         
         List<Map<String, Object>> result = winners.stream()
@@ -185,6 +218,12 @@ public class WinnerController {
         List<Winner> winners = winnerRepository.findByClubIdOrderByCreatedAtDesc(clubId);
         
         List<Map<String, Object>> result = winners.stream()
+                .filter(winner -> {
+                    // Only include winners whose event still exists
+                    String eventId = winner.getEventId();
+                    if (eventId == null) return false;
+                    return eventRepository.existsById(eventId);
+                })
                 .map(winner -> {
                     Map<String, Object> map = new java.util.HashMap<>();
                     map.put("id", winner.getId());
@@ -209,6 +248,12 @@ public class WinnerController {
         List<Winner> winners = winnerRepository.findAll();
         
         List<Map<String, Object>> result = winners.stream()
+                .filter(winner -> {
+                    // Only include winners whose event still exists
+                    String eventId = winner.getEventId();
+                    if (eventId == null) return false;
+                    return eventRepository.existsById(eventId);
+                })
                 .map(winner -> {
                     Map<String, Object> map = new java.util.HashMap<>();
                     map.put("id", winner.getId());

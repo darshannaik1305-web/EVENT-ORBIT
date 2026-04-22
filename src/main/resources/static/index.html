@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>College Event Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --secondary: #a855f7;
+      --accent: #f43f5e;
+      --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      --dark: #0f172a;
+      --dark-glass: rgba(15, 23, 42, 0.7);
+      --glass: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.2);
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body, html {
+      height: 100%;
+      font-family: 'Outfit', sans-serif;
+      background: var(--dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+    
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    a, button { cursor: pointer; font-family: inherit; }
+
+    /* UTILITIES */
+    .glass-panel {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: none;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn-primary { background: var(--gradient); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    
+    .btn-outline { background: transparent; border: 1px solid var(--glass-border); color: white; }
+    .btn-outline:hover { background: rgba(255,255,255,0.1); }
+    
+    .text-gradient {
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* AUTH PAGE */
+    #authPage {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+      position: relative;
+    }
+    
+    .auth-bg {
+      flex: 1;
+      background: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
+      background-size: cover;
+      position: relative;
+    }
+    .auth-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(15, 23, 42, 0.2), var(--dark));
+    }
+    
+    .auth-container {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: var(--dark);
+      z-index: 2;
+    }
+
+    .auth-box {
+      width: 100%;
+      padding: 2.5rem;
+    }
+
+    .auth-box h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    
+    .auth-box p.subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-muted); }
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      color: white;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    .form-control:focus { outline: none; border-color: var(--primary); background: rgba(255,255,255,0.08); }
+    
+    select.form-control option { background: var(--dark); color: white; }
+
+    .auth-error { color: var(--danger); font-size: 0.85rem; margin-top: 0.5rem; height: 20px; font-weight: 500; }
+
+    /* MAIN APP */
+    #mainApp {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header.app-header {
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo { font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .logo span { background: var(--gradient); width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+
+    .nav-actions { display: flex; gap: 1rem; align-items: center; }
+
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .hero-section {
+      margin-bottom: 2rem;
+      padding: 2.5rem;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -50%; right: -20%;
+      width: 300px; height: 300px;
+      background: var(--primary);
+      filter: blur(100px);
+      opacity: 0.3;
+      border-radius: 50%;
+    }
+
+    .hero-section h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .hero-section p { font-size: 1.1rem; color: var(--text-muted); max-width: 600px; }
+
+    .section-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
+
+    .clubs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .club-card {
+      height: 180px;
+      border-radius: var(--radius);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    
+    .club-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3); }
+
+    .club-card .bg-img {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      transition: transform 0.5s ease;
+    }
+    .club-card:hover .bg-img { transform: scale(1.05); }
+
+    .club-card .overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1.2rem;
+    }
+    .club-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+    .club-card p { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* SIDEBAR */
+    .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
+    
+    .widget { padding: 1.5rem; }
+    .widget-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+    
+    .winner-list, .notif-list { display: flex; flex-direction: column; gap: 0.8rem; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+    
+    .winner-list::-webkit-scrollbar, .notif-list::-webkit-scrollbar { width: 4px; }
+    .winner-list::-webkit-scrollbar-thumb, .notif-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+    .winner-item {
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.2s;
+    }
+    .winner-item:hover { background: rgba(255,255,255,0.08); }
+    .winner-club { font-weight: 600; color: var(--secondary); font-size: 0.95rem; margin-bottom: 2px;}
+    .winner-event { font-size: 0.85rem; color: var(--text-muted); }
+
+    .notif-item { padding: 0.8rem; border-left: 3px solid var(--primary); background: rgba(255,255,255,0.03); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+    .notif-item h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+    .notif-item p { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* MODALS */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+
+    .modal-content {
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--dark);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      position: relative;
+      transform: translateY(20px);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+    
+    .modal-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky; top: 0;
+      background: rgba(15,23,42,0.9);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+    .modal-header h2 { font-size: 1.5rem; font-weight: 700; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
+    .close-btn:hover { color: white; }
+
+    .modal-body { padding: 2rem; }
+
+    /* EVENT CARDS IN MODAL */
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    
+    .event-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+    }
+    .event-card:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15); transform: translateY(-3px); }
+    
+    .event-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary); }
+    .event-card p.desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .event-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.1);
+      color: var(--text-main);
+    }
+    .badge-group { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+    .badge-indiv { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+
+    /* EVENT DETAILS VIEW */
+    .event-details-view { display: none; }
+    .event-details-view.active { display: block; }
+    .events-list-view.hidden { display: none; }
+    
+    .details-header {
+      padding: 3rem 2rem;
+      border-radius: var(--radius);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+    .details-header::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to right, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.6) 100%);
+    }
+    .details-header-content { position: relative; z-index: 2; }
+    .details-header-content h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+    
+    .details-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
+    @media (max-width: 768px) { .details-grid { grid-template-columns: 1fr; } }
+    
+    .info-section h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;}
+    .info-list { list-style: none; }
+    .info-list li { display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .info-list li span:first-child { color: var(--text-muted); }
+    .info-list li span:last-child { font-weight: 600; text-align: right;}
+
+    .reg-action-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .regMsg { margin-top: 1rem; font-size: 0.9rem; font-weight: 500; min-height: 20px;}
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      display: none;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 1024px) {
+      .main-content { grid-template-columns: 1fr; }
+      .auth-bg { display: none; }
+      .auth-container { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AUTH PAGE -->
+  <div id="authPage">
+    <div class="auth-bg"></div>
+    <div class="auth-container">
+      <!-- Login -->
+      <div class="auth-box" id="loginBox">
+        <h2><span class="text-gradient">Welcome Back</span></h2>
+        <p class="subtitle">Sign in to MVJCE Event Management</p>
+        
+        <form onsubmit="return false;">
+          <div class="form-group">
+            <label>USN</label>
+            <input type="text" id="usernameInput" class="form-control" required placeholder="1MJ..." style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="passwordInput" class="form-control" required placeholder="••••••••">
+          </div>
+          <button class="btn btn-primary" style="width:100%; margin-top: 1rem;" onclick="attemptLogin()">
+            <span id="loginText">Sign In</span>
+            <div class="spinner" id="loginSpinner"></div>
+          </button>
+          <div class="auth-error" id="loginError"></div>
+          <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+            Don't have an account? <a onclick="toggleAuth()" style="color: var(--primary); font-weight: 600;">Create one</a>
+          </p>
+        </form>
+      </div>
+
+      <!-- Register -->
+      <div class="auth-box" id="registerBox" style="display: none;">
+        <h2><span class="text-gradient">Join Us</span></h2>
+        <p class="subtitle">Create your student account</p>
+        
+        <form onsubmit="return false;" style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+          <div class="form-group">
+            <label>USN</label>
+            <input type="text" id="regUsn" class="form-control" required placeholder="1MJ..." style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+          </div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="regName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="regEmail" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="tel" id="regMobile" class="form-control" required placeholder="10 digits">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="regPassword" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="regConfirm" class="form-control" required>
+          </div>
+          <button class="btn btn-primary" style="width:100%; margin-top: 1rem;" onclick="attemptRegister()">
+            <span id="regText">Create Account</span>
+            <div class="spinner" id="regSpinner"></div>
+          </button>
+          <div class="auth-error" id="regError"></div>
+          <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+            Already have an account? <a onclick="toggleAuth()" style="color: var(--primary); font-weight: 600;">Sign in</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp">
+    <header class="app-header">
+      <div class="logo">
+        <span>🎉</span> MVJCE Events
+      </div>
+      <div class="nav-actions">
+        <span id="userPill" style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted); margin-right: 1rem;"></span>
+        <button class="btn btn-outline" onclick="logout()" style="padding: 6px 14px; font-size: 0.85rem;">Logout</button>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <!-- Left Column -->
+      <div>
+        <div class="hero-section glass-panel">
+          <h1 class="text-gradient">Discover & Participate</h1>
+          <p>Explore events from various clubs, showcase your skills, and be part of the vibrant campus life.</p>
+        </div>
+
+        <h2 class="section-title">Campus Clubs</h2>
+        <div class="clubs-grid" id="clubsGrid">
+          <!-- Clubs injected here -->
+        </div>
+      </div>
+
+      <!-- Right Column (Sidebar) -->
+      <div class="sidebar">
+        <div class="widget glass-panel">
+          <div class="widget-title">🏆 Recent Winners</div>
+          <div class="winner-list" id="winnersList">
+            <p style="color:var(--text-muted); font-size:0.9rem;">Loading...</p>
+          </div>
+        </div>
+
+        <div class="widget glass-panel">
+          <div class="widget-title">📌 Upcoming Deadlines</div>
+          <div class="notif-list" id="notifList">
+             <p style="color:var(--text-muted); font-size:0.9rem;">Loading...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN MODAL (Handles both List and Details) -->
+  <div class="modal-overlay" id="mainModal" onclick="if(event.target === this) closeModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Club Events</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- View 1: List of events -->
+        <div class="events-list-view" id="eventsListView">
+          <div class="events-grid" id="eventsGrid"></div>
+        </div>
+
+        <!-- View 2: Specific Event Details -->
+        <div class="event-details-view" id="eventDetailsView">
+          <button class="btn btn-outline" style="margin-bottom: 1.5rem; padding: 6px 12px; font-size: 0.85rem;" onclick="backToList()">← Back to Events</button>
+          
+          <div class="details-header" id="detHeader">
+            <div class="details-header-content">
+              <h1 id="detName">Event Name</h1>
+              <div class="event-meta" id="detMetaBadges" style="margin-bottom:0;"></div>
+            </div>
+          </div>
+
+          <div class="details-grid">
+            <div class="info-section">
+              <h3>About the Event</h3>
+              <p id="detDesc" style="color: var(--text-muted); line-height: 1.7; white-space: pre-wrap; margin-bottom: 2rem;"></p>
+              
+              <h3>Important Details</h3>
+              <ul class="info-list" id="detList"></ul>
+            </div>
+
+            <div>
+              <div class="reg-action-box">
+                <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">Registration</h3>
+                <p id="detStatus" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;"></p>
+                
+                <button class="btn btn-primary" id="detRegBtn" style="width:100%; padding: 12px;">Register Now</button>
+                <div id="detRegMsg" class="regMsg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:7070/api';
+    let currentUser = null;
+    let authToken = null;
+    let clubsCache = [];
+    let currentClubEvents = [];
+
+    // INIT
+    window.onload = () => {
+      const savedUser = localStorage.getItem('cem_user');
+      const savedToken = localStorage.getItem('cem_token');
+      if (savedUser && savedToken) {
+        currentUser = JSON.parse(savedUser);
+        authToken = savedToken;
+        showApp();
+      } else {
+        document.getElementById('authPage').style.display = 'flex';
+      }
+    };
+
+    function toggleAuth() {
+      const login = document.getElementById('loginBox');
+      const reg = document.getElementById('registerBox');
+      if (login.style.display === 'none') {
+        login.style.display = 'block';
+        reg.style.display = 'none';
+      } else {
+        login.style.display = 'none';
+        reg.style.display = 'block';
+      }
+    }
+
+    // AUTH API
+    async function attemptLogin() {
+      const u = document.getElementById('usernameInput').value.trim();
+      const p = document.getElementById('passwordInput').value;
+      const err = document.getElementById('loginError');
+      err.textContent = '';
+      if(!u || !p) { err.textContent = 'Please fill all fields'; return; }
+      
+      document.getElementById('loginText').style.display = 'none';
+      document.getElementById('loginSpinner').style.display = 'block';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username: u, password: p})
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data.error || 'Invalid credentials');
+        
+        currentUser = { username: data.username, role: data.role };
+        authToken = data.token;
+        localStorage.setItem('cem_user', JSON.stringify(currentUser));
+        localStorage.setItem('cem_token', authToken);
+        showApp();
+      } catch(e) {
+        err.textContent = e.message;
+      } finally {
+        document.getElementById('loginText').style.display = 'block';
+        document.getElementById('loginSpinner').style.display = 'none';
+      }
+    }
+
+    async function attemptRegister() {
+      const usn = document.getElementById('regUsn').value.trim();
+      const fullName = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const mobile = document.getElementById('regMobile').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirm = document.getElementById('regConfirm').value;
+      const err = document.getElementById('regError');
+      err.textContent = '';
+      
+      if(!usn || !fullName || !email || !mobile || !password) { err.textContent = 'Please fill all fields'; return; }
+      if(password !== confirm) { err.textContent = 'Passwords do not match'; return; }
+      if(!/^\d{10}$/.test(mobile)) { err.textContent = 'Valid 10-digit mobile required'; return; }
+      
+      document.getElementById('regText').style.display = 'none';
+      document.getElementById('regSpinner').style.display = 'block';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/register`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({usn, fullName, email, mobile, password, gender: 'OTHER'})
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+        
+        // Auto switch to login
+        document.getElementById('usernameInput').value = usn;
+        document.getElementById('passwordInput').value = password;
+        toggleAuth();
+        attemptLogin();
+      } catch(e) {
+        err.textContent = e.message;
+      } finally {
+        document.getElementById('regText').style.display = 'block';
+        document.getElementById('regSpinner').style.display = 'none';
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('cem_user');
+      localStorage.removeItem('cem_token');
+      currentUser = null; authToken = null;
+      document.getElementById('authPage').style.display = 'flex';
+      document.getElementById('mainApp').style.display = 'none';
+      closeModal();
+    }
+
+    // MAIN APP
+    function showApp() {
+      document.getElementById('authPage').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'flex';
+      document.getElementById('userPill').textContent = `Logged in as ${currentUser.username}`;
+      loadClubs();
+      loadWinners();
+      loadNotifications();
+    }
+
+    function sanitize(str) {
+      if(!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function fmtDate(iso) {
+      if(!iso) return 'TBA';
+      return new Date(iso).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    }
+
+    async function loadClubs() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/clubs`);
+        clubsCache = await res.json();
+        const grid = document.getElementById('clubsGrid');
+        grid.innerHTML = '';
+        clubsCache.forEach(c => {
+          const div = document.createElement('div');
+          div.className = 'club-card glass-panel';
+          const bg = c.imageUrl || 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?q=80&w=600&auto=format&fit=crop';
+          div.innerHTML = `
+            <div class="bg-img" style="background-image: url('${sanitize(bg)}')"></div>
+            <div class="overlay">
+              <h3>${sanitize(c.name)}</h3>
+              <p>Click to view events</p>
+            </div>
+          `;
+          div.onclick = () => openClubEvents(c);
+          grid.appendChild(div);
+        });
+      } catch(e) { console.error(e); }
+    }
+
+    async function loadWinners() {
+      try {
+        const [winnersRes, clubsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/winners`),
+          fetch(`${API_BASE_URL}/clubs`)
+        ]);
+        const winners = await winnersRes.json();
+        const clubs = await clubsRes.json();
+
+        const list = document.getElementById('winnersList');
+        list.innerHTML = '';
+        if(winners.length === 0) { list.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No winners announced yet.</p>'; return; }
+
+        const clubMap = new Map(clubs.map(c => [c.id, c.name]));
+        
+        winners.slice(0, 10).forEach(w => {
+          const div = document.createElement('div');
+          div.className = 'winner-item';
+          const eventName = w.eventName || 'Unknown Event';
+          const clubName = clubMap.get(w.clubId) || 'Unknown Club';
+          div.innerHTML = `
+            <div class="winner-club">🏆 ${sanitize(w.positionDisplayName)}</div>
+            <div style="font-weight:600; color:white; font-size: 0.95rem;">${sanitize(w.fullName || w.username)}</div>
+            <div class="winner-event">${sanitize(eventName)} • ${sanitize(clubName)}</div>
+          `;
+          list.appendChild(div);
+        });
+      } catch(e) { console.error(e); }
+    }
+
+
+    async function loadNotifications() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/events/active`);
+        const events = await res.json();
+        const list = document.getElementById('notifList');
+        list.innerHTML = '';
+        if(events.length === 0) { list.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No upcoming events.</p>'; return; }
+        
+        events.slice(0, 5).forEach(e => {
+          const div = document.createElement('div');
+          div.className = 'notif-item';
+          div.innerHTML = `
+            <h4>${sanitize(e.name)}</h4>
+            <p>Closes: ${fmtDate(e.regEnd)}</p>
+          `;
+          list.appendChild(div);
+        });
+      } catch(e) { console.error(e); }
+    }
+
+    // MODAL LOGIC
+    function closeModal() {
+      const modal = document.getElementById('mainModal');
+      modal.classList.remove('active');
+      setTimeout(() => { modal.style.display = 'none'; }, 300);
+    }
+    
+    function openModal() {
+      const modal = document.getElementById('mainModal');
+      modal.style.display = 'flex';
+      // Force reflow
+      void modal.offsetWidth;
+      modal.classList.add('active');
+    }
+
+    async function openClubEvents(club) {
+      document.getElementById('modalTitle').textContent = `${club.name} Events`;
+      document.getElementById('eventsListView').classList.remove('hidden');
+      document.getElementById('eventDetailsView').classList.remove('active');
+      const grid = document.getElementById('eventsGrid');
+      grid.innerHTML = '<p style="padding: 2rem;">Loading events...</p>';
+      openModal();
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/events/active?clubId=${club.id}`);
+        currentClubEvents = await res.json();
+        grid.innerHTML = '';
+        if(currentClubEvents.length === 0) {
+          grid.innerHTML = '<p style="padding: 2rem; color: var(--text-muted);">No active events currently available for this club.</p>';
+          return;
+        }
+
+        currentClubEvents.forEach(e => {
+          const isGroup = e.type === 'GROUP';
+          const cap = e.capacity || '∞';
+          
+          const card = document.createElement('div');
+          card.className = 'event-card';
+          card.innerHTML = `
+            <h3>${sanitize(e.name)}</h3>
+            <div class="event-meta">
+              <span class="badge ${isGroup ? 'badge-group' : 'badge-indiv'}">${isGroup ? '👥 Team' : '👤 Individual'}</span>
+              <span class="badge">Cap: ${cap}</span>
+            </div>
+            <p class="desc">${sanitize(e.description || 'No description available.')}</p>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+               Closes: ${fmtDate(e.regEnd)}
+            </div>
+            <button class="btn btn-outline" style="width: 100%; border-color: var(--primary); color: var(--primary);" onclick="showEventDetails('${e.id}')">View Details</button>
+          `;
+          grid.appendChild(card);
+        });
+
+      } catch(e) {
+        grid.innerHTML = '<p style="padding: 2rem; color: var(--danger);">Failed to load events.</p>';
+      }
+    }
+
+    function showEventDetails(eventId) {
+      const event = currentClubEvents.find(e => e.id === eventId);
+      if(!event) return;
+
+      document.getElementById('eventsListView').classList.add('hidden');
+      document.getElementById('eventDetailsView').classList.add('active');
+      
+      const isGroup = event.type === 'GROUP';
+      const bg = event.bgImageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000&auto=format&fit=crop';
+      
+      document.getElementById('detHeader').style.backgroundImage = `url('${sanitize(bg)}')`;
+      document.getElementById('detName').textContent = event.name;
+      
+      document.getElementById('detMetaBadges').innerHTML = `
+        <span class="badge ${isGroup ? 'badge-group' : 'badge-indiv'}">${isGroup ? 'Team Event' : 'Individual Event'}</span>
+      `;
+      
+      document.getElementById('detDesc').textContent = event.description || 'No description available for this event.';
+      
+      let listHtml = `
+        <li><span>Registration Opens</span> <span>${fmtDate(event.regStart)}</span></li>
+        <li><span>Registration Closes</span> <span>${fmtDate(event.regEnd)}</span></li>
+        <li><span>Total Capacity</span> <span>${event.capacity ? event.capacity + (isGroup ? ' Teams' : ' Participants') : 'Unlimited'}</span></li>
+      `;
+      
+      if(isGroup) {
+        listHtml += `
+          <li><span>Min Team Members</span> <span>${event.minMembers || 1}</span></li>
+          <li><span>Max Team Members</span> <span>${event.maxMembers || 'Unrestricted'}</span></li>
+        `;
+      }
+      document.getElementById('detList').innerHTML = listHtml;
+
+      // Handle Registration Status
+      const regBtn = document.getElementById('detRegBtn');
+      const regMsg = document.getElementById('detRegMsg');
+      const statusText = document.getElementById('detStatus');
+      
+      regMsg.textContent = '';
+      regMsg.className = 'regMsg';
+      
+      const now = new Date();
+      const start = new Date(event.regStart);
+      const end = new Date(event.regEnd);
+      
+      if(now < start) {
+        regBtn.disabled = true;
+        regBtn.textContent = 'Not Started';
+        statusText.textContent = 'Registration has not opened yet.';
+      } else if (now > end) {
+        regBtn.disabled = true;
+        regBtn.textContent = 'Closed';
+        statusText.textContent = 'Registration period has ended.';
+      } else {
+        // Technically we should check capacity from backend, but basic check here
+        regBtn.disabled = false;
+        regBtn.textContent = 'Register Now';
+        statusText.textContent = 'Registrations are currently open!';
+        
+        regBtn.onclick = () => performRegistration(event.id);
+      }
+    }
+
+    function backToList() {
+      document.getElementById('eventDetailsView').classList.remove('active');
+      document.getElementById('eventsListView').classList.remove('hidden');
+    }
+
+    async function performRegistration(eventId) {
+      const regBtn = document.getElementById('detRegBtn');
+      const regMsg = document.getElementById('detRegMsg');
+      
+      if(!confirm("Are you sure you want to register for this event?")) return;
+      
+      regBtn.disabled = true;
+      regBtn.textContent = 'Processing...';
+      regMsg.textContent = '';
+      
+      try {
+        const res = await fetch(`${API_BASE_URL}/events/${eventId}/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({})
+        });
+        
+        const data = await res.json().catch(()=>({}));
+        
+        if(res.ok) {
+          regMsg.style.color = 'var(--success)';
+          regMsg.textContent = 'Successfully registered! 🎉';
+          regBtn.textContent = 'Registered';
+          loadNotifications(); // Refresh notifications
+        } else {
+          throw new Error(data.message || 'Registration failed');
+        }
+      } catch(e) {
+        regMsg.style.color = 'var(--danger)';
+        regMsg.textContent = e.message;
+        regBtn.disabled = false;
+        regBtn.textContent = 'Try Again';
+      }
+    }
+  </script>
+</body>
+</html>

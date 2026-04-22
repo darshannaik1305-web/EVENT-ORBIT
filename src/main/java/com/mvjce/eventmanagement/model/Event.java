@@ -3,6 +3,8 @@ package com.mvjce.eventmanagement.model;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -31,6 +33,12 @@ public class Event {
     private LocalDateTime regEnd;
     private String bgImageUrl;
     private Integer capacity;
+
+    @Enumerated(EnumType.STRING)
+    private EventType type;
+
+    private Integer minMembers;
+    private Integer maxMembers;
 
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<EventRegistration> registrations = new ArrayList<>();
@@ -115,6 +123,30 @@ public class Event {
 
     public void setCapacity(Integer capacity) {
         this.capacity = capacity;
+    }
+
+    public EventType getType() {
+        return type;
+    }
+
+    public void setType(EventType type) {
+        this.type = type;
+    }
+
+    public Integer getMinMembers() {
+        return minMembers;
+    }
+
+    public void setMinMembers(Integer minMembers) {
+        this.minMembers = minMembers;
+    }
+
+    public Integer getMaxMembers() {
+        return maxMembers;
+    }
+
+    public void setMaxMembers(Integer maxMembers) {
+        this.maxMembers = maxMembers;
     }
 
     public List<EventRegistration> getRegistrations() {

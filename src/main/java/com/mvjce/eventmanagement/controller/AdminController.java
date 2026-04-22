@@ -1,6 +1,8 @@
 package com.mvjce.eventmanagement.controller;
 
+import com.mvjce.eventmanagement.model.ClubAdmin;
 import com.mvjce.eventmanagement.model.User;
+import com.mvjce.eventmanagement.repository.ClubAdminRepository;
 import com.mvjce.eventmanagement.repository.EventRepository;
 import com.mvjce.eventmanagement.repository.UserRepository;
 import com.mvjce.eventmanagement.repository.WinnerRepository;
@@ -36,6 +38,9 @@ public class AdminController {
     @Autowired
     private EventRepository eventRepository;
 
+    @Autowired
+    private ClubAdminRepository clubAdminRepository;
+
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> listUsers() {
         List<Map<String, Object>> users = userRepository.findAll().stream()
@@ -50,6 +55,20 @@ public class AdminController {
                     m.put("gender", u.getGender());
                     m.put("adminClubId", u.getAdminClubId());
                     m.put("enabled", u.isEnabled());
+                    // For club admins, include clubs array
+                    if (u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN")) {
+                        List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
+                        List<Map<String, Object>> clubs = clubAdmins.stream()
+                                .map(ca -> {
+                                    Map<String, Object> cm = new HashMap<>();
+                                    cm.put("clubAdminId", ca.getId());
+                                    cm.put("clubId", ca.getClubId());
+                                    cm.put("enabled", ca.isEnabled());
+                                    return cm;
+                                })
+                                .collect(Collectors.toList());
+                        m.put("clubs", clubs);
+                    }
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -69,7 +88,18 @@ public class AdminController {
                     m.put("fullName", u.getFullName());
                     m.put("email", u.getEmail());
                     m.put("gender", u.getGender());
-                    m.put("adminClubId", u.getAdminClubId());
+                    // Get all clubs this admin manages
+                    List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
+                    List<Map<String, Object>> clubs = clubAdmins.stream()
+                            .map(ca -> {
+                                Map<String, Object> cm = new HashMap<>();
+                                cm.put("clubAdminId", ca.getId());
+                                cm.put("clubId", ca.getClubId());
+                                cm.put("enabled", ca.isEnabled());
+                                return cm;
+                            })
+                            .collect(Collectors.toList());
+                    m.put("clubs", clubs);
                     m.put("enabled", u.isEnabled());
                     return m;
                 })
@@ -79,22 +109,30 @@ public class AdminController {
 
     @GetMapping("/club-admins/pending")
     public ResponseEntity<List<Map<String, Object>>> listPendingClubAdmins() {
-        List<Map<String, Object>> users = userRepository.findAll().stream()
-                .filter(u -> u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN"))
-                .filter(u -> !u.isEnabled())
-                .map(u -> {
+        // Get all pending ClubAdmin entries
+        List<ClubAdmin> pendingClubAdmins = clubAdminRepository.findAll().stream()
+                .filter(ca -> !ca.isEnabled())
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> result = pendingClubAdmins.stream()
+                .map(ca -> {
                     Map<String, Object> m = new HashMap<>();
-                    m.put("id", u.getId());
-                    m.put("username", u.getUsername());
-                    m.put("mobile", u.getMobile());
-                    m.put("fullName", u.getFullName());
-                    m.put("email", u.getEmail());
-                    m.put("gender", u.getGender());
-                    m.put("adminClubId", u.getAdminClubId());
+                    m.put("clubAdminId", ca.getId());
+                    m.put("username", ca.getUsername());
+                    m.put("clubId", ca.getClubId());
+                    m.put("enabled", ca.isEnabled());
+                    // Get user details
+                    userRepository.findByUsernameIgnoreCase(ca.getUsername()).ifPresent(user -> {
+                        m.put("userId", user.getId());
+                        m.put("fullName", user.getFullName());
+                        m.put("mobile", user.getMobile());
+                        m.put("email", user.getEmail());
+                        m.put("gender", user.getGender());
+                    });
                     return m;
                 })
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/club-admins")
@@ -129,8 +167,18 @@ public class AdminController {
                     if (u.getRole() != null && u.getRole().equalsIgnoreCase("ADMIN")) {
                         return ResponseEntity.badRequest().body(Map.of("message", "Cannot delete global admin"));
                     }
-                    userRepository.deleteById(id);
-                    return ResponseEntity.ok(Map.of("message", "User deleted"));
+                    // Delete related records in order to avoid foreign key constraints
+                    try {
+                        // Delete user roles first
+                        userRepository.deleteUserRoles(id);
+                        // Delete ClubAdmin entries for this user
+                        clubAdminRepository.deleteByUsernameIgnoreCase(u.getUsername());
+                        // Finally delete the user
+                        userRepository.deleteById(id);
+                        return ResponseEntity.ok(Map.of("message", "User deleted"));
+                    } catch (Exception e) {
+                        return ResponseEntity.status(500).body(Map.of("message", "Error deleting user: " + e.getMessage()));
+                    }
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -154,6 +202,48 @@ public class AdminController {
                             "id", user.getId(),
                             "enabled", user.isEnabled()
                     ));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PatchMapping("/club-admins/{clubAdminId}/enabled")
+    public ResponseEntity<?> setClubAdminEnabled(@NonNull @PathVariable String clubAdminId, @RequestBody Map<String, Object> payload) {
+        Object enabledObj = payload.get("enabled");
+        if (!(enabledObj instanceof Boolean enabled)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "enabled must be boolean"));
+        }
+
+        return clubAdminRepository.findById(clubAdminId)
+                .map(ca -> {
+                    ca.setEnabled(enabled);
+                    clubAdminRepository.save(ca);
+
+                    // If this is the first enabled club for this user, also enable the user
+                    if (enabled) {
+                        List<ClubAdmin> enabledClubs = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(ca.getUsername());
+                        userRepository.findByUsernameIgnoreCase(ca.getUsername()).ifPresent(user -> {
+                            if (!user.isEnabled()) {
+                                user.setEnabled(true);
+                                userRepository.save(user);
+                            }
+                        });
+                    }
+
+                    return ResponseEntity.ok(Map.of(
+                            "message", "Club admin updated",
+                            "clubAdminId", ca.getId(),
+                            "enabled", ca.isEnabled()
+                    ));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/club-admins/{clubAdminId}")
+    public ResponseEntity<?> deleteClubAdmin(@NonNull @PathVariable String clubAdminId) {
+        return clubAdminRepository.findById(clubAdminId)
+                .map(ca -> {
+                    clubAdminRepository.deleteById(clubAdminId);
+                    return ResponseEntity.ok(Map.of("message", "Club admin mapping deleted"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

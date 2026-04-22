@@ -2,10 +2,14 @@ com\mvjce\eventmanagement\model\Club.class
 com\mvjce\eventmanagement\model\EventRegistration.class
 com\mvjce\eventmanagement\EventManagementApplication.class
 com\mvjce\eventmanagement\repository\UserRepository.class
+com\mvjce\eventmanagement\model\TeamMember.class
 com\mvjce\eventmanagement\service\UserDetailsServiceImpl.class
+com\mvjce\eventmanagement\controller\TeamController.class
 com\mvjce\eventmanagement\model\Winner.class
 com\mvjce\eventmanagement\repository\ClubRepository.class
 com\mvjce\eventmanagement\model\Event.class
+com\mvjce\eventmanagement\repository\ClubAdminRepository.class
+com\mvjce\eventmanagement\repository\TeamMemberRepository.class
 com\mvjce\eventmanagement\service\JWTService.class
 com\mvjce\eventmanagement\controller\EventController.class
 com\mvjce\eventmanagement\repository\EventRepository.class
@@ -17,6 +21,11 @@ com\mvjce\eventmanagement\model\Winner$Position.class
 com\mvjce\eventmanagement\controller\AuthController.class
 com\mvjce\eventmanagement\controller\WinnerController.class
 com\mvjce\eventmanagement\repository\WinnerRepository.class
+com\mvjce\eventmanagement\service\TeamService.class
+com\mvjce\eventmanagement\model\Team.class
 com\mvjce\eventmanagement\config\DataInitializer.class
+com\mvjce\eventmanagement\model\ClubAdmin.class
 com\mvjce\eventmanagement\controller\AdminController.class
 com\mvjce\eventmanagement\model\User.class
+com\mvjce\eventmanagement\model\EventType.class
+com\mvjce\eventmanagement\repository\TeamRepository.class
