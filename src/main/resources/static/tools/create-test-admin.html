@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Test Club Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        input, select { margin: 5px; padding: 8px; width: 200px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Create Test Club Admin</h1>
+    
+    <div class="section">
+        <h2>Step 1: Login as Superadmin</h2>
+        <button onclick="login()">Login as admin/admin123</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 2: Get Clubs</h2>
+        <button onclick="getClubs()">Get Available Clubs</button>
+        <div id="clubsResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 3: Create Test Club Admin</h2>
+        <form id="createForm">
+            <label>USN: <input type="text" id="usn" value="TEST001" required></label><br>
+            <label>Full Name: <input type="text" id="fullName" value="Test Club Admin" required></label><br>
+            <label>Password: <input type="password" id="password" value="test123" required></label><br>
+            <label>Mobile: <input type="text" id="mobile" value="1234567890"></label><br>
+            <label>Email: <input type="email" id="email" value="test@example.com"></label><br>
+            <label>Gender: 
+                <select id="gender">
+                    <option value="MALE">MALE</option>
+                    <option value="FEMALE">FEMALE</option>
+                    <option value="OTHER">OTHER</option>
+                </select>
+            </label><br>
+            <label>Club: <select id="clubId" required></select></label><br>
+            <button type="submit">Create Club Admin</button>
+        </form>
+        <div id="createResult"></div>
+    </div>
+
+    <script>
+        let token = '';
+        let clubs = [];
+
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await createClubAdmin();
+        });
+
+        async function login() {
+            try {
+                const response = await fetch('http://localhost:7070/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('loginResult').innerHTML = '<span class="success">Login successful!</span>';
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<span class="error">Login failed: ' + (data.message || 'Unknown error') + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = '<span class="error">Login error: ' + error.message + '</span>';
+            }
+        }
+
+        async function getClubs() {
+            if (!token) {
+                document.getElementById('clubsResult').innerHTML = '<span class="error">Please login first</span>';
+                return;
+            }
+            try {
+                const response = await fetch('http://localhost:7070/api/clubs', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    clubs = data;
+                    const clubSelect = document.getElementById('clubId');
+                    clubSelect.innerHTML = '';
+                    for (const club of data) {
+                        const option = document.createElement('option');
+                        option.value = club.id;
+                        option.textContent = club.name;
+                        clubSelect.appendChild(option);
+                    }
+                    document.getElementById('clubsResult').innerHTML = '<span class="success">Clubs loaded: ' + data.length + ' clubs found</span>';
+                } else {
+                    document.getElementById('clubsResult').innerHTML = '<span class="error">Failed to load clubs: ' + (data.message || 'Unknown error') + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('clubsResult').innerHTML = '<span class="error">Clubs error: ' + error.message + '</span>';
+            }
+        }
+
+        async function createClubAdmin() {
+            if (!token) {
+                document.getElementById('createResult').innerHTML = '<span class="error">Please login first</span>';
+                return;
+            }
+
+            const formData = {
+                usn: document.getElementById('usn').value,
+                fullName: document.getElementById('fullName').value,
+                password: document.getElementById('password').value,
+                mobile: document.getElementById('mobile').value,
+                email: document.getElementById('email').value,
+                gender: document.getElementById('gender').value,
+                adminClubId: document.getElementById('clubId').value
+            };
+
+            try {
+                const response = await fetch('http://localhost:7070/api/auth/register-admin', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('createResult').innerHTML = '<span class="success">Club admin created successfully! They are now pending approval.</span><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    document.getElementById('createResult').innerHTML = '<span class="error">Failed to create club admin: ' + (data.message || 'Unknown error') + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('createResult').innerHTML = '<span class="error">Create error: ' + error.message + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>

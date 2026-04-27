@@ -119,21 +119,21 @@ public class EventController {
         return false;
     }
 
+
     private boolean isEventFull(Event event) {
+        int count = 0;
+        if (EventType.GROUP.equals(event.getType())) {
+            List<Team> teams = teamRepository.findByEventId(event.getId());
+            count = teams != null ? teams.size() : 0;
+        } else {
+            count = event.getRegistrations() != null ? event.getRegistrations().size() : 0;
+        }
+        event.setParticipantCount(count);
+
         if (event.getCapacity() == null || event.getCapacity() <= 0) {
             return false; // Unlimited capacity
         }
-        
-        // For GROUP events, count teams instead of individual registrations
-        if (EventType.GROUP.equals(event.getType())) {
-            List<Team> teams = teamRepository.findByEventId(event.getId());
-            int teamCount = teams != null ? teams.size() : 0;
-            return teamCount >= event.getCapacity();
-        }
-        
-        // For INDIVIDUAL events, count registrations
-        int registrationsCount = event.getRegistrations() != null ? event.getRegistrations().size() : 0;
-        return registrationsCount >= event.getCapacity();
+        return count >= event.getCapacity();
     }
 
     private boolean isEventExpiredOrFull(Event event, LocalDateTime now) {
@@ -290,6 +290,9 @@ public class EventController {
                     existingEvent.setRegEnd(event.getRegEnd());
                     existingEvent.setBgImageUrl(event.getBgImageUrl());
                     existingEvent.setCapacity(event.getCapacity());
+                    existingEvent.setType(event.getType());
+                    existingEvent.setMinMembers(event.getMinMembers());
+                    existingEvent.setMaxMembers(event.getMaxMembers());
 
                     String actor = actorUser != null ? actorUser.getUsername() : "unknown";
                     existingEvent.setUpdatedBy(actor);
@@ -333,6 +336,7 @@ public class EventController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEvent(@NonNull @PathVariable String id) {
         var existingOpt = eventRepository.findById(id);
@@ -349,6 +353,9 @@ public class EventController {
         
         // Delete all winners associated with this event
         winnerRepository.deleteByEventId(id);
+
+        // Delete all teams associated with this event
+        teamRepository.deleteByEventId(id);
         
         return ResponseEntity.ok().build();
     }
@@ -459,5 +466,20 @@ public class EventController {
                     return ResponseEntity.ok(Map.of("message", "Participant removed"));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+    @GetMapping("/my-registrations")
+    public ResponseEntity<?> getMyRegistrations(@RequestParam String username) {
+        try {
+            // Find all events where user is registered individually
+            List<Event> events = eventRepository.findAll();
+            List<Event> myEvents = events.stream().filter(e -> 
+                e.getRegistrations() != null && e.getRegistrations().stream()
+                    .anyMatch(reg -> reg.getUsername().trim().equalsIgnoreCase(username))
+            ).collect(Collectors.toList());
+            
+            return ResponseEntity.ok(myEvents);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

@@ -8,97 +8,78 @@
   <style>
     :root {
       --primary: #6366f1;
+      --primary-hover: #4f46e5;
       --secondary: #a855f7;
-      --accent: #f43f5e;
-      --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      --dark: #0f172a;
-      --dark-glass: rgba(15, 23, 42, 0.7);
-      --glass: rgba(255, 255, 255, 0.1);
-      --glass-border: rgba(255, 255, 255, 0.2);
-      --text-main: #f8fafc;
-      --text-muted: #cbd5e1;
-      --success: #10b981;
-      --warning: #f59e0b;
       --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #10b981;
+      --dark: #0f172a;
+      --dark-glass: rgba(15, 23, 42, 0.8);
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
       --radius: 16px;
       --radius-sm: 8px;
+      --gradient: linear-gradient(135deg, #6366f1, #a855f7);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
-    body, html {
-      height: 100%;
-      font-family: 'Outfit', sans-serif;
-      background: var(--dark);
-      color: var(--text-main);
+    body { 
+      font-family: 'Outfit', sans-serif; 
+      background-color: var(--dark); 
+      color: var(--text-main); 
+      line-height: 1.5;
+      min-height: 100vh;
       overflow-x: hidden;
-      scroll-behavior: smooth;
     }
     
     body::before {
-      content: '';
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: 
-        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
-      z-index: -1;
-      pointer-events: none;
+      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.1), transparent 25%),
+                  radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.1), transparent 25%);
+      z-index: -1; pointer-events: none;
     }
 
-    a, button { cursor: pointer; font-family: inherit; }
-
-    /* UTILITIES */
-    .glass-panel {
-      background: var(--glass);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-    }
-    
     .btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 10px 20px;
-      border-radius: 9999px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      border: none;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .btn-primary { background: var(--gradient); color: white; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
-    
-    .btn-outline { background: transparent; border: 1px solid var(--glass-border); color: white; }
-    .btn-outline:hover { background: rgba(255,255,255,0.1); }
-    
-    .text-gradient {
-      background: var(--gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      gap: 8px;
     }
 
-    /* AUTH PAGE */
-    #authPage {
-      display: flex;
-      min-height: 100vh;
-      width: 100%;
-      position: relative;
+    .btn-primary { background: var(--gradient); color: white; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
+    .btn-outline { background: transparent; border: 1px solid var(--glass-border); color: white; }
+    .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+    .card { 
+      background: var(--glass); 
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius); 
+      padding: 1.5rem; 
+      border: 1px solid var(--glass-border);
     }
-    
+
+    .text-gradient { background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    /* Page specific styles */
+    #authPage { display: flex; min-height: 100vh; width: 100%; position: relative; }
     .auth-bg {
       flex: 1;
       background: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
       background-size: cover;
       position: relative;
     }
+
     .auth-bg::after {
       content: '';
       position: absolute;
@@ -183,298 +164,193 @@
       max-width: 1600px;
       margin: 0 auto;
       width: 100%;
+      overflow-y: auto;
     }
 
-    .hero-section {
-      margin-bottom: 2rem;
-      padding: 2.5rem;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .hero-section::before {
-      content: '';
-      position: absolute;
-      top: -50%; right: -20%;
-      width: 300px; height: 300px;
-      background: var(--primary);
-      filter: blur(100px);
-      opacity: 0.3;
-      border-radius: 50%;
-    }
+    .section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
+    .section-title::before { content: ''; width: 4px; height: 20px; background: var(--gradient); border-radius: 2px; }
 
-    .hero-section h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .hero-section p { font-size: 1.1rem; color: var(--text-muted); max-width: 600px; }
-
-    .section-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
-
-    .clubs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.5rem;
-    }
-
+    /* CLUBS LIST */
+    .clubs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
     .club-card {
-      height: 180px;
-      border-radius: var(--radius);
+      transition: transform 0.3s;
+      cursor: pointer;
       position: relative;
       overflow: hidden;
-      cursor: pointer;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    }
-    
-    .club-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3); }
-
-    .club-card .bg-img {
-      position: absolute; inset: 0;
-      background-size: cover; background-position: center;
-      transition: transform 0.5s ease;
-    }
-    .club-card:hover .bg-img { transform: scale(1.05); }
-
-    .club-card .overlay {
-      position: absolute; inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+      min-height: 200px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 1.2rem;
     }
-    .club-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
-    .club-card p { font-size: 0.85rem; color: var(--text-muted); }
+    .club-card:hover { transform: translateY(-5px); }
+    .club-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent); z-index: 1; }
+    .club-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform 0.5s; }
+    .club-card:hover img { transform: scale(1.1); }
+    .club-content { position: relative; z-index: 2; padding: 1.25rem; }
+    .club-name { font-size: 1.1rem; font-weight: 700; }
+    .active-club { border: 2px solid var(--primary) !important; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+
+    /* EVENTS LIST */
+    .events-list { display: flex; flex-direction: column; gap: 1rem; }
+    .event-item {
+      display: grid;
+      grid-template-columns: 100px 1fr 150px 150px;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 1.25rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      transition: all 0.3s;
+    }
+    .event-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+    .event-date { text-align: center; border-right: 1px solid var(--glass-border); }
+    .event-date .day { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .event-date .month { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; }
+    
+    .event-info h4 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .event-info p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .event-meta { font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px; }
+    .event-meta span { display: flex; align-items: center; gap: 6px; }
+
+    /* SCROLLABLE CONTAINERS */
+    .scroll-container {
+      max-height: 280px; /* Roughly 2 items */
+      overflow-y: auto;
+      padding-right: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary) transparent;
+    }
+
+    .scroll-container::-webkit-scrollbar { width: 6px; }
+    .scroll-container::-webkit-scrollbar-track { background: transparent; }
+    .scroll-container::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+    .scroll-container::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    .events-list { max-height: 380px; } /* Events are taller */
 
     /* SIDEBAR */
-    .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
-    
-    .widget { padding: 1.5rem; }
-    .widget-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
-    
-    .winner-list, .notif-list { display: flex; flex-direction: column; gap: 0.8rem; max-height: 400px; overflow-y: auto; padding-right: 5px; }
-    
-    .winner-list::-webkit-scrollbar, .notif-list::-webkit-scrollbar { width: 4px; }
-    .winner-list::-webkit-scrollbar-thumb, .notif-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    .sidebar { display: flex; flex-direction: column; gap: 2rem; }
+    .winners-card { background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1)); border-color: rgba(99, 102, 241, 0.2); }
+    .winner-item { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border); }
+    .winner-rank { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; }
+    .rank-1 { background: #fbbf24; color: #78350f; }
+    .rank-2 { background: #94a3b8; color: #1e293b; }
+    .rank-3 { background: #d97706; color: #451a03; }
+    .winner-details h5 { font-size: 0.9rem; }
+    .winner-details p { font-size: 0.75rem; color: var(--text-muted); }
 
-    .winner-item {
-      padding: 1rem;
-      border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-      transition: background 0.2s;
-    }
-    .winner-item:hover { background: rgba(255,255,255,0.08); }
-    .winner-club { font-weight: 600; color: var(--secondary); font-size: 0.95rem; margin-bottom: 2px;}
-    .winner-event { font-size: 0.85rem; color: var(--text-muted); }
+    .pill { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .pill-group { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+    .pill-individual { background: rgba(255,255,255,0.1); color: var(--text-muted); }
 
-    .notif-item { padding: 0.8rem; border-left: 3px solid var(--primary); background: rgba(255,255,255,0.03); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-    .notif-item h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
-    .notif-item p { font-size: 0.8rem; color: var(--text-muted); }
-
-    /* MODALS */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-    .modal-overlay.active { display: flex; opacity: 1; }
-
-    .modal-content {
-      width: 100%;
-      max-width: 900px;
-      max-height: 90vh;
-      overflow-y: auto;
+    /* DIALOG */
+    dialog {
+      width: min(500px, 95vw);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
       background: var(--dark);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius);
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-      position: relative;
-      transform: translateY(20px);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: white;
+      padding: 0;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
-    .modal-overlay.active .modal-content { transform: translateY(0); }
-    
-    .modal-header {
-      padding: 1.5rem 2rem;
-      border-bottom: 1px solid var(--glass-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky; top: 0;
-      background: rgba(15,23,42,0.9);
-      backdrop-filter: blur(10px);
-      z-index: 10;
-    }
-    .modal-header h2 { font-size: 1.5rem; font-weight: 700; }
-    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
-    .close-btn:hover { color: white; }
+    dialog::backdrop { background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+    .dialogHeader { padding: 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
+    .dialogBody { padding: 1.5rem; }
 
-    .modal-body { padding: 2rem; }
-
-    /* EVENT CARDS IN MODAL */
-    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
-    
-    .event-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      transition: all 0.3s ease;
-    }
-    .event-card:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15); transform: translateY(-3px); }
-    
-    .event-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary); }
-    .event-card p.desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    
-    .event-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
-    .badge {
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      background: rgba(255,255,255,0.1);
-      color: var(--text-main);
-    }
-    .badge-group { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
-    .badge-indiv { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
-
-    /* EVENT DETAILS VIEW */
-    .event-details-view { display: none; }
-    .event-details-view.active { display: block; }
-    .events-list-view.hidden { display: none; }
-    
-    .details-header {
-      padding: 3rem 2rem;
-      border-radius: var(--radius);
-      background-size: cover;
-      background-position: center;
-      position: relative;
-      margin-bottom: 2rem;
-      overflow: hidden;
-    }
-    .details-header::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(to right, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.6) 100%);
-    }
-    .details-header-content { position: relative; z-index: 2; }
-    .details-header-content h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; }
-    
-    .details-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
-    @media (max-width: 768px) { .details-grid { grid-template-columns: 1fr; } }
-    
-    .info-section h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;}
-    .info-list { list-style: none; }
-    .info-list li { display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .info-list li span:first-child { color: var(--text-muted); }
-    .info-list li span:last-child { font-weight: 600; text-align: right;}
-
-    .reg-action-box {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      text-align: center;
-    }
-    .regMsg { margin-top: 1rem; font-size: 0.9rem; font-weight: 500; min-height: 20px;}
-
-    .spinner {
-      width: 20px; height: 20px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1s ease-in-out infinite;
-      display: none;
-      margin: 0 auto;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    @media (max-width: 1024px) {
+    @media (max-width: 1100px) {
       .main-content { grid-template-columns: 1fr; }
-      .auth-bg { display: none; }
-      .auth-container { max-width: 100%; }
+      .sidebar { order: -1; }
+    }
+    @media (max-width: 768px) {
+      .event-item { grid-template-columns: 1fr; text-align: center; }
+      .event-date { border-right: none; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; }
+      .nav-actions .user-name { display: none; }
     }
   </style>
 </head>
 <body>
-
   <!-- AUTH PAGE -->
   <div id="authPage">
     <div class="auth-bg"></div>
     <div class="auth-container">
-      <!-- Login -->
-      <div class="auth-box" id="loginBox">
-        <h2><span class="text-gradient">Welcome Back</span></h2>
-        <p class="subtitle">Sign in to MVJCE Event Management</p>
-        
-        <form onsubmit="return false;">
+      <div class="auth-box">
+        <div id="loginBox">
+          <h2 class="text-gradient">Welcome back</h2>
+          <p class="subtitle">Enter your credentials to access the portal</p>
+          
           <div class="form-group">
-            <label>USN</label>
-            <input type="text" id="usernameInput" class="form-control" required placeholder="1MJ..." style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            <label for="usernameInput">USN / Username</label>
+            <input id="usernameInput" type="text" class="form-control" placeholder="e.g. 1MJ23CS001" />
           </div>
+          
           <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="passwordInput" class="form-control" required placeholder="••••••••">
+            <label for="passwordInput">Password</label>
+            <input id="passwordInput" type="password" class="form-control" placeholder="••••••••" />
           </div>
-          <button class="btn btn-primary" style="width:100%; margin-top: 1rem;" onclick="attemptLogin()">
-            <span id="loginText">Sign In</span>
-            <div class="spinner" id="loginSpinner"></div>
-          </button>
+          
           <div class="auth-error" id="loginError"></div>
-          <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
-            Don't have an account? <a onclick="toggleAuth()" style="color: var(--primary); font-weight: 600;">Create one</a>
-          </p>
-        </form>
-      </div>
-
-      <!-- Register -->
-      <div class="auth-box" id="registerBox" style="display: none;">
-        <h2><span class="text-gradient">Join Us</span></h2>
-        <p class="subtitle">Create your student account</p>
-        
-        <form onsubmit="return false;" style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
-          <div class="form-group">
-            <label>USN</label>
-            <input type="text" id="regUsn" class="form-control" required placeholder="1MJ..." style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
-          </div>
-          <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" id="regName" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" id="regEmail" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label>Mobile Number</label>
-            <input type="tel" id="regMobile" class="form-control" required placeholder="10 digits">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="regPassword" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label>Confirm Password</label>
-            <input type="password" id="regConfirm" class="form-control" required>
-          </div>
-          <button class="btn btn-primary" style="width:100%; margin-top: 1rem;" onclick="attemptRegister()">
-            <span id="regText">Create Account</span>
-            <div class="spinner" id="regSpinner"></div>
+          
+          <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="attemptLogin()">
+            <span id="loginText">Sign In</span>
+            <div id="loginSpinner" style="display: none; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
           </button>
-          <div class="auth-error" id="regError"></div>
-          <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
-            Already have an account? <a onclick="toggleAuth()" style="color: var(--primary); font-weight: 600;">Sign in</a>
+          
+          <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-muted);">
+            Don't have an account? <a href="#" style="color: var(--primary); font-weight: 600;" onclick="toggleAuth()">Create one</a>
           </p>
-        </form>
+        </div>
+
+        <div id="registerBox" style="display: none;">
+          <h2 class="text-gradient">Create account</h2>
+          <p class="subtitle">Join our community of student events</p>
+          
+          <div class="form-group">
+            <label for="regUsn">USN</label>
+            <input id="regUsn" type="text" class="form-control" placeholder="1MJ..." />
+          </div>
+          
+          <div class="form-group">
+            <label for="regName">Full Name</label>
+            <input id="regName" type="text" class="form-control" placeholder="John Doe" />
+          </div>
+          
+          <div class="form-group">
+            <label for="regEmail">Email Address</label>
+            <input id="regEmail" type="email" class="form-control" placeholder="john@example.com" />
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="regMobile">Mobile No</label>
+              <input id="regMobile" type="tel" class="form-control" placeholder="10 digits" />
+            </div>
+            <div class="form-group">
+              <label for="regGender">Gender</label>
+              <select id="regGender" class="form-control">
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <input id="regPassword" type="password" class="form-control" placeholder="••••••••" />
+          </div>
+          
+          <div class="auth-error" id="regError"></div>
+          
+          <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="attemptRegister()">
+            Create Account
+          </button>
+          
+          <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-muted);">
+            Already have an account? <a href="#" style="color: var(--primary); font-weight: 600;" onclick="toggleAuth()">Sign In</a>
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -483,105 +359,122 @@
   <div id="mainApp">
     <header class="app-header">
       <div class="logo">
-        <span>🎉</span> MVJCE Events
+        <span>E</span>
+        <div class="text-gradient">EventHub</div>
       </div>
+      
       <div class="nav-actions">
-        <span id="userPill" style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted); margin-right: 1rem;"></span>
-        <button class="btn btn-outline" onclick="logout()" style="padding: 6px 14px; font-size: 0.85rem;">Logout</button>
+        <div id="userPill" class="user-name" style="font-weight: 600; font-size: 0.9rem;"></div>
+        <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="logout()">Sign Out</button>
       </div>
     </header>
 
     <div class="main-content">
-      <!-- Left Column -->
-      <div>
-        <div class="hero-section glass-panel">
-          <h1 class="text-gradient">Discover & Participate</h1>
-          <p>Explore events from various clubs, showcase your skills, and be part of the vibrant campus life.</p>
+      <div class="content-area">
+        <!-- EVENTS -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3 class="section-title" id="eventsTitle" style="margin-bottom: 0;">Live Events</h3>
+          <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.8rem;" onclick="loadEvents()">View All</button>
         </div>
+        <div id="eventsContainer" class="events-list scroll-container" style="margin-bottom: 3rem;"></div>
 
-        <h2 class="section-title">Campus Clubs</h2>
-        <div class="clubs-grid" id="clubsGrid">
-          <!-- Clubs injected here -->
-        </div>
+        <!-- CLUBS -->
+        <h3 class="section-title">Explore Clubs</h3>
+        <div id="clubsContainer" class="clubs-grid"></div>
       </div>
 
-      <!-- Right Column (Sidebar) -->
       <div class="sidebar">
-        <div class="widget glass-panel">
-          <div class="widget-title">🏆 Recent Winners</div>
-          <div class="winner-list" id="winnersList">
-            <p style="color:var(--text-muted); font-size:0.9rem;">Loading...</p>
-          </div>
+        <!-- RECENT WINNERS -->
+        <div class="card winners-card">
+          <h3 style="font-size: 1.1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
+            🏆 Recent Winners
+          </h3>
+          <div id="winnersList" class="scroll-container"></div>
         </div>
 
-        <div class="widget glass-panel">
-          <div class="widget-title">📌 Upcoming Deadlines</div>
-          <div class="notif-list" id="notifList">
-             <p style="color:var(--text-muted); font-size:0.9rem;">Loading...</p>
+        <!-- MY REGISTRATIONS -->
+        <div class="card">
+          <h3 style="font-size: 1.1rem; margin-bottom: 1.5rem;">My Participations</h3>
+          <div id="myRegsList" class="scroll-container small" style="color: var(--text-muted);">
+            Loading registrations...
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MAIN MODAL (Handles both List and Details) -->
-  <div class="modal-overlay" id="mainModal" onclick="if(event.target === this) closeModal()">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 id="modalTitle">Club Events</h2>
-        <button class="close-btn" onclick="closeModal()">&times;</button>
+  <!-- DIALOGS -->
+  <dialog id="eventDetailsDialog">
+    <div id="dlgBg" style="height: 150px; background-size: cover; background-position: center; position: relative;">
+      <div style="position: absolute; inset: 0; background: linear-gradient(to top, var(--dark), transparent);"></div>
+    </div>
+    <div class="dialogHeader" style="border-top: none;">
+      <h3 id="dlgTitle">Event Name</h3>
+      <button class="btn-outline" style="padding: 4px 10px; border-radius: 6px; border:none;" onclick="document.getElementById('eventDetailsDialog').close()">✕</button>
+    </div>
+    <div class="dialogBody">
+      <p id="dlgDesc" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem;"></p>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 0.75rem; background: rgba(255,255,255,0.02);">
+          <div class="small" style="color: var(--text-muted);">Capacity</div>
+          <div id="dlgCapacity" style="font-weight: 700;"></div>
+        </div>
+        <div class="card" style="padding: 0.75rem; background: rgba(255,255,255,0.02);">
+          <div class="small" style="color: var(--text-muted);">Type</div>
+          <div id="dlgType" style="font-weight: 700;"></div>
+        </div>
       </div>
-      <div class="modal-body">
-        
-        <!-- View 1: List of events -->
-        <div class="events-list-view" id="eventsListView">
-          <div class="events-grid" id="eventsGrid"></div>
+
+      <div id="dlgRegInfo" class="small" style="margin-bottom: 1.5rem; padding: 10px; background: rgba(239, 68, 68, 0.05); border-radius: 8px; color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.1); display: none;">
+        Registration ends on <span id="dlgEnd"></span>
+      </div>
+      
+      <div id="dlgActionArea"></div>
+    </div>
+  </dialog>
+
+  <dialog id="teamRegDialog">
+    <div class="dialogHeader">
+      <h3>Team Registration</h3>
+      <button class="btn-outline" style="padding: 4px 10px; border-radius: 6px; border:none;" onclick="document.getElementById('teamRegDialog').close()">✕</button>
+    </div>
+    <div class="dialogBody">
+      <div id="teamRegSub" class="small" style="color: var(--text-muted); margin-bottom: 1.5rem;"></div>
+      
+      <div class="form-group">
+        <label for="regTeamName">Team Name</label>
+        <input id="regTeamName" type="text" class="form-control" placeholder="Choose a unique team name" />
+      </div>
+      
+      <div class="form-group" style="margin-top: 1rem;">
+        <label for="regTeamMembers">Team Member USNs (Comma Separated)</label>
+        <textarea id="regTeamMembers" class="form-control" rows="3" placeholder="e.g. 1MJ23CS001, 1MJ23CS002" style="resize: vertical;"></textarea>
+        <div class="small" style="color: var(--text-muted); margin-top: 0.5rem;">
+          Do not include your own USN. You are automatically added as the Team Leader.
         </div>
-
-        <!-- View 2: Specific Event Details -->
-        <div class="event-details-view" id="eventDetailsView">
-          <button class="btn btn-outline" style="margin-bottom: 1.5rem; padding: 6px 12px; font-size: 0.85rem;" onclick="backToList()">← Back to Events</button>
-          
-          <div class="details-header" id="detHeader">
-            <div class="details-header-content">
-              <h1 id="detName">Event Name</h1>
-              <div class="event-meta" id="detMetaBadges" style="margin-bottom:0;"></div>
-            </div>
-          </div>
-
-          <div class="details-grid">
-            <div class="info-section">
-              <h3>About the Event</h3>
-              <p id="detDesc" style="color: var(--text-muted); line-height: 1.7; white-space: pre-wrap; margin-bottom: 2rem;"></p>
-              
-              <h3>Important Details</h3>
-              <ul class="info-list" id="detList"></ul>
-            </div>
-
-            <div>
-              <div class="reg-action-box">
-                <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">Registration</h3>
-                <p id="detStatus" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;"></p>
-                
-                <button class="btn btn-primary" id="detRegBtn" style="width:100%; padding: 12px;">Register Now</button>
-                <div id="detRegMsg" class="regMsg"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      </div>
+      
+      <div class="auth-error" id="teamRegErr" style="margin-top: 1rem;"></div>
+      
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+        <button class="btn btn-primary" id="teamRegSubmitBtn" style="flex: 1;">Confirm Registration</button>
+        <button class="btn btn-outline" style="flex: 1;" onclick="document.getElementById('teamRegDialog').close()">Cancel</button>
       </div>
     </div>
-  </div>
+  </dialog>
+
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 
   <script>
-    const API_BASE_URL = 'http://localhost:7070/api';
+    const API_BASE_URL = '/api';
     let currentUser = null;
     let authToken = null;
     let clubsCache = [];
     let currentClubEvents = [];
 
-    // INIT
     window.onload = () => {
       const savedUser = localStorage.getItem('cem_user');
       const savedToken = localStorage.getItem('cem_token');
@@ -606,7 +499,6 @@
       }
     }
 
-    // AUTH API
     async function attemptLogin() {
       const u = document.getElementById('usernameInput').value.trim();
       const p = document.getElementById('passwordInput').value;
@@ -643,56 +535,38 @@
       const fullName = document.getElementById('regName').value.trim();
       const email = document.getElementById('regEmail').value.trim();
       const mobile = document.getElementById('regMobile').value.trim();
+      const gender = document.getElementById('regGender').value;
       const password = document.getElementById('regPassword').value;
-      const confirm = document.getElementById('regConfirm').value;
       const err = document.getElementById('regError');
-      err.textContent = '';
       
       if(!usn || !fullName || !email || !mobile || !password) { err.textContent = 'Please fill all fields'; return; }
-      if(password !== confirm) { err.textContent = 'Passwords do not match'; return; }
-      if(!/^\d{10}$/.test(mobile)) { err.textContent = 'Valid 10-digit mobile required'; return; }
-      
-      document.getElementById('regText').style.display = 'none';
-      document.getElementById('regSpinner').style.display = 'block';
 
       try {
         const res = await fetch(`${API_BASE_URL}/auth/register`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({usn, fullName, email, mobile, password, gender: 'OTHER'})
+          body: JSON.stringify({username: usn, fullName, email, mobile, gender, password})
         });
         const data = await res.json().catch(()=>({}));
         if (!res.ok) throw new Error(data.error || 'Registration failed');
-        
-        // Auto switch to login
-        document.getElementById('usernameInput').value = usn;
-        document.getElementById('passwordInput').value = password;
+        alert('Account created! Please sign in.');
         toggleAuth();
-        attemptLogin();
       } catch(e) {
         err.textContent = e.message;
-      } finally {
-        document.getElementById('regText').style.display = 'block';
-        document.getElementById('regSpinner').style.display = 'none';
       }
     }
 
     function logout() {
-      localStorage.removeItem('cem_user');
-      localStorage.removeItem('cem_token');
-      currentUser = null; authToken = null;
-      document.getElementById('authPage').style.display = 'flex';
-      document.getElementById('mainApp').style.display = 'none';
-      closeModal();
+      localStorage.clear();
+      location.reload();
     }
 
-    // MAIN APP
     function showApp() {
       document.getElementById('authPage').style.display = 'none';
       document.getElementById('mainApp').style.display = 'flex';
       document.getElementById('userPill').textContent = `Logged in as ${currentUser.username}`;
       loadClubs();
       loadWinners();
-      loadNotifications();
+      loadMyRegistrations();
     }
 
     function sanitize(str) {
@@ -704,245 +578,219 @@
 
     function fmtDate(iso) {
       if(!iso) return 'TBA';
-      return new Date(iso).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+      const d = new Date(iso);
+      return {
+        day: d.getDate(),
+        month: d.toLocaleString('default', { month: 'short' }),
+        full: d.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})
+      };
     }
 
     async function loadClubs() {
       try {
         const res = await fetch(`${API_BASE_URL}/clubs`);
         clubsCache = await res.json();
-        const grid = document.getElementById('clubsGrid');
-        grid.innerHTML = '';
+        const container = document.getElementById('clubsContainer');
+        container.innerHTML = '';
         clubsCache.forEach(c => {
           const div = document.createElement('div');
-          div.className = 'club-card glass-panel';
-          const bg = c.imageUrl || 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?q=80&w=600&auto=format&fit=crop';
+          div.className = 'card club-card';
+          div.onclick = (e) => {
+            // Remove active class from all cards
+            document.querySelectorAll('.club-card').forEach(cc => cc.classList.remove('active-club'));
+            div.classList.add('active-club');
+            loadEvents(c.id, c.name);
+          };
           div.innerHTML = `
-            <div class="bg-img" style="background-image: url('${sanitize(bg)}')"></div>
-            <div class="overlay">
-              <h3>${sanitize(c.name)}</h3>
-              <p>Click to view events</p>
+            <img src="${c.imageUrl || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=2070&auto=format&fit=crop'}" />
+            <div class="club-content">
+              <div class="club-name">${sanitize(c.name)}</div>
             </div>
           `;
-          div.onclick = () => openClubEvents(c);
-          grid.appendChild(div);
+          container.appendChild(div);
         });
+        loadEvents();
       } catch(e) { console.error(e); }
     }
 
-    async function loadWinners() {
+    async function loadEvents(clubId = null, clubName = null) {
+      const title = document.getElementById('eventsTitle');
+      title.textContent = clubName ? `Events in ${clubName}` : 'Live Events';
+      
+      if (clubId) {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      
+      const container = document.getElementById('eventsContainer');
+      container.innerHTML = '<div class="small" style="color:var(--text-muted)">Fetching events...</div>';
+
       try {
-        const [winnersRes, clubsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/winners`),
-          fetch(`${API_BASE_URL}/clubs`)
-        ]);
-        const winners = await winnersRes.json();
-        const clubs = await clubsRes.json();
-
-        const list = document.getElementById('winnersList');
-        list.innerHTML = '';
-        if(winners.length === 0) { list.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No winners announced yet.</p>'; return; }
-
-        const clubMap = new Map(clubs.map(c => [c.id, c.name]));
-        
-        winners.slice(0, 10).forEach(w => {
-          const div = document.createElement('div');
-          div.className = 'winner-item';
-          const eventName = w.eventName || 'Unknown Event';
-          const clubName = clubMap.get(w.clubId) || 'Unknown Club';
-          div.innerHTML = `
-            <div class="winner-club">🏆 ${sanitize(w.positionDisplayName)}</div>
-            <div style="font-weight:600; color:white; font-size: 0.95rem;">${sanitize(w.fullName || w.username)}</div>
-            <div class="winner-event">${sanitize(eventName)} • ${sanitize(clubName)}</div>
-          `;
-          list.appendChild(div);
-        });
-      } catch(e) { console.error(e); }
-    }
-
-
-    async function loadNotifications() {
-      try {
-        const res = await fetch(`${API_BASE_URL}/events/active`);
+        const url = clubId ? `${API_BASE_URL}/events/active?clubId=${clubId}` : `${API_BASE_URL}/events/active`;
+        const res = await fetch(url);
         const events = await res.json();
-        const list = document.getElementById('notifList');
-        list.innerHTML = '';
-        if(events.length === 0) { list.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No upcoming events.</p>'; return; }
+        currentClubEvents = events;
+        container.innerHTML = '';
         
-        events.slice(0, 5).forEach(e => {
-          const div = document.createElement('div');
-          div.className = 'notif-item';
-          div.innerHTML = `
-            <h4>${sanitize(e.name)}</h4>
-            <p>Closes: ${fmtDate(e.regEnd)}</p>
-          `;
-          list.appendChild(div);
-        });
-      } catch(e) { console.error(e); }
-    }
-
-    // MODAL LOGIC
-    function closeModal() {
-      const modal = document.getElementById('mainModal');
-      modal.classList.remove('active');
-      setTimeout(() => { modal.style.display = 'none'; }, 300);
-    }
-    
-    function openModal() {
-      const modal = document.getElementById('mainModal');
-      modal.style.display = 'flex';
-      // Force reflow
-      void modal.offsetWidth;
-      modal.classList.add('active');
-    }
-
-    async function openClubEvents(club) {
-      document.getElementById('modalTitle').textContent = `${club.name} Events`;
-      document.getElementById('eventsListView').classList.remove('hidden');
-      document.getElementById('eventDetailsView').classList.remove('active');
-      const grid = document.getElementById('eventsGrid');
-      grid.innerHTML = '<p style="padding: 2rem;">Loading events...</p>';
-      openModal();
-
-      try {
-        const res = await fetch(`${API_BASE_URL}/events/active?clubId=${club.id}`);
-        currentClubEvents = await res.json();
-        grid.innerHTML = '';
-        if(currentClubEvents.length === 0) {
-          grid.innerHTML = '<p style="padding: 2rem; color: var(--text-muted);">No active events currently available for this club.</p>';
+        if (events.length === 0) {
+          container.innerHTML = '<div class="card" style="text-align:center; padding: 3rem; color:var(--text-muted)">No active events found for this club.</div>';
           return;
         }
 
-        currentClubEvents.forEach(e => {
+        events.forEach(e => {
+          const d = fmtDate(e.regStart);
           const isGroup = e.type === 'GROUP';
-          const cap = e.capacity || '∞';
-          
-          const card = document.createElement('div');
-          card.className = 'event-card';
-          card.innerHTML = `
-            <h3>${sanitize(e.name)}</h3>
+          const div = document.createElement('div');
+          div.className = 'event-item';
+          div.innerHTML = `
+            <div class="event-date">
+              <div class="day">${d.day}</div>
+              <div class="month">${d.month}</div>
+            </div>
+            <div class="event-info">
+              <h4>${sanitize(e.name)}</h4>
+              <p>${sanitize(e.description)}</p>
+            </div>
             <div class="event-meta">
-              <span class="badge ${isGroup ? 'badge-group' : 'badge-indiv'}">${isGroup ? '👥 Team' : '👤 Individual'}</span>
-              <span class="badge">Cap: ${cap}</span>
+              <span>👥 ${e.participantCount || 0} / ${e.capacity || '∞'}</span>
+              <span class="pill ${isGroup ? 'pill-group' : 'pill-individual'}">${e.type}</span>
             </div>
-            <p class="desc">${sanitize(e.description || 'No description available.')}</p>
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-               Closes: ${fmtDate(e.regEnd)}
+            <div>
+              <button class="btn btn-primary" onclick="showEventDetails('${e.id}')">Details</button>
             </div>
-            <button class="btn btn-outline" style="width: 100%; border-color: var(--primary); color: var(--primary);" onclick="showEventDetails('${e.id}')">View Details</button>
           `;
-          grid.appendChild(card);
+          container.appendChild(div);
         });
-
-      } catch(e) {
-        grid.innerHTML = '<p style="padding: 2rem; color: var(--danger);">Failed to load events.</p>';
+      } catch(e) { 
+        container.innerHTML = '<div class="auth-error">Failed to load events.</div>';
       }
     }
 
-    function showEventDetails(eventId) {
-      const event = currentClubEvents.find(e => e.id === eventId);
-      if(!event) return;
+    async function showEventDetails(id) {
+      const e = currentClubEvents.find(ev => ev.id === id);
+      if(!e) return;
 
-      document.getElementById('eventsListView').classList.add('hidden');
-      document.getElementById('eventDetailsView').classList.add('active');
+      const dlg = document.getElementById('eventDetailsDialog');
+      document.getElementById('dlgTitle').textContent = e.name;
+      document.getElementById('dlgDesc').textContent = e.description || 'No description provided.';
+      document.getElementById('dlgCapacity').textContent = e.capacity ? `${e.participantCount || 0} / ${e.capacity}` : 'Unlimited';
+      document.getElementById('dlgType').textContent = e.type;
+      document.getElementById('dlgBg').style.backgroundImage = `url(${e.bgImageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop'})`;
       
-      const isGroup = event.type === 'GROUP';
-      const bg = event.bgImageUrl || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000&auto=format&fit=crop';
-      
-      document.getElementById('detHeader').style.backgroundImage = `url('${sanitize(bg)}')`;
-      document.getElementById('detName').textContent = event.name;
-      
-      document.getElementById('detMetaBadges').innerHTML = `
-        <span class="badge ${isGroup ? 'badge-group' : 'badge-indiv'}">${isGroup ? 'Team Event' : 'Individual Event'}</span>
-      `;
-      
-      document.getElementById('detDesc').textContent = event.description || 'No description available for this event.';
-      
-      let listHtml = `
-        <li><span>Registration Opens</span> <span>${fmtDate(event.regStart)}</span></li>
-        <li><span>Registration Closes</span> <span>${fmtDate(event.regEnd)}</span></li>
-        <li><span>Total Capacity</span> <span>${event.capacity ? event.capacity + (isGroup ? ' Teams' : ' Participants') : 'Unlimited'}</span></li>
-      `;
-      
-      if(isGroup) {
-        listHtml += `
-          <li><span>Min Team Members</span> <span>${event.minMembers || 1}</span></li>
-          <li><span>Max Team Members</span> <span>${event.maxMembers || 'Unrestricted'}</span></li>
-        `;
-      }
-      document.getElementById('detList').innerHTML = listHtml;
+      const end = fmtDate(e.regEnd);
+      document.getElementById('dlgEnd').textContent = end.full;
+      document.getElementById('dlgRegInfo').style.display = 'block';
 
-      // Handle Registration Status
-      const regBtn = document.getElementById('detRegBtn');
-      const regMsg = document.getElementById('detRegMsg');
-      const statusText = document.getElementById('detStatus');
+      const actionArea = document.getElementById('dlgActionArea');
+      actionArea.innerHTML = '<button class="btn btn-primary" style="width:100%" onclick="registerForEvent(\''+e.id+'\')">Register Now</button>';
       
-      regMsg.textContent = '';
-      regMsg.className = 'regMsg';
-      
-      const now = new Date();
-      const start = new Date(event.regStart);
-      const end = new Date(event.regEnd);
-      
-      if(now < start) {
-        regBtn.disabled = true;
-        regBtn.textContent = 'Not Started';
-        statusText.textContent = 'Registration has not opened yet.';
-      } else if (now > end) {
-        regBtn.disabled = true;
-        regBtn.textContent = 'Closed';
-        statusText.textContent = 'Registration period has ended.';
-      } else {
-        // Technically we should check capacity from backend, but basic check here
-        regBtn.disabled = false;
-        regBtn.textContent = 'Register Now';
-        statusText.textContent = 'Registrations are currently open!';
-        
-        regBtn.onclick = () => performRegistration(event.id);
-      }
+      dlg.showModal();
     }
 
-    function backToList() {
-      document.getElementById('eventDetailsView').classList.remove('active');
-      document.getElementById('eventsListView').classList.remove('hidden');
-    }
+    async function registerForEvent(eventId) {
+      const e = currentClubEvents.find(ev => ev.id === eventId);
+      if(e && e.type === 'GROUP') {
+        openTeamReg(e);
+        return;
+      }
 
-    async function performRegistration(eventId) {
-      const regBtn = document.getElementById('detRegBtn');
-      const regMsg = document.getElementById('detRegMsg');
-      
-      if(!confirm("Are you sure you want to register for this event?")) return;
-      
-      regBtn.disabled = true;
-      regBtn.textContent = 'Processing...';
-      regMsg.textContent = '';
-      
       try {
-        const res = await fetch(`${API_BASE_URL}/events/${eventId}/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          },
-          body: JSON.stringify({})
+        const res = await fetch(`${API_BASE_URL}/events/${eventId}/register?username=${currentUser.username}`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        
         const data = await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data.error || 'Registration failed');
+        alert('Successfully registered!');
+        document.getElementById('eventDetailsDialog').close();
+        loadMyRegistrations();
+        loadEvents();
+      } catch(err) { alert(err.message); }
+    }
+
+    function openTeamReg(e) {
+      document.getElementById('eventDetailsDialog').close();
+      const dlg = document.getElementById('teamRegDialog');
+      document.getElementById('teamRegSub').textContent = `Event: ${e.name} (Min: ${e.minMembers}, Max: ${e.maxMembers})`;
+      document.getElementById('teamRegErr').textContent = '';
+      
+      document.getElementById('teamRegSubmitBtn').onclick = async () => {
+        const teamName = document.getElementById('regTeamName').value.trim();
+        const membersRaw = document.getElementById('regTeamMembers').value.trim();
+        const members = membersRaw ? membersRaw.split(',').map(s => s.trim()).filter(s => s) : [];
         
-        if(res.ok) {
-          regMsg.style.color = 'var(--success)';
-          regMsg.textContent = 'Successfully registered! 🎉';
-          regBtn.textContent = 'Registered';
-          loadNotifications(); // Refresh notifications
-        } else {
-          throw new Error(data.message || 'Registration failed');
+        try {
+          const res = await fetch(`${API_BASE_URL}/teams`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ eventId: e.id, teamName, leaderUsn: currentUser.username, memberUsns: members })
+          });
+          const data = await res.json().catch(()=>({}));
+          if(!res.ok) throw new Error(data.error || 'Team registration failed');
+          alert('Team registered successfully!');
+          dlg.close();
+          loadMyRegistrations();
+          loadEvents();
+        } catch(err) { document.getElementById('teamRegErr').textContent = err.message; }
+      };
+      
+      dlg.showModal();
+    }
+
+    async function loadMyRegistrations() {
+      const list = document.getElementById('myRegsList');
+      try {
+        const [indRes, teamRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/events/my-registrations?username=${currentUser.username}`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${API_BASE_URL}/teams/my-teams?username=${currentUser.username}`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+        ]);
+        
+        const individuals = await indRes.json();
+        const teams = await teamRes.json();
+        
+        list.innerHTML = '';
+        if(individuals.length === 0 && teams.length === 0) {
+          list.innerHTML = 'No active registrations.'; return;
         }
-      } catch(e) {
-        regMsg.style.color = 'var(--danger)';
-        regMsg.textContent = e.message;
-        regBtn.disabled = false;
-        regBtn.textContent = 'Try Again';
-      }
+
+        individuals.forEach(r => {
+          const div = document.createElement('div');
+          div.style = 'padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--glass-border);';
+          div.innerHTML = `<div style="font-weight:600; color:white;">${sanitize(r.name)}</div><div class="small">Individual Participant</div>`;
+          list.appendChild(div);
+        });
+
+        teams.forEach(t => {
+          const div = document.createElement('div');
+          div.style = 'padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--glass-border);';
+          div.innerHTML = `<div style="font-weight:600; color:white;">${sanitize(t.teamName)}</div><div class="small">Event: ${sanitize(t.eventName || 'Group Event')}</div>`;
+          list.appendChild(div);
+        });
+      } catch(e) { list.innerHTML = 'Error loading.'; }
+    }
+
+    async function loadWinners() {
+      const list = document.getElementById('winnersList');
+      try {
+        const res = await fetch(`${API_BASE_URL}/winners`);
+        const winners = await res.json();
+        list.innerHTML = '';
+        if(winners.length === 0) {
+          list.innerHTML = '<div class="small" style="color:var(--text-muted)">No results published yet.</div>'; return;
+        }
+
+        winners.forEach(w => {
+          const rank = w.position === 'FIRST' ? 1 : w.position === 'SECOND' ? 2 : 3;
+          const div = document.createElement('div');
+          div.className = 'winner-item';
+          div.innerHTML = `
+            <div class="winner-rank rank-${rank}">${rank}</div>
+            <div class="winner-details">
+              <h5>${sanitize(w.teamName || w.username)}</h5>
+              <p>${sanitize(w.eventName)}</p>
+            </div>
+          `;
+          list.appendChild(div);
+        });
+      } catch(e) { console.error(e); }
     }
   </script>
 </body>

@@ -12,5 +12,10 @@ public interface TeamRepository extends JpaRepository<Team, String> {
     List<Team> findByEventId(String eventId);
     Optional<Team> findByEventIdAndLeaderId(String eventId, String leaderId);
     boolean existsByEventIdAndLeaderId(String eventId, String leaderId);
+    boolean existsByEventIdAndTeamNameIgnoreCase(String eventId, String teamName);
     long countByEventId(String eventId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Team t WHERE t.eventId = :eventId")
+    void deleteByEventId(@org.springframework.data.repository.query.Param("eventId") String eventId);
 }

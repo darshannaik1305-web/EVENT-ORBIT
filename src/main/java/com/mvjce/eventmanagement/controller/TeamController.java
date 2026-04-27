@@ -110,6 +110,28 @@ public class TeamController {
         }
     }
 
+    @DeleteMapping("/{teamId}")
+    public ResponseEntity<?> deleteTeam(
+            @PathVariable String teamId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        
+        User actorUser = getActorUserFromToken(authorization);
+        if (actorUser == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
+        }
+        
+        if (!"ADMIN".equals(actorUser.getRole()) && !"CLUB_ADMIN".equals(actorUser.getRole())) {
+            return ResponseEntity.status(403).body(Map.of("message", "Forbidden"));
+        }
+        
+        try {
+            teamService.deleteTeam(teamId);
+            return ResponseEntity.ok(Map.of("message", "Team deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/check-registration/{eventId}")
     public ResponseEntity<?> checkUserRegistration(
             @PathVariable String eventId,
@@ -149,6 +171,31 @@ public class TeamController {
                     "teamRegistered", isRegistered,
                     "individualRegistered", isIndividualRegistered
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/my-teams")
+    public ResponseEntity<?> getMyTeams(@RequestParam String username) {
+        try {
+            // Find all TeamMember entries for this user
+            List<com.mvjce.eventmanagement.model.TeamMember> memberships = teamService.getTeamMembersByUserId(username);
+            java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+            
+            for (com.mvjce.eventmanagement.model.TeamMember tm : memberships) {
+                Team t = tm.getTeam();
+                Event e = eventRepository.findById(t.getEventId()).orElse(null);
+                if (e == null) continue; // Skip teams for deleted events
+                
+                java.util.Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", t.getId());
+                map.put("teamName", t.getTeamName());
+                map.put("eventId", t.getEventId());
+                map.put("eventName", e != null ? e.getName() : "Unknown Event");
+                result.add(map);
+            }
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

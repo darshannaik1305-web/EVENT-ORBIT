@@ -66,6 +66,11 @@ public class TeamService {
             throw new IllegalArgumentException("Team can have at most " + maxMembers + " members (including leader)");
         }
 
+        // Check if team name is unique for this event
+        if (teamRepository.existsByEventIdAndTeamNameIgnoreCase(eventId, teamName)) {
+            throw new IllegalArgumentException("Team name '" + teamName + "' is already taken for this event. Please choose a different name.");
+        }
+
         // Check for duplicate USNs in the team
         Set<String> uniqueUserIds = new HashSet<>();
         uniqueUserIds.add(leaderId.toUpperCase());
@@ -141,5 +146,9 @@ public class TeamService {
 
     public boolean isUserRegisteredForEvent(String eventId, String userId) {
         return teamMemberRepository.existsByEventIdAndUserId(eventId, userId);
+    }
+
+    public List<TeamMember> getTeamMembersByUserId(String userId) {
+        return teamMemberRepository.findByUserId(userId);
     }
 }

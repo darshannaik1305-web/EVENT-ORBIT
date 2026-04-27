@@ -43,6 +43,9 @@ public class Event {
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<EventRegistration> registrations = new ArrayList<>();
 
+    @jakarta.persistence.Transient
+    private Integer participantCount;
+
     private String createdBy;
     private LocalDateTime createdAt;
     private String updatedBy;
@@ -155,6 +158,14 @@ public class Event {
 
     public void setRegistrations(List<EventRegistration> registrations) {
         this.registrations = registrations;
+    }
+
+    public Integer getParticipantCount() {
+        return participantCount;
+    }
+
+    public void setParticipantCount(Integer participantCount) {
+        this.participantCount = participantCount;
     }
 
     public String getCreatedBy() {

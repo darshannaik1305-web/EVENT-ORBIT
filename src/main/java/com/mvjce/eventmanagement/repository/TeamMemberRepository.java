@@ -20,4 +20,6 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
 
     @Query("SELECT CASE WHEN COUNT(tm) > 0 THEN true ELSE false END FROM TeamMember tm JOIN tm.team t WHERE t.eventId = :eventId AND tm.userId = :userId")
     boolean existsByEventIdAndUserId(@Param("eventId") String eventId, @Param("userId") String userId);
+
+    List<TeamMember> findByUserId(String userId);
 }

@@ -75,15 +75,44 @@ public class WinnerController {
         return false;
     }
 
-    @PostMapping
-    public ResponseEntity<?> addWinner(@RequestBody Map<String, Object> payload) {
+    private Map<String, Object> mapWinnerToResponse(Winner winner) {
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("id", winner.getId());
+        map.put("eventId", winner.getEventId());
+        map.put("clubId", winner.getClubId());
+        map.put("username", winner.getUsername());
+        map.put("fullName", winner.getFullName());
+        map.put("email", winner.getEmail());
+        map.put("mobile", winner.getMobile());
+        map.put("position", winner.getPosition().name());
+        map.put("positionDisplayName", winner.getPosition().getDisplayName());
+        map.put("createdAt", winner.getCreatedAt());
+
+        // Add event and team info
+        eventRepository.findById(winner.getEventId()).ifPresent(event -> {
+            map.put("eventName", event.getName());
+            if (EventType.GROUP.equals(event.getType())) {
+                List<Team> teams = teamRepository.findByEventId(event.getId());
+                if (teams != null) {
+                    teams.stream()
+                        .filter(t -> t.getLeaderId() != null && t.getLeaderId().equalsIgnoreCase(winner.getUsername()))
+                        .findFirst()
+                        .ifPresent(t -> map.put("teamName", t.getTeamName()));
+                }
+            }
+        });
+        return map;
+    }
+
+    @PostMapping("/event/{eventId}")
+    public ResponseEntity<?> addWinner(@PathVariable String eventId, @RequestBody Map<String, Object> payload) {
         try {
-            String eventId = (String) payload.get("eventId");
             String username = (String) payload.get("username");
+            String teamName = (String) payload.get("teamName");
             String positionStr = (String) payload.get("position");
 
-            if (eventId == null || username == null || positionStr == null) {
-                return ResponseEntity.badRequest().body(Map.of("message", "eventId, username, and position are required"));
+            if ((username == null && teamName == null) || positionStr == null) {
+                return ResponseEntity.badRequest().body(Map.of("message", "username/teamName and position are required"));
             }
 
             Winner.Position position;
@@ -110,50 +139,33 @@ public class WinnerController {
                 return ResponseEntity.badRequest().body(Map.of("message", "This position is already assigned for this event"));
             }
 
-            // Check if user is already a winner for this event
-            if (winnerRepository.existsByEventIdAndUsername(eventId, username.trim())) {
-                return ResponseEntity.badRequest().body(Map.of("message", "This user is already a winner for this event"));
+            // Handle Group Events (Team Name)
+            if (EventType.GROUP.equals(event.getType()) && teamName != null) {
+                List<Team> teams = teamRepository.findByEventId(eventId);
+                Team winningTeam = teams.stream()
+                        .filter(t -> t.getTeamName().equalsIgnoreCase(teamName.trim()))
+                        .findFirst()
+                        .orElse(null);
+                
+                if (winningTeam == null) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Team not found"));
+                }
+                username = winningTeam.getLeaderId();
             }
 
-            // Get user details
+            if (username == null || username.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "User/Leader USN is required"));
+            }
+
+            // Check if user is already a winner for this event
+            if (winnerRepository.existsByEventIdAndUsername(eventId, username.trim())) {
+                return ResponseEntity.badRequest().body(Map.of("message", "This user/team is already a winner for this event"));
+            }
+
+            // Get user details (for team events, we use leader's details)
             User winnerUser = userRepository.findByUsernameIgnoreCase(username.trim()).orElse(null);
             if (winnerUser == null) {
                 return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
-            }
-
-            // Check if user is registered for this event
-            boolean isRegistered = false;
-            
-            // For individual events, check individual registrations
-            if (event.getType() == null || EventType.INDIVIDUAL.equals(event.getType())) {
-                isRegistered = event.getRegistrations() != null && 
-                        event.getRegistrations().stream()
-                                .anyMatch(reg -> reg.getUsername() != null && 
-                                        reg.getUsername().equalsIgnoreCase(username.trim()));
-            } 
-            // For group events, check team memberships
-            else if (EventType.GROUP.equals(event.getType())) {
-                List<Team> teams = teamRepository.findByEventId(eventId);
-                isRegistered = teams != null && teams.stream()
-                        .anyMatch(team -> team.getMembers() != null && 
-                                team.getMembers().stream()
-                                        .anyMatch(member -> member.getUserId() != null && 
-                                                member.getUserId().equalsIgnoreCase(username.trim())));
-            }
-            
-            if (!isRegistered) {
-                return ResponseEntity.badRequest().body(Map.of("message", "This user is not registered for this event"));
-            }
-
-            // Validate user details
-            if (winnerUser.getFullName() == null || winnerUser.getFullName().isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Winner's full name is missing"));
-            }
-            if (winnerUser.getEmail() == null || winnerUser.getEmail().isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Winner's email is missing"));
-            }
-            if (winnerUser.getMobile() == null || !winnerUser.getMobile().matches("\\d{10}")) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Winner's mobile number is missing or invalid"));
             }
 
             // Create winner
@@ -192,22 +204,8 @@ public class WinnerController {
         }
         
         List<Winner> winners = winnerRepository.findByEventIdOrderByPositionAsc(eventId);
-        
         List<Map<String, Object>> result = winners.stream()
-                .map(winner -> {
-                    Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("id", winner.getId());
-                    map.put("eventId", winner.getEventId());
-                    map.put("clubId", winner.getClubId());
-                    map.put("username", winner.getUsername());
-                    map.put("fullName", winner.getFullName());
-                    map.put("email", winner.getEmail());
-                    map.put("mobile", winner.getMobile());
-                    map.put("position", winner.getPosition().name());
-                    map.put("positionDisplayName", winner.getPosition().getDisplayName());
-                    map.put("createdAt", winner.getCreatedAt());
-                    return map;
-                })
+                .map(this::mapWinnerToResponse)
                 .collect(Collectors.toList());
         
         return ResponseEntity.ok(result);
@@ -224,20 +222,7 @@ public class WinnerController {
                     if (eventId == null) return false;
                     return eventRepository.existsById(eventId);
                 })
-                .map(winner -> {
-                    Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("id", winner.getId());
-                    map.put("eventId", winner.getEventId());
-                    map.put("clubId", winner.getClubId());
-                    map.put("username", winner.getUsername());
-                    map.put("fullName", winner.getFullName());
-                    map.put("email", winner.getEmail());
-                    map.put("mobile", winner.getMobile());
-                    map.put("position", winner.getPosition().name());
-                    map.put("positionDisplayName", winner.getPosition().getDisplayName());
-                    map.put("createdAt", winner.getCreatedAt());
-                    return map;
-                })
+                .map(this::mapWinnerToResponse)
                 .collect(Collectors.toList());
         
         return ResponseEntity.ok(result);
@@ -254,29 +239,7 @@ public class WinnerController {
                     if (eventId == null) return false;
                     return eventRepository.existsById(eventId);
                 })
-                .map(winner -> {
-                    Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("id", winner.getId());
-                    map.put("eventId", winner.getEventId());
-                    map.put("clubId", winner.getClubId());
-                    map.put("username", winner.getUsername());
-                    map.put("fullName", winner.getFullName());
-                    map.put("email", winner.getEmail());
-                    map.put("mobile", winner.getMobile());
-                    map.put("position", winner.getPosition().name());
-                    map.put("positionDisplayName", winner.getPosition().getDisplayName());
-                    map.put("createdAt", winner.getCreatedAt());
-                    
-                    // Get event name
-                    String eventId = winner.getEventId();
-                    if (eventId != null) {
-                        eventRepository.findById(eventId).ifPresent(event -> {
-                            map.put("eventName", event.getName());
-                        });
-                    }
-                    
-                    return map;
-                })
+                .map(this::mapWinnerToResponse)
                 .collect(Collectors.toList());
                 
         return ResponseEntity.ok(result);

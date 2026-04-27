@@ -30,6 +30,7 @@
       background-color: var(--dark); 
       color: var(--text-main); 
       line-height: 1.5;
+      min-height: 100vh;
     }
     
     body::before {
@@ -257,7 +258,9 @@
           <div class="grid-2">
             <div class="form-group">
               <label for="eventClub">Club</label>
-              <select id="eventClub"></select>
+              <select id="eventClub" onchange="loadEvents()">
+                <option value="">All Clubs (View Only)</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="eventName">Name</label>
@@ -321,6 +324,7 @@
                   <th>Event Info</th>
                   <th>Reg Window</th>
                   <th>Participants</th>
+                  <th>Audit</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -328,42 +332,42 @@
             </table>
           </div>
         </div>
+      </div>
 
-        <!-- EXPIRED EVENTS CARD -->
-        <div class="card" style="grid-column: 1 / -1;">
-          <h2 style="margin-bottom:8px;">Expired / Closed Events</h2>
-          <div class="small">Manage events whose registration deadline has passed. Announce winners here.</div>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Event Info</th>
-                  <th>Expired On</th>
-                  <th>Participants</th>
-                  <th>Winners</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="expiredEventsTbody"></tbody>
-            </table>
-          </div>
+      <!-- EXPIRED EVENTS SECTION -->
+      <div class="card">
+        <h2 style="border:none;">Closed Events</h2>
+        <p class="small">Manage events whose registration deadline has passed or capacity is reached.</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Event Info</th>
+                <th>Ended On</th>
+                <th>Participants</th>
+                <th>Winners</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expiredEventsTbody"></tbody>
+          </table>
         </div>
       </div>
 
       <!-- USERS CARD -->
       <div class="card" id="usersCard">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
-          <h2 style="margin: 0; border: none; padding: 0;">User Management</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="margin: 0; border: none; padding: 0;">Student User Management</h2>
           <button class="muted" type="button" id="refreshUsersBtn">Refresh</button>
         </div>
         <div class="table-container">
           <table>
             <thead>
               <tr>
-                <th>Username</th>
+                <th>Username/USN</th>
                 <th>Role</th>
-                <th>Mobile</th>
-                <th>Enabled</th>
+                <th>Contact</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -371,7 +375,6 @@
           </table>
         </div>
       </div>
-
     </div>
   </main>
 
@@ -447,37 +450,36 @@
       <button class="muted" onclick="document.getElementById('participantsDialog').close()" style="padding: 4px 8px;">✕</button>
     </div>
     <div class="dialogBody">
-      <div class="small" id="participantsDialogSub"></div>
+      <div class="small" id="participantsDialogSub" style="margin-bottom:1rem;"></div>
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>USN</th>
-              <th>Name</th>
-              <th>Mobile / Email</th>
+              <th>Details</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="participantsTbody"></tbody>
         </table>
       </div>
+      <div class="btnRow" style="margin-top: 1.5rem;">
+        <button class="muted" type="button" onclick="document.getElementById('participantsDialog').close()">Close</button>
+      </div>
       <div class="err" id="participantsErr"></div>
     </div>
   </dialog>
 
   <dialog id="extendDialog">
-    <div class="dialogHeader">
-      <h3>Extend Registration End</h3>
-      <button class="muted" onclick="document.getElementById('extendDialog').close()" style="padding: 4px 8px;">✕</button>
-    </div>
+    <div class="dialogHeader"><h3>Extend Registration</h3></div>
     <div class="dialogBody">
-      <div class="small" id="extendDialogSub" style="margin-bottom: 1rem;"></div>
+      <div class="small" id="extendDialogSub" style="margin-bottom:1rem;"></div>
       <div class="form-group">
-        <label for="dlgExtendRegEnd">New Registration End</label>
+        <label for="dlgExtendRegEnd">New Deadline</label>
         <input id="dlgExtendRegEnd" type="datetime-local" />
       </div>
       <div class="btnRow">
-        <button class="primary" type="button" id="extendSaveBtn">Extend Deadline</button>
+        <button class="primary" type="button" id="extendSaveBtn">Update Deadline</button>
         <button class="muted" type="button" id="extendCancelBtn">Cancel</button>
       </div>
       <div class="err" id="dlgExtendErr"></div>
@@ -486,43 +488,40 @@
 
   <dialog id="winnersDialog">
     <div class="dialogHeader">
-      <h3>🏆 Manage Winners</h3>
+      <h3>🏆 Result Publication</h3>
       <button class="muted" onclick="document.getElementById('winnersDialog').close()" style="padding: 4px 8px;">✕</button>
     </div>
     <div class="dialogBody">
-      <div class="small" id="winnersDialogSub"></div>
+      <div class="small" id="winnersDialogSub" style="margin-bottom:1rem;"></div>
       
-      <h3 style="margin-top:1rem;">Add Winner</h3>
+      <h4 style="margin-top:0; margin-bottom:8px; font-size:0.9rem;">Announce New Winner</h4>
       <div class="grid-2">
         <div class="form-group">
-          <label for="winnerUsername">Select Participant/Team Leader</label>
+          <label for="winnerUsername">Select Participant/Team</label>
           <select id="winnerUsername">
-            <option value="">Select a participant</option>
+            <option value="">Choose...</option>
           </select>
         </div>
         <div class="form-group">
           <label for="winnerPosition">Position</label>
           <select id="winnerPosition">
-            <option value="">Select Position</option>
-            <option value="FIRST">1st Position</option>
-            <option value="SECOND">2nd Position</option>
-            <option value="THIRD">3rd Position</option>
+            <option value="">Position...</option>
+            <option value="FIRST">1st Place</option>
+            <option value="SECOND">2nd Place</option>
+            <option value="THIRD">3rd Place</option>
           </select>
         </div>
       </div>
-      <div class="btnRow" style="margin-top: 0;">
-        <button class="good" type="button" id="addWinnerBtn">Announce Winner</button>
-      </div>
+      <button class="good" style="width:100%" type="button" id="addWinnerBtn">Add to Winners List</button>
       <div class="err" id="winnerErr"></div>
 
-      <h3 style="margin-top:2rem;">Current Winners</h3>
+      <h4 style="margin-top:1.5rem; margin-bottom:8px; font-size:0.9rem;">Current Podium</h4>
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>Position</th>
-              <th>Name</th>
-              <th>Contact</th>
+              <th>Rank</th>
+              <th>Winner Details</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -615,18 +614,11 @@
       adminToken = data.token;
       adminRole = role;
       adminClubIds = data.adminClubIds || [];
-      if (data.adminClubId && adminClubIds.length === 0) {
-        adminClubIds.push(data.adminClubId);
-      }
-
-      if (role === 'CLUB_ADMIN' && adminClubIds.length === 0) {
-        throw new Error('This club admin account is missing club mapping. Please re-register the club admin.');
-      }
 
       localStorage.setItem(LS_ADMIN_TOKEN, adminToken);
       localStorage.setItem(LS_ADMIN_ROLE, adminRole);
       localStorage.setItem(LS_ADMIN_CLUB_IDS, JSON.stringify(adminClubIds));
-      
+
       setLoggedInState(true);
       await refreshAll();
     }
@@ -648,6 +640,7 @@
       document.getElementById('adminRegisterCard').style.display = show ? 'block' : 'none';
       document.getElementById('loginErr').textContent = '';
       document.getElementById('adminRegisterErr').textContent = '';
+      if (show) loadClubsForAdminRegistration();
     }
 
     async function registerAdmin() {
@@ -663,9 +656,12 @@
       const password = document.getElementById('regAdminPassword').value;
       const confirmPassword = document.getElementById('regAdminConfirmPassword').value;
 
-      if (!/^1MJ[A-Z0-9]{7}$/.test(usn)) { err.textContent = 'Invalid USN. Use format 1MJ*******'; return; }
-      if (!fullName || !email || !mobile || !clubId || !gender || !password) { err.textContent = 'All fields required.'; return; }
-      if (password !== confirmPassword) { err.textContent = 'Passwords do not match.'; return; }
+      if (!usn || !fullName || !email || !mobile || !clubId || !gender || !password) {
+        err.textContent = 'Please fill all fields.'; return;
+      }
+      if (password !== confirmPassword) {
+        err.textContent = 'Passwords do not match.'; return;
+      }
 
       await apiJson(`${API_BASE_URL}/auth/register-admin`, {
         method: 'POST',
@@ -673,7 +669,7 @@
         body: JSON.stringify({ usn, fullName, email, mobile, gender, clubId, password })
       });
 
-      alert('Request submitted. Superadmin must approve before you can login.');
+      alert('Registration request submitted! Please wait for Superadmin approval.');
       document.getElementById('adminUsername').value = usn;
       document.getElementById('adminPassword').value = '';
       setRegisterAdminState(false);
@@ -716,7 +712,14 @@
       }
 
       const clubSelect = document.getElementById('eventClub');
+      const previousValue = clubSelect.value;
       clubSelect.innerHTML = '';
+      if (!isClubAdmin() || adminClubIds.length > 1) {
+        const allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = 'All Clubs (View Only)';
+        clubSelect.appendChild(allOpt);
+      }
       for (const c of clubsCache) {
         const opt = document.createElement('option');
         opt.value = c.id;
@@ -730,9 +733,11 @@
           clubSelect.disabled = true;
         } else {
           clubSelect.disabled = false;
+          if (previousValue) clubSelect.value = previousValue;
         }
       } else {
         clubSelect.disabled = false;
+        if (previousValue) clubSelect.value = previousValue;
       }
 
       const tbody = document.getElementById('clubsTbody');
@@ -792,9 +797,10 @@
     }
 
     async function loadEvents() {
+      const selectedClubId = document.getElementById('eventClub').value;
       const [activeEvents, expiredEvents] = await Promise.all([
-        apiJson(`${API_BASE_URL}/events/active`, { headers: authHeaders() }),
-        apiJson(`${API_BASE_URL}/events/expired`, { headers: authHeaders() })
+        apiJson(`${API_BASE_URL}/events/active${selectedClubId ? '?clubId=' + selectedClubId : ''}`, { headers: authHeaders() }),
+        apiJson(`${API_BASE_URL}/events/expired${selectedClubId ? '?clubId=' + selectedClubId : ''}`, { headers: authHeaders() })
       ]);
       
       const activeTbody = document.getElementById('eventsTbody');
@@ -804,31 +810,31 @@
 
       const clubNameById = new Map(clubsCache.map(c => [c.id, c.name]));
 
-      const filteredActive = isClubAdmin() && adminClubIds.length > 0 ? activeEvents.filter(ev => adminClubIds.includes(ev.clubId)) : activeEvents;
-      const filteredExpired = isClubAdmin() && adminClubIds.length > 0 ? expiredEvents.filter(ev => adminClubIds.includes(ev.clubId)) : expiredEvents;
-
-      // Active
-      for (const e of filteredActive) {
+      for (const e of activeEvents) {
         const tr = document.createElement('tr');
-        const clubName = clubNameById.get(e.clubId) || e.clubId;
-        const regs = Array.isArray(e.registrations) ? e.registrations : [];
-        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : '∞';
+        const regWindow = `${fmtDateTime(e.regStart)}\n- ${fmtDateTime(e.regEnd)}`;
+        const clubName = clubNameById.get(e.clubId) || 'Unknown';
+        const isGroup = e.type === 'GROUP';
         
         tr.innerHTML = `
           <td>
             <div style="font-weight: 600;">${e.name}</div>
-            <div class="small">Club: ${clubName} | ${e.type === 'GROUP' ? 'Team' : 'Individual'}</div>
+            <div class="small">${clubName} • <span class="pill ${isGroup ? 'admin' : 'user'}">${e.type}</span></div>
+          </td>
+          <td><div class="small" style="white-space:pre-wrap;">${regWindow}</div></td>
+          <td>
+            <div style="font-weight: 600;">${e.participantCount || 0} / ${e.capacity || '∞'}</div>
+            <div class="small">${isGroup ? 'Teams' : 'Individuals'}</div>
           </td>
           <td>
-            <div class="small">Start: ${fmtDateTime(e.regStart)}</div>
-            <div class="small">End: ${fmtDateTime(e.regEnd)}</div>
+            <div class="small">By: ${e.createdBy || '-'}</div>
+            <div class="small">At: ${fmtDateTime(e.createdAt)}</div>
           </td>
-          <td><span class="pill user">${regs.length} / ${cap}</span></td>
           <td>
             <div class="btnRow" style="margin-top:0;">
               <button class="muted" type="button" data-action="edit">Edit</button>
-              <button class="muted" type="button" data-action="participants">Attendees</button>
-              <button class="primary" type="button" data-action="extend">+ Time</button>
+              <button class="primary" type="button" data-action="participants">View</button>
+              <button class="primary" type="button" data-action="extend">Extend</button>
               <button class="danger" type="button" data-action="delete">Del</button>
             </div>
           </td>
@@ -845,97 +851,93 @@
         activeTbody.appendChild(tr);
       }
 
-      // Expired
-      for (const e of filteredExpired) {
+      for (const e of expiredEvents) {
         const tr = document.createElement('tr');
-        const clubName = clubNameById.get(e.clubId) || e.clubId;
-        const regs = Array.isArray(e.registrations) ? e.registrations : [];
-        const cap = (e.capacity != null && Number(e.capacity) > 0) ? Number(e.capacity) : '∞';
+        const clubName = clubNameById.get(e.clubId) || 'Unknown';
+        const isGroup = e.type === 'GROUP';
         
         tr.innerHTML = `
           <td>
             <div style="font-weight: 600;">${e.name}</div>
-            <div class="small">Club: ${clubName}</div>
+            <div class="small">${clubName} • <span class="pill ${isGroup ? 'admin' : 'user'}">${e.type}</span></div>
           </td>
-          <td><div class="small" style="color:var(--danger)">${fmtDateTime(e.regEnd)}</div></td>
-          <td><span class="pill user">${regs.length} / ${cap}</span></td>
-          <td><span class="pill admin" id="winnersCount-${e.id}">Loading...</span></td>
+          <td><div class="small" style="color:var(--danger); font-weight:600;">Closed: ${fmtDateTime(e.regEnd)}</div></td>
+          <td>
+            <div style="font-weight: 600;">${e.participantCount || 0} / ${e.capacity || '∞'}</div>
+          </td>
+          <td><div class="small" id="winnersCount-${e.id}">Loading...</div></td>
           <td>
             <div class="btnRow" style="margin-top:0;">
-              <button class="muted" type="button" data-action="participants">Attendees</button>
-              <button class="good" type="button" data-action="winners">🏆 Winners</button>
-              <button class="primary" type="button" data-action="extend">Extend</button>
+              <button class="muted" type="button" data-action="edit">Edit</button>
+              <button class="primary" type="button" data-action="participants">View</button>
+              <button class="good" type="button" data-action="winners">Results</button>
+              <button class="danger" type="button" data-action="delete">Del</button>
             </div>
           </td>
         `;
-
+        tr.querySelector('[data-action="edit"]').addEventListener('click', () => openEditEventDialog(e, clubName));
         tr.querySelector('[data-action="participants"]').addEventListener('click', () => openParticipantsDialog(e, clubName));
         tr.querySelector('[data-action="winners"]').addEventListener('click', () => openWinnersDialog(e, clubName));
-        tr.querySelector('[data-action="extend"]').addEventListener('click', () => openExtendDialog(e, clubName));
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete event ${e.name}?`)) return;
+          await apiJson(`${API_BASE_URL}/events/${e.id}`, { method: 'DELETE', headers: authHeaders() });
+          await loadEvents();
+        });
         expiredTbody.appendChild(tr);
-        
-        try {
-          const winners = await apiJson(`${API_BASE_URL}/winners/event/${e.id}`, { headers: authHeaders() });
-          document.getElementById(`winnersCount-${e.id}`).textContent = `${winners.length} winner(s)`;
-        } catch (err) {
-          document.getElementById(`winnersCount-${e.id}`).textContent = '0 winners';
-        }
+        loadWinnerCount(e.id);
+      }
+    }
+
+    async function loadWinnerCount(eventId) {
+      try {
+        const winners = await apiJson(`${API_BASE_URL}/winners/event/${eventId}`, { headers: authHeaders() });
+        const el = document.getElementById(`winnersCount-${eventId}`);
+        if (el) el.textContent = `${winners.length} winners announced`;
+      } catch (e) {
+        const el = document.getElementById(`winnersCount-${eventId}`);
+        if (el) el.textContent = 'Error';
       }
     }
 
     async function addEvent() {
-      if (isClubAdmin() && adminClubIds.length === 0) throw new Error('Club admin not mapped. Please login again.');
-      
       const clubId = document.getElementById('eventClub').value;
-      const name = document.getElementById('eventName').value.trim();
-      const description = document.getElementById('eventDesc').value.trim();
-      const regStart = normalizeToIsoSeconds(document.getElementById('eventRegStart').value);
-      const regEnd = normalizeToIsoSeconds(document.getElementById('eventRegEnd').value);
-      const type = document.getElementById('eventType').value;
-      const capacityVal = document.getElementById('eventCapacity').value;
-      const capacity = capacityVal === '' ? null : Number(capacityVal);
-      const bgImageUrl = document.getElementById('eventBg').value.trim();
-      
-      const payload = { clubId, name, description, regStart, regEnd, capacity, type, bgImageUrl };
-      
-      if (type === 'GROUP') {
-        const minM = document.getElementById('eventMinMembers').value;
-        const maxM = document.getElementById('eventMaxMembers').value;
-        if(minM) payload.minMembers = Number(minM);
-        if(maxM) payload.maxMembers = Number(maxM);
-      }
-
-      if (!clubId || !name || !regStart || !regEnd) throw new Error('Required fields missing.');
-
+      if (!clubId) throw new Error('Please select a club');
+      const payload = {
+        name: document.getElementById('eventName').value.trim(),
+        description: document.getElementById('eventDesc').value.trim(),
+        regStart: normalizeToIsoSeconds(document.getElementById('eventRegStart').value),
+        regEnd: normalizeToIsoSeconds(document.getElementById('eventRegEnd').value),
+        type: document.getElementById('eventType').value,
+        capacity: parseInt(document.getElementById('eventCapacity').value) || 0,
+        minMembers: parseInt(document.getElementById('eventMinMembers').value) || 1,
+        maxMembers: parseInt(document.getElementById('eventMaxMembers').value) || 4,
+        bgImageUrl: document.getElementById('eventBg').value.trim(),
+        clubId: clubId
+      };
+      if (!payload.name) throw new Error('Event name is required');
       await apiJson(`${API_BASE_URL}/events`, {
-        method: 'POST', headers: authHeaders(), body: JSON.stringify(payload)
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify(payload)
       });
-
       document.getElementById('eventName').value = '';
       document.getElementById('eventDesc').value = '';
-      document.getElementById('eventRegStart').value = '';
-      document.getElementById('eventRegEnd').value = '';
-      document.getElementById('eventCapacity').value = '';
-      document.getElementById('eventBg').value = '';
       await loadEvents();
     }
 
-    async function openEditEventDialog(eventObj, clubName) {
+    async function openEditEventDialog(e, clubName) {
       const dlg = document.getElementById('eventDialog');
-      const err = document.getElementById('dlgErr');
-      err.textContent = '';
-      document.getElementById('eventDialogSub').textContent = `Editing: ${eventObj.name}`;
-      document.getElementById('dlgEventName').value = eventObj.name || '';
-      document.getElementById('dlgEventDesc').value = eventObj.description || '';
-      document.getElementById('dlgEventRegStart').value = toDatetimeLocalValue(eventObj.regStart);
-      document.getElementById('dlgEventRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
-      document.getElementById('dlgEventCapacity').value = (eventObj.capacity == null ? '' : String(eventObj.capacity));
-      document.getElementById('dlgEventBg').value = eventObj.bgImageUrl || '';
+      document.getElementById('eventDialogSub').textContent = `Updating event for ${clubName}`;
+      document.getElementById('dlgEventName').value = e.name;
+      document.getElementById('dlgEventDesc').value = e.description || '';
+      document.getElementById('dlgEventRegStart').value = toDatetimeLocalValue(e.regStart);
+      document.getElementById('dlgEventRegEnd').value = toDatetimeLocalValue(e.regEnd);
+      document.getElementById('dlgEventType').value = e.type || 'INDIVIDUAL';
+      document.getElementById('dlgEventCapacity').value = e.capacity || 0;
+      document.getElementById('dlgEventMinMembers').value = e.minMembers || 1;
+      document.getElementById('dlgEventMaxMembers').value = e.maxMembers || 4;
+      document.getElementById('dlgEventBg').value = e.bgImageUrl || '';
       
-      document.getElementById('dlgEventType').value = eventObj.type || 'INDIVIDUAL';
       toggleTeamFields('dlgEventType', 'dlgTeamFields');
-      document.getElementById('dlgEventMinMembers').value = eventObj.minMembers || '';
-      document.getElementById('dlgEventMaxMembers').value = eventObj.maxMembers || '';
 
       document.getElementById('dlgSaveBtn').onclick = async () => {
         try {
@@ -944,170 +946,208 @@
             description: document.getElementById('dlgEventDesc').value.trim(),
             regStart: normalizeToIsoSeconds(document.getElementById('dlgEventRegStart').value),
             regEnd: normalizeToIsoSeconds(document.getElementById('dlgEventRegEnd').value),
-            bgImageUrl: document.getElementById('dlgEventBg').value.trim(),
-            type: document.getElementById('dlgEventType').value
+            type: document.getElementById('dlgEventType').value,
+            capacity: parseInt(document.getElementById('dlgEventCapacity').value) || 0,
+            minMembers: parseInt(document.getElementById('dlgEventMinMembers').value) || 1,
+            maxMembers: parseInt(document.getElementById('dlgEventMaxMembers').value) || 4,
+            bgImageUrl: document.getElementById('dlgEventBg').value.trim()
           };
-          const cap = document.getElementById('dlgEventCapacity').value;
-          payload.capacity = cap === '' ? null : Number(cap);
-          
-          if(payload.type === 'GROUP'){
-            const minM = document.getElementById('dlgEventMinMembers').value;
-            const maxM = document.getElementById('dlgEventMaxMembers').value;
-            if(minM) payload.minMembers = Number(minM);
-            if(maxM) payload.maxMembers = Number(maxM);
-          }
-
-          await apiJson(`${API_BASE_URL}/events/${eventObj.id}`, {
-            method: 'PUT', headers: authHeaders(), body: JSON.stringify(payload)
+          await apiJson(`${API_BASE_URL}/events/${e.id}`, {
+            method: 'PUT', headers: authHeaders(),
+            body: JSON.stringify(payload)
           });
-          dlg.close(); await loadEvents();
-        } catch(e) { err.textContent = e.message; }
+          dlg.close();
+          await loadEvents();
+        } catch (err) {
+          document.getElementById('dlgErr').textContent = err.message;
+        }
       };
       document.getElementById('dlgCancelBtn').onclick = () => dlg.close();
       dlg.showModal();
     }
 
-    async function openExtendDialog(eventObj, clubName) {
+    async function openExtendDialog(e, clubName) {
       const dlg = document.getElementById('extendDialog');
-      document.getElementById('dlgExtendErr').textContent = '';
-      document.getElementById('extendDialogSub').textContent = `Event: ${eventObj.name}`;
-      document.getElementById('dlgExtendRegEnd').value = toDatetimeLocalValue(eventObj.regEnd);
-
+      document.getElementById('extendDialogSub').textContent = `Current deadline: ${fmtDateTime(e.regEnd)}`;
+      document.getElementById('dlgExtendRegEnd').value = toDatetimeLocalValue(e.regEnd);
       document.getElementById('extendSaveBtn').onclick = async () => {
         try {
-          const regEnd = normalizeToIsoSeconds(document.getElementById('dlgExtendRegEnd').value);
-          await apiJson(`${API_BASE_URL}/events/${eventObj.id}/extend-reg-end`, {
-            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ regEnd })
+          const newEnd = normalizeToIsoSeconds(document.getElementById('dlgExtendRegEnd').value);
+          await apiJson(`${API_BASE_URL}/events/${e.id}/extend-reg-end?newEnd=${encodeURIComponent(newEnd)}`, {
+            method: 'PATCH', headers: authHeaders()
           });
-          dlg.close(); await loadEvents();
-        } catch (e) { document.getElementById('dlgExtendErr').textContent = e.message; }
+          dlg.close();
+          await loadEvents();
+        } catch (err) {
+          document.getElementById('dlgExtendErr').textContent = err.message;
+        }
       };
       document.getElementById('extendCancelBtn').onclick = () => dlg.close();
       dlg.showModal();
     }
 
-    async function openParticipantsDialog(eventObj, clubName) {
+    async function openParticipantsDialog(e, clubName) {
       const dlg = document.getElementById('participantsDialog');
+      document.getElementById('participantsDialogSub').textContent = `${e.name} • ${clubName}`;
       const tbody = document.getElementById('participantsTbody');
-      document.getElementById('participantsErr').textContent = '';
-      tbody.innerHTML = '';
-      document.getElementById('participantsDialogSub').textContent = `${eventObj.name}`;
+      tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+      dlg.showModal();
 
       try {
-        const regs = await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations`, { headers: authHeaders() });
-        if (!Array.isArray(regs) || regs.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="small" style="text-align:center;">No participants yet</td></tr>`;
+        const url = e.type === 'GROUP' ? `${API_BASE_URL}/teams/event/${e.id}` : `${API_BASE_URL}/events/${e.id}/registrations`;
+        const data = await apiJson(url, { headers: authHeaders() });
+        tbody.innerHTML = '';
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="small">No registrations found</td></tr>';
         } else {
-          for (const r of regs) {
+          for (const item of data) {
             const tr = document.createElement('tr');
+            if (e.type === 'GROUP') {
+              tr.innerHTML = `
+                <td>
+                  <div style="font-weight:600;">${item.teamName}</div>
+                  <div class="small">Leader: ${item.leaderUsn}</div>
+                  <div class="small">Members: ${item.memberUsns ? item.memberUsns.join(', ') : ''}</div>
+                </td>
+                <td><span class="pill good">Registered</span></td>
+                <td><button class="danger" style="padding:4px 8px;" type="button" data-action="delete">Remove</button></td>
+              `;
+              tr.querySelector('[data-action="delete"]').onclick = async () => {
+                if(!confirm(`Delete team ${item.teamName}?`)) return;
+                await apiJson(`${API_BASE_URL}/teams/${item.id}`, { method: 'DELETE', headers: authHeaders() });
+                await openParticipantsDialog(e, clubName);
+                await loadEvents();
+              };
+            } else {
+              tr.innerHTML = `
+                <td>
+                  <div style="font-weight:600;">${item.username}</div>
+                  <div class="small">${item.fullName || ''}</div>
+                </td>
+                <td><span class="pill good">Registered</span></td>
+                <td><button class="danger" style="padding:4px 8px;" type="button" data-action="delete">Remove</button></td>
+              `;
+              tr.querySelector('[data-action="delete"]').onclick = async () => {
+                if(!confirm(`Remove ${item.username}?`)) return;
+                await apiJson(`${API_BASE_URL}/events/${e.id}/registrations/${item.id}`, { method: 'DELETE', headers: authHeaders() });
+                await openParticipantsDialog(e, clubName);
+                await loadEvents();
+              };
+            }
+            tbody.appendChild(tr);
+          }
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3" class="err">${err.message}</td></tr>`;
+      }
+    }
+
+    async function openWinnersDialog(e, clubName) {
+      const dlg = document.getElementById('winnersDialog');
+      document.getElementById('winnersDialogSub').textContent = `${e.name} Results`;
+      document.getElementById('winnerErr').textContent = '';
+      
+      const pSel = document.getElementById('winnerUsername');
+      pSel.innerHTML = '<option value="">Loading...</option>';
+      dlg.showModal();
+
+      try {
+        const url = e.type === 'GROUP' ? `${API_BASE_URL}/teams/event/${e.id}` : `${API_BASE_URL}/events/${e.id}/registrations`;
+        const participants = await apiJson(url, { headers: authHeaders() });
+        pSel.innerHTML = '<option value="">Select winner...</option>';
+        for (const p of participants) {
+          const opt = document.createElement('option');
+          opt.value = e.type === 'GROUP' ? p.teamName : p.username;
+          opt.textContent = e.type === 'GROUP' ? p.teamName : `${p.username} (${p.fullName || ''})`;
+          pSel.appendChild(opt);
+        }
+        await loadWinnersList(e.id);
+      } catch (err) {
+        pSel.innerHTML = '<option value="">Error loading</option>';
+      }
+
+      document.getElementById('addWinnerBtn').onclick = async () => {
+        try {
+          const val = pSel.value;
+          const pos = document.getElementById('winnerPosition').value;
+          if (!val || !pos) throw new Error('Select both winner and position');
+          await apiJson(`${API_BASE_URL}/winners/event/${e.id}`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ [e.type === 'GROUP' ? 'teamName' : 'username']: val, position: pos })
+          });
+          await loadWinnersList(e.id);
+          await loadWinnerCount(e.id);
+        } catch (err) {
+          document.getElementById('winnerErr').textContent = err.message;
+        }
+      };
+    }
+
+    async function loadWinnersList(eventId) {
+      const tbody = document.getElementById('winnersTbody');
+      tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+      try {
+        const winners = await apiJson(`${API_BASE_URL}/winners/event/${eventId}`, { headers: authHeaders() });
+        tbody.innerHTML = '';
+        if (winners.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="small">No winners yet</td></tr>';
+        } else {
+          winners.sort((a,b) => {
+            const ranks = { 'FIRST':1, 'SECOND':2, 'THIRD':3 };
+            return (ranks[a.position] || 99) - (ranks[b.position] || 99);
+          });
+          for (const w of winners) {
+            const tr = document.createElement('tr');
+            const posClass = w.position.toLowerCase();
             tr.innerHTML = `
-              <td><div style="font-weight:600;">${r.username || ''}</div></td>
-              <td>${r.fullName || ''}</td>
-              <td><div class="small">${r.mobile || ''}</div><div class="small">${r.email || ''}</div></td>
-              <td><button class="danger" type="button" data-action="remove">Rem</button></td>
+              <td><span class="pill ${posClass}">${w.position}</span></td>
+              <td>
+                <div style="font-weight:600;">${w.teamName || w.username}</div>
+                <div class="small">${w.fullName || ''}</div>
+              </td>
+              <td><button class="danger" style="padding:4px 8px;" type="button" data-action="delete">✕</button></td>
             `;
-            tr.querySelector('[data-action="remove"]').onclick = async () => {
-              if (!confirm(`Remove ${r.username}?`)) return;
-              await apiJson(`${API_BASE_URL}/events/${eventObj.id}/registrations/${r.id}`, { method: 'DELETE', headers: authHeaders() });
-              await loadEvents(); await openParticipantsDialog(eventObj, clubName);
+            tr.querySelector('[data-action="delete"]').onclick = async () => {
+              await apiJson(`${API_BASE_URL}/winners/${w.id}`, { method: 'DELETE', headers: authHeaders() });
+              await loadWinnersList(eventId);
+              await loadWinnerCount(eventId);
             };
             tbody.appendChild(tr);
           }
         }
-      } catch (e) { document.getElementById('participantsErr').textContent = e.message; }
-      dlg.showModal();
-    }
-
-    async function openWinnersDialog(eventObj, clubName) {
-      const dlg = document.getElementById('winnersDialog');
-      document.getElementById('winnerErr').textContent = '';
-      document.getElementById('winnersDialogSub').textContent = `${eventObj.name}`;
-      
-      const sel = document.getElementById('winnerUsername');
-      sel.innerHTML = '<option value="">Select a participant</option>';
-      if (eventObj.registrations) {
-        eventObj.registrations.forEach(reg => {
-          const opt = document.createElement('option');
-          opt.value = reg.username; opt.textContent = `${reg.fullName || reg.username} (${reg.username})`;
-          sel.appendChild(opt);
-        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3" class="err">${err.message}</td></tr>`;
       }
-      document.getElementById('winnerPosition').value = '';
-      
-      await loadWinnersForEvent(eventObj.id);
-
-      const addBtn = document.getElementById('addWinnerBtn');
-      addBtn.replaceWith(addBtn.cloneNode(true));
-      document.getElementById('addWinnerBtn').onclick = async () => {
-        try {
-          const username = document.getElementById('winnerUsername').value;
-          const position = document.getElementById('winnerPosition').value;
-          if (!username || !position) throw new Error('Select both participant and position.');
-          await apiJson(`${API_BASE_URL}/winners`, {
-            method: 'POST', headers: authHeaders(), body: JSON.stringify({ eventId: eventObj.id, username, position })
-          });
-          document.getElementById('winnerUsername').value = '';
-          document.getElementById('winnerPosition').value = '';
-          await loadWinnersForEvent(eventObj.id);
-          await loadEvents(); 
-        } catch (e) { document.getElementById('winnerErr').textContent = e.message; }
-      };
-      dlg.showModal();
-    }
-
-    async function loadWinnersForEvent(eventId) {
-      const tbody = document.getElementById('winnersTbody');
-      tbody.innerHTML = '';
-      try {
-        const winners = await apiJson(`${API_BASE_URL}/winners/event/${eventId}`, { headers: authHeaders() });
-        if (winners.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="small" style="text-align:center;">No winners added</td></tr>';
-          return;
-        }
-        for (const w of winners) {
-          const tr = document.createElement('tr');
-          const posClass = w.position === 'FIRST' ? 'first' : (w.position === 'SECOND' ? 'second' : 'third');
-          tr.innerHTML = `
-            <td><span class="pill ${posClass}">${w.positionDisplayName}</span></td>
-            <td><div style="font-weight:600">${w.fullName}</div><div class="small">${w.username}</div></td>
-            <td><div class="small">${w.mobile}</div></td>
-            <td><button class="danger" type="button" data-action="del-winner" data-id="${w.id}">Del</button></td>
-          `;
-          tr.querySelector('[data-action="del-winner"]').onclick = async () => {
-            if(!confirm(`Remove ${w.fullName}?`)) return;
-            await apiJson(`${API_BASE_URL}/winners/${w.id}`, { method: 'DELETE', headers: authHeaders() });
-            await loadWinnersForEvent(eventId); await loadEvents();
-          };
-          tbody.appendChild(tr);
-        }
-      } catch (err) { tbody.innerHTML = '<tr><td colspan="4">Error</td></tr>'; }
     }
 
     async function loadUsers() {
-      if (isClubAdmin()) {
-        const tbody = document.getElementById('usersTbody');
-        if (tbody) tbody.innerHTML = '';
-        return;
-      }
       const users = await apiJson(`${API_BASE_URL}/admin/users`, { headers: authHeaders() });
       const tbody = document.getElementById('usersTbody');
       tbody.innerHTML = '';
-      for (const u of users) {
+      for (const u of users.filter(usr => usr.role !== 'CLUB_ADMIN' && usr.role !== 'ADMIN')) {
         const tr = document.createElement('tr');
-        const roleClass = (u.role || '').toUpperCase() === 'ADMIN' ? 'admin' : 'user';
         tr.innerHTML = `
-          <td><div style="font-weight:600">${u.username}</div></td>
-          <td><span class="pill ${roleClass}">${u.role}</span></td>
-          <td><div class="small">${u.mobile || ''}</div></td>
-          <td>${u.enabled ? 'Yes' : 'No'}</td>
           <td>
-            <button class="muted" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>
+            <div style="font-weight:600;">${u.username}</div>
+            <div class="small">${u.fullName || ''}</div>
+          </td>
+          <td><span class="pill user">Student</span></td>
+          <td><div class="small">${u.mobile || ''}<br/>${u.email || ''}</div></td>
+          <td><span class="pill ${u.enabled ? 'good' : 'danger'}" style="background:transparent; border:1px solid currentColor;">${u.enabled ? 'Active' : 'Banned'}</span></td>
+          <td>
+            <div class="btnRow" style="margin-top:0;">
+              <button class="muted" style="padding:4px 10px; font-size:12px;" type="button" data-action="toggle">${u.enabled ? 'Disable' : 'Enable'}</button>
+              <button class="danger" style="padding:4px 10px; font-size:12px;" type="button" data-action="delete">Del</button>
+            </div>
           </td>
         `;
         tr.querySelector('[data-action="toggle"]').onclick = async () => {
-          await apiJson(`${API_BASE_URL}/admin/users/${u.id}/enabled`, {
-            method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ enabled: !u.enabled })
-          });
+          await apiJson(`${API_BASE_URL}/admin/users/${u.username}/toggle`, { method: 'POST', headers: authHeaders() });
+          await loadUsers();
+        };
+        tr.querySelector('[data-action="delete"]').onclick = async () => {
+          if (!confirm(`Permanently delete student ${u.username}?`)) return;
+          await apiJson(`${API_BASE_URL}/admin/users/${u.username}`, { method: 'DELETE', headers: authHeaders() });
           await loadUsers();
         };
         tbody.appendChild(tr);
@@ -1115,46 +1155,37 @@
     }
 
     async function refreshAll() {
-      await loadClubs();
-      await loadEvents();
-      await loadUsers();
+      try {
+        await Promise.all([loadClubs(), loadEvents()]);
+        if (!isClubAdmin()) await loadUsers();
+      } catch (e) {
+        console.error('Refresh error:', e);
+      }
     }
 
     document.getElementById('loginBtn').addEventListener('click', async () => {
       try { await loginAdmin(); } catch (e) { document.getElementById('loginErr').textContent = e.message; }
     });
-    document.getElementById('adminPassword').addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('loginBtn').click(); });
-    
-    document.getElementById('showAdminRegisterLink').addEventListener('click', async (e) => {
-      e.preventDefault(); setRegisterAdminState(true);
-      try { await loadClubsForAdminRegistration(); } catch (err) { document.getElementById('adminRegisterErr').textContent = err.message; }
-    });
-    document.getElementById('cancelAdminRegisterBtn').addEventListener('click', () => setRegisterAdminState(false));
-    document.getElementById('registerAdminBtn').addEventListener('click', async () => {
-      try { await registerAdmin(); } catch (e) { document.getElementById('adminRegisterErr').textContent = e.message; }
-    });
-
     document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
+    document.getElementById('showAdminRegisterLink').addEventListener('click', (e) => { e.preventDefault(); setRegisterAdminState(true); });
+    document.getElementById('cancelAdminRegisterBtn').addEventListener('click', () => setRegisterAdminState(false));
+    document.getElementById('registerAdminBtn').addEventListener('click', registerAdmin);
+    
     document.getElementById('refreshClubsBtn').addEventListener('click', loadClubs);
-    document.getElementById('addClubBtn').addEventListener('click', async () => { try { await addClub(); } catch (e) { alert(e.message); } });
     document.getElementById('refreshEventsBtn').addEventListener('click', loadEvents);
-    document.getElementById('addEventBtn').addEventListener('click', async () => {
-      try { document.getElementById('eventsErr').textContent = ''; await addEvent(); } 
-      catch (e) { document.getElementById('eventsErr').textContent = e.message; }
-    });
     document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      ['eventDialog','extendDialog','participantsDialog','winnersDialog'].forEach(id => {
-        try { const d = document.getElementById(id); if(d && d.open) d.close(); } catch(err){}
-      });
+    
+    document.getElementById('addClubBtn').addEventListener('click', async () => {
+      try { await addClub(); } catch (e) { alert(e.message); }
+    });
+    document.getElementById('addEventBtn').addEventListener('click', async () => {
+      try { await addEvent(); } catch (e) { document.getElementById('eventsErr').textContent = e.message; }
     });
 
     (async function init() {
       if (adminToken) {
         setLoggedInState(true);
-        try { await refreshAll(); } catch { logoutAdmin(); }
+        await refreshAll();
       } else {
         setLoggedInState(false);
       }
