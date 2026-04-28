@@ -80,7 +80,9 @@ public class AuthService {
         return Map.of(
                 "token", token,
                 "username", user.getUsername(),
-                "role", role
+                "role", role,
+                "fullName", user.getFullName() != null ? user.getFullName() : "",
+                "email", user.getEmail() != null ? user.getEmail() : ""
         );
     }
 
