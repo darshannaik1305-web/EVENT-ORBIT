@@ -48,7 +48,7 @@ public class TeamController {
         return null;
     }
 
-    @PostMapping("/register")
+    @PostMapping
     public ResponseEntity<?> registerTeam(
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
@@ -193,6 +193,7 @@ public class TeamController {
                 map.put("teamName", t.getTeamName());
                 map.put("eventId", t.getEventId());
                 map.put("eventName", e != null ? e.getName() : "Unknown Event");
+                map.put("clubId", e != null ? e.getClubId() : null);
                 result.add(map);
             }
             return ResponseEntity.ok(result);

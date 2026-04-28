@@ -245,6 +245,20 @@
     .pill-group { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
     .pill-individual { background: rgba(255,255,255,0.1); color: var(--text-muted); }
 
+    /* Sidebar Headers for grouping */
+    .group-header {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 1.5rem 0 0.75rem;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+      display: block;
+    }
+    .group-header:first-child { margin-top: 0; }
+
     /* DIALOG */
     dialog {
       width: min(500px, 95vw);
@@ -254,6 +268,11 @@
       color: white;
       padding: 0;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
     }
     dialog::backdrop { background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
     .dialogHeader { padding: 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
@@ -560,13 +579,13 @@
       location.reload();
     }
 
-    function showApp() {
+    async function showApp() {
       document.getElementById('authPage').style.display = 'none';
       document.getElementById('mainApp').style.display = 'flex';
       document.getElementById('userPill').textContent = `Logged in as ${currentUser.username}`;
-      loadClubs();
-      loadWinners();
-      loadMyRegistrations();
+      await loadClubs();
+      await loadWinners();
+      await loadMyRegistrations();
     }
 
     function sanitize(str) {
@@ -640,6 +659,11 @@
         events.forEach(e => {
           const d = fmtDate(e.regStart);
           const isGroup = e.type === 'GROUP';
+          
+          // Very robust club name lookup
+          const club = clubsCache.find(c => String(c.id || '').trim() === String(e.clubId || '').trim());
+          const clubName = club ? club.name : 'Club Hub';
+          
           const div = document.createElement('div');
           div.className = 'event-item';
           div.innerHTML = `
@@ -648,7 +672,8 @@
               <div class="month">${d.month}</div>
             </div>
             <div class="event-info">
-              <h4>${sanitize(e.name)}</h4>
+              <h4 style="margin-bottom: 2px;">${sanitize(e.name)}</h4>
+              <div class="small" style="color: #818cf8; font-weight: 700; margin-bottom: 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">${sanitize(clubName)}</div>
               <p>${sanitize(e.description)}</p>
             </div>
             <div class="event-meta">
@@ -671,7 +696,8 @@
       if(!e) return;
 
       const dlg = document.getElementById('eventDetailsDialog');
-      document.getElementById('dlgTitle').textContent = e.name;
+      const clubName = clubsCache.find(c => c.id === e.clubId)?.name || 'Club';
+      document.getElementById('dlgTitle').innerHTML = `${sanitize(e.name)} <div class="small" style="font-weight: 500; color: var(--text-muted); margin-top: 4px;">Organized by ${sanitize(clubName)}</div>`;
       document.getElementById('dlgDesc').textContent = e.description || 'No description provided.';
       document.getElementById('dlgCapacity').textContent = e.capacity ? `${e.participantCount || 0} / ${e.capacity}` : 'Unlimited';
       document.getElementById('dlgType').textContent = e.type;
@@ -695,7 +721,7 @@
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/events/${eventId}/register?username=${currentUser.username}`, {
+        const res = await fetch(`${API_BASE_URL}/events/${eventId}/register`, {
           method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const data = await res.json().catch(()=>({}));
@@ -754,14 +780,26 @@
         individuals.forEach(r => {
           const div = document.createElement('div');
           div.style = 'padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--glass-border);';
-          div.innerHTML = `<div style="font-weight:600; color:white;">${sanitize(r.name)}</div><div class="small">Individual Participant</div>`;
+          const club = clubsCache.find(c => String(c.id || '').trim() === String(r.clubId || '').trim());
+          const clubName = club ? club.name : 'Club Hub';
+          div.innerHTML = `
+            <div style="font-weight:600; color:white;">${sanitize(r.name)}</div>
+            <div class="small" style="color: #818cf8; font-weight: 700; margin: 2px 0; text-transform: uppercase; font-size: 0.65rem;">${sanitize(clubName)}</div>
+            <div class="small">Individual Participant</div>
+          `;
           list.appendChild(div);
         });
 
         teams.forEach(t => {
           const div = document.createElement('div');
           div.style = 'padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--glass-border);';
-          div.innerHTML = `<div style="font-weight:600; color:white;">${sanitize(t.teamName)}</div><div class="small">Event: ${sanitize(t.eventName || 'Group Event')}</div>`;
+          const club = clubsCache.find(c => String(c.id || '').trim() === String(t.clubId || '').trim());
+          const clubName = club ? club.name : 'Club Hub';
+          div.innerHTML = `
+            <div style="font-weight:600; color:white;">${sanitize(t.teamName)}</div>
+            <div class="small" style="color: #818cf8; font-weight: 700; margin: 2px 0; text-transform: uppercase; font-size: 0.65rem;">${sanitize(clubName)}</div>
+            <div class="small">Event: ${sanitize(t.eventName || 'Group Event')}</div>
+          `;
           list.appendChild(div);
         });
       } catch(e) { list.innerHTML = 'Error loading.'; }
@@ -777,19 +815,41 @@
           list.innerHTML = '<div class="small" style="color:var(--text-muted)">No results published yet.</div>'; return;
         }
 
-        winners.forEach(w => {
-          const rank = w.position === 'FIRST' ? 1 : w.position === 'SECOND' ? 2 : 3;
-          const div = document.createElement('div');
-          div.className = 'winner-item';
-          div.innerHTML = `
-            <div class="winner-rank rank-${rank}">${rank}</div>
-            <div class="winner-details">
-              <h5>${sanitize(w.teamName || w.username)}</h5>
-              <p>${sanitize(w.eventName)}</p>
-            </div>
-          `;
-          list.appendChild(div);
-        });
+        // Group winners by clubId
+        const winnersByClub = winners.reduce((acc, w) => {
+          const clubId = w.clubId || 'unknown';
+          if (!acc[clubId]) acc[clubId] = [];
+          acc[clubId].push(w);
+          return acc;
+        }, {});
+
+        // Map clubId to club name
+        const clubNameMap = new Map(clubsCache.map(c => [c.id, c.name]));
+
+        for (const clubId in winnersByClub) {
+          const clubName = clubNameMap.get(clubId) || 'Other';
+          const clubWinners = winnersByClub[clubId];
+
+          // Add club header
+          const header = document.createElement('div');
+          header.className = 'group-header';
+          header.textContent = clubName;
+          list.appendChild(header);
+
+          clubWinners.forEach(w => {
+            const rank = w.position === 'FIRST' ? 1 : w.position === 'SECOND' ? 2 : 3;
+            const div = document.createElement('div');
+            div.className = 'winner-item';
+            div.innerHTML = `
+              <div class="winner-rank rank-${rank}">${rank}</div>
+              <div class="winner-details">
+                <h5>${sanitize(w.teamName || w.username)}</h5>
+                <p>${sanitize(w.eventName)}</p>
+              </div>
+            `;
+            list.appendChild(div);
+          });
+        }
       } catch(e) { console.error(e); }
     }
   </script>

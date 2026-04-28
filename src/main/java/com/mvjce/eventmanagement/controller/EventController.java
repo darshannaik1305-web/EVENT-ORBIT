@@ -349,19 +349,25 @@ public class EventController {
             return ResponseEntity.status(403).build();
         }
 
-        eventRepository.deleteById(id);
-        
-        // Delete all winners associated with this event
+        // 1. Delete all winners associated with this event
         winnerRepository.deleteByEventId(id);
 
-        // Delete all teams associated with this event
-        teamRepository.deleteByEventId(id);
+        // 2. Delete all teams associated with this event
+        // We fetch and delete one-by-one to trigger cascade deletion of team members
+        List<Team> teams = teamRepository.findByEventId(id);
+        if (teams != null && !teams.isEmpty()) {
+            teamRepository.deleteAll(teams);
+        }
+
+        // 3. Delete the event itself
+        // This will also delete registrations due to CascadeType.ALL on event.registrations
+        eventRepository.delete(existingOpt.get());
         
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/register")
-    public ResponseEntity<?> registerForEvent(@NonNull @PathVariable String id, @RequestBody Map<String, String> registration) {
+    public ResponseEntity<?> registerForEvent(@NonNull @PathVariable String id) {
         return eventRepository.findById(id)
                 .map(event -> {
                     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
