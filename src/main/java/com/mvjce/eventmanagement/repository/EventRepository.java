@@ -16,6 +16,7 @@ public interface EventRepository extends JpaRepository<Event, String> {
     List<Event> findByClubIdOrderByRegStartDesc(String clubId);
     List<Event> findByRegStartBeforeOrderByRegStartDesc(LocalDateTime date);
     List<Event> findByClubIdAndId(String clubId, String eventId);
+    boolean existsByNameIgnoreCase(String name);
 
 @Modifying
 @Query("DELETE FROM Event e WHERE e.clubId = :clubId")

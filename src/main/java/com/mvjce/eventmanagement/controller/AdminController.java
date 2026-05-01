@@ -3,6 +3,7 @@ package com.mvjce.eventmanagement.controller;
 import com.mvjce.eventmanagement.model.ClubAdmin;
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.repository.ClubAdminRepository;
+import com.mvjce.eventmanagement.repository.ClubRepository;
 import com.mvjce.eventmanagement.repository.EventRepository;
 import com.mvjce.eventmanagement.repository.UserRepository;
 import com.mvjce.eventmanagement.repository.WinnerRepository;
@@ -40,6 +41,9 @@ public class AdminController {
 
     @Autowired
     private ClubAdminRepository clubAdminRepository;
+
+    @Autowired
+    private ClubRepository clubRepository;
 
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> listUsers() {
@@ -306,6 +310,28 @@ public class AdminController {
                 "message", "Cleanup completed",
                 "deletedCount", deletedCount,
                 "deletedWinners", deletedCount + " orphaned winner(s) removed"
+        ));
+    }
+
+    @PostMapping("/cleanup-events")
+    public ResponseEntity<?> cleanupOrphanedEvents() {
+        List<com.mvjce.eventmanagement.model.Event> allEvents = eventRepository.findAll();
+        int deletedCount = 0;
+        
+        for (com.mvjce.eventmanagement.model.Event event : allEvents) {
+            // Check if the club still exists
+            if (event.getClubId() != null && !clubRepository.existsById(event.getClubId())) {
+                // Delete winners for this orphaned event first
+                winnerRepository.deleteByEventId(event.getId());
+                // Delete the event
+                eventRepository.deleteById(event.getId());
+                deletedCount++;
+            }
+        }
+        
+        return ResponseEntity.ok(Map.of(
+                "message", "Cleanup completed",
+                "deletedEvents", deletedCount
         ));
     }
 }

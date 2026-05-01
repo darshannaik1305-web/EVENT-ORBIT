@@ -159,7 +159,7 @@
       flex: 1;
       padding: 2rem;
       display: grid;
-      grid-template-columns: 1fr 350px;
+      grid-template-columns: 1fr 420px;
       gap: 2rem;
       max-width: 1600px;
       margin: 0 auto;
@@ -198,12 +198,27 @@
       align-items: center;
       gap: 1.5rem;
       padding: 1.25rem;
-      background: rgba(255,255,255,0.03);
+      background: var(--dark);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius);
       transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
     }
-    .event-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+    .event-item.has-bg {
+      background-size: cover;
+      background-position: center;
+    }
+    .event-item.has-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.8) 50%, rgba(15, 23, 42, 0.7) 100%);
+      z-index: 0;
+    }
+    .event-item.has-bg > * { position: relative; z-index: 1; }
+    .event-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); transform: translateY(-2px); }
+    
     .event-date { text-align: center; border-right: 1px solid var(--glass-border); }
     .event-date .day { font-size: 1.5rem; font-weight: 800; line-height: 1; }
     .event-date .month { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; }
@@ -351,8 +366,8 @@
     .chat-body { flex: 1; padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
     .chat-input-area { padding: 1.25rem; border-top: 1px solid var(--glass-border); display: flex; gap: 10px; }
     
-    .chat-msg { padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.9rem; max-width: 85%; }
-    .chat-msg.bot { background: rgba(255,255,255,0.05); color: white; align-self: flex-start; border-bottom-left-radius: 2px; }
+    .chat-msg { padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.9rem; max-width: 85%; white-space: pre-wrap; line-height: 1.5; }
+    .chat-msg.bot { background: rgba(255,255,255,0.05); color: white; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid var(--glass-border); }
     .chat-msg.user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
 
     @keyframes slideInUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -493,7 +508,7 @@
           <h3 style="font-size: 1.1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
             🏆 Recent Winners
           </h3>
-          <div id="winnersList" class="scroll-container" style="max-height: 180px;"></div>
+          <div id="winnersList" class="scroll-container" style="max-height: 400px;"></div>
         </div>
       </div>
     </div>
@@ -729,12 +744,14 @@
       document.getElementById('chatWindow').classList.toggle('show');
     }
 
-    function sendChat() {
+    async function sendChat() {
       const input = document.getElementById('chatInput');
       const text = input.value.trim();
       if(!text) return;
 
       const body = document.getElementById('chatBody');
+      
+      // Add user message
       const userMsg = document.createElement('div');
       userMsg.className = 'chat-msg user';
       userMsg.textContent = text;
@@ -742,14 +759,41 @@
       input.value = '';
       body.scrollTop = body.scrollHeight;
 
-      // Mock bot response
-      setTimeout(() => {
+      // Add typing indicator
+      const typing = document.createElement('div');
+      typing.className = 'chat-msg bot';
+      typing.id = 'typingIndicator';
+      typing.textContent = '...';
+      body.appendChild(typing);
+      body.scrollTop = body.scrollHeight;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/chat`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': authToken ? `Bearer ${authToken}` : ''
+          },
+          body: JSON.stringify({ query: text })
+        });
+        const data = await res.json();
+        
+        body.removeChild(typing);
+        
         const botMsg = document.createElement('div');
         botMsg.className = 'chat-msg bot';
-        botMsg.textContent = "That's a great question! For now, please refer to the event details or contact the club coordinator.";
+        botMsg.textContent = data.response;
         body.appendChild(botMsg);
         body.scrollTop = body.scrollHeight;
-      }, 1000);
+      } catch(e) {
+        if(document.getElementById('typingIndicator')) body.removeChild(typing);
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'chat-msg bot';
+        errorMsg.style.color = 'var(--danger)';
+        errorMsg.textContent = "Sorry, I'm having trouble connecting right now.";
+        body.appendChild(errorMsg);
+        body.scrollTop = body.scrollHeight;
+      }
     }
 
     function sanitize(str) {
@@ -829,7 +873,10 @@
           const clubName = club ? club.name : 'Club Hub';
           
           const div = document.createElement('div');
-          div.className = 'event-item';
+          div.className = 'event-item' + (e.bgImageUrl ? ' has-bg' : '');
+          if (e.bgImageUrl) {
+            div.style.backgroundImage = `url('${e.bgImageUrl}')`;
+          }
           div.innerHTML = `
             <div class="event-date">
               <div class="day">${d.day}</div>
@@ -1007,7 +1054,7 @@
             div.innerHTML = `
               <div class="winner-rank rank-${rank}">${rank}</div>
               <div class="winner-details">
-                <h5>${sanitize(w.teamName || w.username)}</h5>
+                <h5>${sanitize(w.teamName || (w.fullName ? `${w.fullName}(${w.username})` : w.username))}</h5>
                 <p>${sanitize(w.eventName)}</p>
               </div>
             `;

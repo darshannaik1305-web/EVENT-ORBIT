@@ -23,6 +23,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +74,7 @@ public class EventController {
         return null;
     }
 
-    private User getActorUserFromToken(@RequestHeader(value = "Authorization", required = false) String authorization) {
+    private User getActorUserFromToken(String authorization) {
         System.out.println("DEBUG: Authorization header: " + (authorization != null ? authorization.substring(0, Math.min(20, authorization.length())) + "..." : "null"));
         if (authorization != null && authorization.startsWith("Bearer ")) {
             String token = authorization.substring(7);
@@ -121,13 +122,23 @@ public class EventController {
 
 
     private boolean isEventFull(Event event) {
+        if (event == null) return false;
         int count = 0;
-        if (EventType.GROUP.equals(event.getType())) {
-            List<Team> teams = teamRepository.findByEventId(event.getId());
-            count = teams != null ? teams.size() : 0;
-        } else {
-            count = event.getRegistrations() != null ? event.getRegistrations().size() : 0;
+        try {
+            if (EventType.GROUP.equals(event.getType())) {
+                List<Team> teams = teamRepository.findByEventId(event.getId());
+                count = teams != null ? teams.size() : 0;
+            } else {
+                // Access registrations carefully
+                List<EventRegistration> regs = event.getRegistrations();
+                count = regs != null ? regs.size() : 0;
+            }
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error calculating participant count for event " + event.getId() + ": " + e.getMessage());
+            // If it fails, we assume 0 so we don't hide the event entirely, 
+            // though it might show as not full when it is.
         }
+        
         event.setParticipantCount(count);
 
         if (event.getCapacity() == null || event.getCapacity() <= 0) {
@@ -159,7 +170,7 @@ public class EventController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<Event>> getActiveEvents(@RequestParam(required = false) String clubId) {
+    public ResponseEntity<?> getActiveEvents(@RequestParam(required = false) String clubId) {
         List<Event> events = eventRepository.findAll();
         LocalDateTime now = LocalDateTime.now();
         
@@ -180,13 +191,7 @@ public class EventController {
     }
 
     @GetMapping("/expired")
-    public ResponseEntity<List<Event>> getExpiredEvents(@RequestHeader(value = "Authorization", required = false) String authorization, 
-                                                          @RequestParam(required = false) String clubId) {
-        User actorUser = getActorUserFromToken(authorization);
-        if (actorUser == null || (!isGlobalAdmin(actorUser) && !isClubAdmin(actorUser))) {
-            return ResponseEntity.status(403).build();
-        }
-
+    public ResponseEntity<?> getExpiredEvents(@RequestParam(required = false) String clubId) {
         List<Event> events = eventRepository.findAll();
         LocalDateTime now = LocalDateTime.now();
         
@@ -201,15 +206,6 @@ public class EventController {
         events = events.stream()
                 .filter(event -> isEventExpiredOrFull(event, now))
                 .collect(Collectors.toList());
-        
-        // If club admin and no clubId provided, filter by their club
-        if (isClubAdmin(actorUser) && (clubId == null || clubId.isBlank())) {
-            List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actorUser.getUsername());
-            List<String> allowedClubIds = clubAdmins.stream().map(ClubAdmin::getClubId).collect(Collectors.toList());
-            events = events.stream()
-                    .filter(event -> allowedClubIds.contains(event.getClubId()))
-                    .collect(Collectors.toList());
-        }
         
         events.sort(Comparator.comparing(Event::getRegEnd, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
         return ResponseEntity.ok(events);
@@ -228,10 +224,23 @@ public class EventController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleException(Exception e) {
+        System.out.println("CRITICAL ERROR: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of("message", "Internal Server Error: " + e.getMessage()));
+    }
+
     @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody Event event, @RequestHeader(value = "Authorization", required = false) String authorization) {
-        System.out.println("DEBUG: Creating event with auth header: " + (authorization != null ? "present" : "null"));
-        User actorUser = getActorUserFromToken(authorization);
+    public ResponseEntity<?> createEvent(@RequestBody Event event) {
+        if (event == null || event.getName() == null || event.getName().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Event name is required"));
+        }
+        if (eventRepository.existsByNameIgnoreCase(event.getName())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Event with this name already exists"));
+        }
+        System.out.println("DEBUG: Creating event: " + event.getName());
+        User actorUser = getActorUser();
         System.out.println("DEBUG: actorUser from token: " + (actorUser != null ? actorUser.getUsername() : "null"));
         if (actorUser == null) {
             // Try regular authentication
@@ -243,19 +252,18 @@ public class EventController {
 
         if (actorUser == null) {
             System.out.println("DEBUG: No actor user found, returning 403");
-            return ResponseEntity.status(403).<Event>build();
+            return ResponseEntity.status(403).build();
         }
 
         if (actorUser != null && isClubAdmin(actorUser)) {
             System.out.println("DEBUG: User is CLUB_ADMIN, checking club permissions");
             System.out.println("DEBUG: event.clubId = " + event.getClubId());
-            System.out.println("DEBUG: actorUser.adminClubId = " + actorUser.getAdminClubId());
             // Check if user is admin for this specific club using ClubAdmin entries
             List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actorUser.getUsername());
             boolean hasAccess = clubAdmins.stream().anyMatch(ca -> ca.getClubId().equals(event.getClubId()));
             if (!hasAccess) {
                 System.out.println("DEBUG: Club admin permission check FAILED - returning 403");
-                return ResponseEntity.status(403).<Event>build();
+                return ResponseEntity.status(403).build();
             }
             System.out.println("DEBUG: Club admin permission check PASSED");
         }
@@ -264,43 +272,80 @@ public class EventController {
             return ResponseEntity.badRequest().build();
         }
 
-        event.setCreatedBy(actor);
-        event.setCreatedAt(LocalDateTime.now());
-        event.setUpdatedBy(actor);
-        event.setUpdatedAt(LocalDateTime.now());
-        Event savedEvent = eventRepository.save(event);
-        return ResponseEntity.ok(savedEvent);
+        try {
+            System.out.println("DEBUG: Saving new event: " + event.getName());
+            System.out.println("DEBUG: Club ID: " + event.getClubId());
+            System.out.println("DEBUG: Type: " + event.getType());
+            
+            if (event.getType() == null) {
+                System.out.println("DEBUG: Event type is null, defaulting to INDIVIDUAL");
+                event.setType(EventType.INDIVIDUAL);
+            }
+
+            event.setCreatedBy(actor);
+            event.setCreatedAt(LocalDateTime.now());
+            event.setUpdatedBy(actor);
+            event.setUpdatedAt(LocalDateTime.now());
+            
+            Event savedEvent = eventRepository.save(event);
+            System.out.println("DEBUG: Event created successfully: " + savedEvent.getId());
+            return ResponseEntity.ok(savedEvent);
+        } catch (Exception e) {
+            System.out.println("DEBUG: Failed to create event: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "Error creating event: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Event> updateEvent(@NonNull @PathVariable String id, @RequestBody Event event) {
+    public ResponseEntity<?> updateEvent(@NonNull @PathVariable String id, @RequestBody Event event) {
+        System.out.println("DEBUG: Update request for event ID: " + id);
         if (event.getCapacity() != null && event.getCapacity() < 0) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("message", "Capacity cannot be negative"));
         }
-        return eventRepository.findById(id)
-                .map(existingEvent -> {
-                    User actorUser = getActorUser();
-                    if (!canManageEvent(actorUser, existingEvent)) {
-                        return ResponseEntity.status(403).<Event>build();
-                    }
 
-                    existingEvent.setName(event.getName());
-                    existingEvent.setDescription(event.getDescription());
-                    existingEvent.setRegStart(event.getRegStart());
-                    existingEvent.setRegEnd(event.getRegEnd());
-                    existingEvent.setBgImageUrl(event.getBgImageUrl());
-                    existingEvent.setCapacity(event.getCapacity());
-                    existingEvent.setType(event.getType());
-                    existingEvent.setMinMembers(event.getMinMembers());
-                    existingEvent.setMaxMembers(event.getMaxMembers());
+        Event existingEvent = eventRepository.findById(id).orElse(null);
+        if (existingEvent == null) {
+            return ResponseEntity.notFound().build();
+        }
 
-                    String actor = actorUser != null ? actorUser.getUsername() : "unknown";
-                    existingEvent.setUpdatedBy(actor);
-                    existingEvent.setUpdatedAt(LocalDateTime.now());
+        User actorUser = getActorUser();
+        if (!canManageEvent(actorUser, existingEvent)) {
+            System.out.println("DEBUG: Permission denied for user: " + (actorUser != null ? actorUser.getUsername() : "null"));
+            return ResponseEntity.status(403).body(Map.of("message", "You do not have permission to edit this event"));
+        }
 
-                    return ResponseEntity.ok(eventRepository.save(existingEvent));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        // Check name uniqueness if changed
+        if (event.getName() != null && !event.getName().equalsIgnoreCase(existingEvent.getName())) {
+            if (eventRepository.existsByNameIgnoreCase(event.getName())) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Event with this name already exists"));
+            }
+        }
+
+        try {
+            System.out.println("DEBUG: Updating event fields...");
+            if (event.getName() != null) existingEvent.setName(event.getName());
+            if (event.getDescription() != null) existingEvent.setDescription(event.getDescription());
+            if (event.getRegStart() != null) existingEvent.setRegStart(event.getRegStart());
+            if (event.getRegEnd() != null) existingEvent.setRegEnd(event.getRegEnd());
+            if (event.getBgImageUrl() != null) existingEvent.setBgImageUrl(event.getBgImageUrl());
+            if (event.getCapacity() != null) existingEvent.setCapacity(event.getCapacity());
+            if (event.getType() != null) existingEvent.setType(event.getType());
+            if (event.getMinMembers() != null) existingEvent.setMinMembers(event.getMinMembers());
+            if (event.getMaxMembers() != null) existingEvent.setMaxMembers(event.getMaxMembers());
+
+            String actor = actorUser != null ? actorUser.getUsername() : "unknown";
+            existingEvent.setUpdatedBy(actor);
+            existingEvent.setUpdatedAt(LocalDateTime.now());
+
+            Event saved = eventRepository.save(existingEvent);
+            System.out.println("DEBUG: Event saved successfully: " + saved.getId());
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            System.out.println("DEBUG: Exception during event update: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "Internal Server Error: " + e.getMessage()));
+        }
     }
 
     @PatchMapping("/{id}/extend-reg-end")

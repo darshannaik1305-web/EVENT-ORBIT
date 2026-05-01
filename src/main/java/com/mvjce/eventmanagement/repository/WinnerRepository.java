@@ -13,6 +13,8 @@ import java.util.Optional;
 @Repository
 public interface WinnerRepository extends JpaRepository<Winner, String> {
     
+    List<Winner> findByEventId(String eventId);
+    
     List<Winner> findByEventIdOrderByPositionAsc(String eventId);
     
     List<Winner> findByClubIdOrderByCreatedAtDesc(String clubId);

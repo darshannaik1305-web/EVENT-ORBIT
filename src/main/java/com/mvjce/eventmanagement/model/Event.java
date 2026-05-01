@@ -40,6 +40,7 @@ public class Event {
     private Integer minMembers;
     private Integer maxMembers;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<EventRegistration> registrations = new ArrayList<>();
 
@@ -50,6 +51,7 @@ public class Event {
     private LocalDateTime createdAt;
     private String updatedBy;
     private LocalDateTime updatedAt;
+    private boolean resultPublished;
 
     // Constructors
     public Event() {}
@@ -198,5 +200,13 @@ public class Event {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isResultPublished() {
+        return resultPublished;
+    }
+
+    public void setResultPublished(boolean resultPublished) {
+        this.resultPublished = resultPublished;
     }
 }

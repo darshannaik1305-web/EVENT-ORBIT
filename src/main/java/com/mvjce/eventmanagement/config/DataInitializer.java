@@ -2,6 +2,7 @@ package com.mvjce.eventmanagement.config;
 
 import com.mvjce.eventmanagement.model.Club;
 import com.mvjce.eventmanagement.model.Event;
+import com.mvjce.eventmanagement.model.EventType;
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.repository.ClubRepository;
 import com.mvjce.eventmanagement.repository.EventRepository;
@@ -99,6 +100,8 @@ public class DataInitializer implements CommandLineRunner {
                 event1.setRegStart(LocalDateTime.now().minusDays(1));
                 event1.setRegEnd(LocalDateTime.now().plusDays(7));
                 event1.setBgImageUrl("");
+                event1.setType(EventType.INDIVIDUAL);
+                event1.setCapacity(50);
                 event1.setCreatedBy("system");
                 event1.setCreatedAt(LocalDateTime.now());
                 event1.setUpdatedBy("system");
@@ -112,6 +115,8 @@ public class DataInitializer implements CommandLineRunner {
                 event2.setRegStart(LocalDateTime.now().minusDays(2));
                 event2.setRegEnd(LocalDateTime.now().plusDays(5));
                 event2.setBgImageUrl("");
+                event2.setType(EventType.INDIVIDUAL);
+                event2.setCapacity(30);
                 event2.setCreatedBy("system");
                 event2.setCreatedAt(LocalDateTime.now());
                 event2.setUpdatedBy("system");
@@ -128,6 +133,8 @@ public class DataInitializer implements CommandLineRunner {
                 event3.setRegStart(LocalDateTime.now().minusDays(2));
                 event3.setRegEnd(LocalDateTime.now().plusDays(5));
                 event3.setBgImageUrl("");
+                event3.setType(EventType.INDIVIDUAL);
+                event3.setCapacity(40);
                 event3.setCreatedBy("system");
                 event3.setCreatedAt(LocalDateTime.now());
                 event3.setUpdatedBy("system");
@@ -141,6 +148,8 @@ public class DataInitializer implements CommandLineRunner {
                 event4.setRegStart(LocalDateTime.now().plusDays(1));
                 event4.setRegEnd(LocalDateTime.now().plusDays(8));
                 event4.setBgImageUrl("");
+                event4.setType(EventType.INDIVIDUAL);
+                event4.setCapacity(20);
                 event4.setCreatedBy("system");
                 event4.setCreatedAt(LocalDateTime.now());
                 event4.setUpdatedBy("system");
@@ -157,6 +166,8 @@ public class DataInitializer implements CommandLineRunner {
                 event5.setRegStart(LocalDateTime.now().minusDays(3));
                 event5.setRegEnd(LocalDateTime.now().plusDays(4));
                 event5.setBgImageUrl("");
+                event5.setType(EventType.INDIVIDUAL);
+                event5.setCapacity(100);
                 event5.setCreatedBy("system");
                 event5.setCreatedAt(LocalDateTime.now());
                 event5.setUpdatedBy("system");
@@ -173,6 +184,8 @@ public class DataInitializer implements CommandLineRunner {
                 event6.setRegStart(LocalDateTime.now().plusDays(2));
                 event6.setRegEnd(LocalDateTime.now().plusDays(10));
                 event6.setBgImageUrl("");
+                event6.setType(EventType.INDIVIDUAL);
+                event6.setCapacity(25);
                 event6.setCreatedBy("system");
                 event6.setCreatedAt(LocalDateTime.now());
                 event6.setUpdatedBy("system");
@@ -189,6 +202,8 @@ public class DataInitializer implements CommandLineRunner {
                 event7.setRegStart(LocalDateTime.now().minusDays(1));
                 event7.setRegEnd(LocalDateTime.now().plusDays(6));
                 event7.setBgImageUrl("");
+                event7.setType(EventType.INDIVIDUAL);
+                event7.setCapacity(60);
                 event7.setCreatedBy("system");
                 event7.setCreatedAt(LocalDateTime.now());
                 event7.setUpdatedBy("system");

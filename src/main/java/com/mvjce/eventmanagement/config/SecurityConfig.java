@@ -48,6 +48,7 @@ public class SecurityConfig {
                 .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                 .requestMatchers("/", "/index.html", "/admin.html", "/superadmin.html").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/chat").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/clubs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/winners/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/teams/event/**").permitAll()
