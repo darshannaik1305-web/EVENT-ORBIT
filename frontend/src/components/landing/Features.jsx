@@ -5,48 +5,44 @@ export default function Features() {
   const items = [
     {
       title: 'AI Smart Assistant',
-      description: 'Ask questions about guidelines, active coordinators, registration options, or event dates instantly.',
-      icon: '🤖',
+      description: 'Ask questions about contest guidelines, schedules, venues, and coordinators in natural language.',
+      icon: '🤖'
     },
     {
       title: 'Club Management',
-      description: 'Admins can post schedules, control capacities, and manage coordinator approvals seamlessly.',
-      icon: '🏛️',
+      description: 'Manage departmental and cultural communities. Club Admins can coordinate schedules and review rosters.',
+      icon: '🏛️'
     },
     {
-      title: 'Smart Registrations',
-      description: 'Single-tap registrations for students. Creates dynamic entries automatically.',
-      icon: '📝',
+      title: 'Event Registration',
+      description: 'Single-tap registrations for technical fests, sports match fixtures, and dance audits.',
+      icon: '📝'
     },
     {
-      title: 'Group Team Codes',
-      description: 'Generate team codes for group hackathons. Share codes so peers join automatically.',
-      icon: '👥',
+      title: 'Team Codes & Groups',
+      description: 'Generate team codes for group hackathons. Share codes so peers join your team dynamically.',
+      icon: '👥'
     },
     {
-      title: 'Winner Tracking',
-      description: 'Admins assign FIRST, SECOND, and THIRD place winner podiums instantly after conclusion.',
-      icon: '🏆',
+      title: 'Podium Winner Tracking',
+      description: 'Review announcements of winners (1st, 2nd, 3rd places) updated by coordinators instantly.',
+      icon: '🏆'
     },
     {
-      title: 'Dynamic Statistics',
-      description: 'Get deep campus statistics: counts of registrations, events hosted, and active users.',
-      icon: '📊',
+      title: 'Global Announcements',
+      description: 'Broadcast notifications and timing changes directly from club leaders to student portals.',
+      icon: '📢'
     }
   ]
 
   return (
-    <section id="features" className="w-full max-w-7xl mx-auto px-6 py-20 relative">
-      <div className="text-center max-w-2xl mx-auto flex flex-col gap-4 mb-16 select-none">
+    <section id="features" className="w-full max-w-5xl mx-auto px-6 py-20 relative select-none">
+      <div className="text-center max-w-2xl mx-auto flex flex-col gap-4 mb-16">
         <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-1.5 rounded-full w-max mx-auto">
           Features
         </span>
-        <h2 className="text-3xl md:text-4xl font-extrabold text-white">
-          Manage College Activities on a Sleek Framework
-        </h2>
-        <p className="text-sm text-slate-400 font-medium">
-          Say goodbye to emails and excel grids. EventOrbit connects technical clubs and students seamlessly.
-        </p>
+        <h2 className="text-3xl font-black text-white tracking-tight">Everything you need to compete</h2>
+        <p className="text-sm text-slate-400 font-medium">A single ecosystem built for campus life activities.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,47 +1,64 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Outfit', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-headings: 'Outfit', sans-serif;
   
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  
+  --color-accent-orange: #F97316;
+  --color-accent-blue: #3B82F6;
+  
   --color-danger: var(--danger);
   --color-danger-hover: var(--danger-hover);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-dark: var(--dark);
+  --color-panel: var(--panel);
   --color-surface: var(--surface);
   --color-border: var(--border);
   
-  --radius-radius: 16px;
-  --radius-radius-sm: 8px;
+  --radius-radius: 24px;
+  --radius-radius-sm: 12px;
+  --radius-radius-lg: 32px;
 }
 
 :root {
-  /* Dark Theme variables as default */
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --secondary: #a855f7;
-  --danger: #ef4444;
+  /* Brand Guidelines & Design Tokens */
+  --primary: #7C3AED;
+  --primary-hover: #6d28d9;
+  --secondary: #EC4899;
+  --secondary-hover: #db2777;
+  
+  --danger: #EF4444;
   --danger-hover: #dc2626;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --dark: #020617;
-  --surface: #0f172a;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  
+  --dark: #0B1020;
+  --panel: #12182B;
+  --surface: #1A2238;
   --border: rgba(255, 255, 255, 0.08);
 }
 
 /* Base resets */
 * {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', sans-serif;
   box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6, .font-headings {
+  font-family: 'Outfit', sans-serif;
 }
 
 body {
   background-color: var(--dark);
-  color: #f8fafc;
+  color: #FFFFFF;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -54,9 +71,23 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(26, 34, 56, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }

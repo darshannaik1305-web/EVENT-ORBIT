@@ -30,16 +30,16 @@ export default function Select({
           required={required}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={`w-full px-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 text-sm transition-all focus:outline-none focus:ring-2 appearance-none cursor-pointer ${
+          className={`w-full px-4 py-3 bg-[#12182B]/60 border border-white/8 rounded-2xl text-white placeholder-slate-500 text-sm transition-all focus:outline-none focus:ring-2 focus:border-primary/50 appearance-none cursor-pointer ${
             error 
-              ? 'border-danger focus:ring-danger/30 focus:border-danger' 
-              : 'border-white/10 focus:ring-primary/30 focus:border-primary'
+              ? 'border-danger focus:ring-danger/30' 
+              : 'border-white/8 focus:ring-primary/30'
           }`}
           {...props}
         >
-          <option value="" disabled className="text-slate-500">{placeholder}</option>
+          <option value="" disabled className="text-slate-500 bg-[#12182B]">{placeholder}</option>
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-slate-950 text-slate-100">
+            <option key={opt.value} value={opt.value} className="bg-panel text-white">
               {opt.label}
             </option>
           ))}

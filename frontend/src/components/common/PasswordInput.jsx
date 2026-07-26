@@ -33,10 +33,10 @@ export default function PasswordInput({
           required={required}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={`w-full pl-4 pr-11 py-3 bg-white/5 border rounded-xl text-slate-100 placeholder-slate-500 text-sm transition-all focus:outline-none focus:ring-2 ${
+          className={`w-full pl-4 pr-11 py-3 bg-[#12182B]/60 border border-white/8 rounded-2xl text-white placeholder-slate-500 text-sm transition-all focus:outline-none focus:ring-2 focus:border-primary/50 ${
             error 
-              ? 'border-danger focus:ring-danger/30 focus:border-danger' 
-              : 'border-white/10 focus:ring-primary/30 focus:border-primary'
+              ? 'border-danger focus:ring-danger/30' 
+              : 'border-white/8 focus:ring-primary/30'
           }`}
           {...props}
         />

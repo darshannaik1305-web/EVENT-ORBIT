@@ -2,34 +2,51 @@ export const mockClubs = [
   {
     id: 'c1',
     name: 'Coding Club',
-    description: 'Solve algorithms, build tech, and compete in college hackathons.',
     members: 142,
-    category: 'Technical',
-    logo: '💻',
+    upcoming: 'Nexus National Hackathon',
+    category: 'Tech',
+    logo: '💻'
   },
   {
     id: 'c2',
-    name: 'Dance Club',
-    description: 'Express rhythm and stage performances in inter-college fests.',
+    name: 'Music Club',
     members: 85,
-    category: 'Cultural',
-    logo: '💃',
+    upcoming: 'Acoustic Jam Session',
+    category: 'Music',
+    logo: '🎵'
   },
   {
     id: 'c3',
-    name: 'Photography Club',
-    description: 'Capture moments, run photo walkthroughs, and edit visual layouts.',
-    members: 64,
-    category: 'Creative',
-    logo: '📸',
+    name: 'Dance Club',
+    members: 96,
+    upcoming: 'Rhythm Auditions',
+    category: 'Cultural',
+    logo: '💃'
   },
   {
     id: 'c4',
+    name: 'Photography Club',
+    members: 64,
+    upcoming: 'Lens-Craft Street Walk',
+    category: 'Photography',
+    logo: '📸'
+  },
+  {
+    id: 'c5',
     name: 'Sports Club',
-    description: 'Coordinate tournaments, indoor matches, and athletic fests.',
     members: 110,
-    category: 'Athletics',
-    logo: '⚽',
+    upcoming: 'Futsal League Matches',
+    category: 'Sports',
+    logo: '⚽'
+  },
+  {
+    id: 'c6',
+    name: 'Robotics Club',
+    members: 52,
+    upcoming: 'Robotics Workshop',
+    category: 'Tech',
+    logo: '🤖'
   }
 ]
+
 export default mockClubs
