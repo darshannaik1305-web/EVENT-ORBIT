@@ -6,9 +6,12 @@ import PasswordInput from '@/components/common/PasswordInput'
 import Button from '@/components/common/Button'
 import RememberMe from './RememberMe'
 import AuthFormContainer from './AuthFormContainer'
+import useAuth from '@/hooks/useAuth'
+import redirectByRole from '@/utils/redirectByRole'
 import { ROUTES } from '@/config/routes'
 
 export default function LoginForm() {
+  const { login } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
@@ -28,17 +31,22 @@ export default function LoginForm() {
     return Object.keys(nextErrors).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
 
     setLoading(true)
-    // Simulate UI validation delay without actual API calls
-    setTimeout(() => {
+    try {
+      const userObj = await login(username, password)
+      toast.success('Successfully logged in!')
+      navigate(redirectByRole(userObj.role))
+    } catch (err) {
+      console.error('Login error:', err)
+      const errorMsg = err.response?.data?.error || err.message || 'Login failed. Please check your credentials.'
+      toast.error(errorMsg)
+    } finally {
       setLoading(false)
-      toast.success('Successfully logged in! (Demo Mode)')
-      navigate(ROUTES.STUDENT.HOME)
-    }, 1500)
+    }
   }
 
   const footer = (

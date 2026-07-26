@@ -1,51 +1,104 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useState, useEffect } from 'react'
+import storage from '@/utils/storage'
+import authService from '@/services/authService'
 
-const AuthContext = createContext(null)
+export const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [token, setToken] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Initialize session on mount
   useEffect(() => {
-    // Check for cached user session on mount
     const initializeAuth = () => {
       try {
-        const storedUser = localStorage.getItem('cem_user')
-        const storedToken = localStorage.getItem('cem_token')
-        if (storedUser && storedToken) {
-          setUser(JSON.parse(storedUser))
+        const storedToken = storage.getToken()
+        const storedUser = storage.getUser()
+        if (storedToken && storedUser) {
+          setToken(storedToken)
+          setUser(storedUser)
           setIsAuthenticated(true)
         }
       } catch (e) {
         console.error('Auth initialization error:', e)
+        storage.clearSession()
       } finally {
         setLoading(false)
       }
     }
     initializeAuth()
+
+    // Handle global unauthorized 401 events emitted by Axios interceptor
+    const handleUnauthorized = () => {
+      logoutStateClear()
+    }
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized)
+    }
   }, [])
 
-  const login = (userData, token) => {
-    setUser(userData)
+  const logoutStateClear = () => {
+    setUser(null)
+    setToken(null)
+    setIsAuthenticated(false)
+  }
+
+  const login = async (username, password) => {
+    // Authenticate through the backend service
+    const data = await authService.login(username, password)
+    
+    const userObj = {
+      username: data.username,
+      role: data.role,
+      fullName: data.fullName || '',
+      email: data.email || '',
+      adminClubIds: data.adminClubIds || [],
+      adminClubId: data.adminClubId || null,
+    }
+
+    storage.saveToken(data.token)
+    storage.saveUser(userObj)
+    
+    setToken(data.token)
+    setUser(userObj)
     setIsAuthenticated(true)
-    localStorage.setItem('cem_user', JSON.stringify(userData))
-    localStorage.setItem('cem_token', token)
+
+    return userObj
+  }
+
+  const register = async (payload) => {
+    return await authService.register(payload)
   }
 
   const logout = () => {
-    setUser(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem('cem_user')
-    localStorage.removeItem('cem_token')
+    storage.clearSession()
+    logoutStateClear()
+  }
+
+  const refreshSession = () => {
+    const storedToken = storage.getToken()
+    const storedUser = storage.getUser()
+    if (storedToken && storedUser) {
+      setToken(storedToken)
+      setUser(storedUser)
+      setIsAuthenticated(true)
+    } else {
+      logoutStateClear()
+    }
   }
 
   const value = {
     user,
+    token,
     isAuthenticated,
     loading,
     login,
-    logout
+    register,
+    logout,
+    refreshSession,
   }
 
   return (
@@ -54,11 +107,4 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   )
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+export default AuthProvider

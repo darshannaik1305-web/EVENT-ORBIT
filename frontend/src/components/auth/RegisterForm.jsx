@@ -7,9 +7,11 @@ import PasswordInput from '@/components/common/PasswordInput'
 import Button from '@/components/common/Button'
 import PasswordStrength from './PasswordStrength'
 import AuthFormContainer from './AuthFormContainer'
+import useAuth from '@/hooks/useAuth'
 import { ROUTES } from '@/config/routes'
 
 export default function RegisterForm() {
+  const { register } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
     usn: '',
@@ -65,16 +67,29 @@ export default function RegisterForm() {
     return Object.keys(nextErrors).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
 
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      toast.success('Registration successful! (Demo Mode)')
+    try {
+      await register({
+        usn: formData.usn,
+        fullName: formData.name,
+        password: formData.password,
+        mobile: formData.mobile,
+        email: formData.email,
+        gender: formData.gender,
+      })
+      toast.success('Registration successful! Please login.')
       navigate(ROUTES.LOGIN)
-    }, 1500)
+    } catch (err) {
+      console.error('Registration error:', err)
+      const errorMsg = err.response?.data?.error || err.message || 'Registration failed.'
+      toast.error(errorMsg)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const genderOptions = [

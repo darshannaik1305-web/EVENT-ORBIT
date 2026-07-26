@@ -1,12 +1,15 @@
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/context/AuthContext'
+import AuthInitializer from '@/components/auth/AuthInitializer'
 import AppRoutes from '@/routes/AppRoutes'
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <AuthInitializer>
+        <AppRoutes />
+      </AuthInitializer>
       <Toaster 
         position="top-right"
         toastOptions={{

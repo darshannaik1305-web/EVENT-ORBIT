@@ -39,6 +39,7 @@ import SuperAdminRequests from '@/pages/SuperAdmin/Requests'
 
 // Fallback
 import NotFound from '@/pages/NotFound'
+import Unauthorized from '@/pages/Unauthorized'
 
 export default function AppRoutes() {
   return (
@@ -83,6 +84,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* Fallbacks */}
+      <Route path={ROUTES.UNAUTHORIZED} element={<Unauthorized />} />
       <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
     </Routes>
   )
