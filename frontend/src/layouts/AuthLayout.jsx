@@ -1,7 +1,5 @@
 import React from 'react'
-import { Outlet, Link } from 'react-router-dom'
-import Logo from '@/components/common/Logo'
-import { ROUTES } from '@/config/routes'
+import { Outlet } from 'react-router-dom'
 
 export default function AuthLayout() {
   return (
@@ -11,11 +9,7 @@ export default function AuthLayout() {
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-secondary/10 blur-[150px] rounded-full -z-10" />
 
       {/* Main container */}
-      <div className="w-full max-w-md flex flex-col items-center gap-6">
-        <Link to={ROUTES.LANDING} className="hover:opacity-90 transition-opacity select-none">
-          <Logo size="md" variant="primary" />
-        </Link>
-        
+      <div className="w-full max-w-md flex flex-col items-center">
         {/* Render Form views inside glass wrappers */}
         <div className="w-full">
           <Outlet />
