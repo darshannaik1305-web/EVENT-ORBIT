@@ -8,6 +8,10 @@ import AuthLayout from '@/layouts/AuthLayout'
 import StudentLayout from '@/layouts/StudentLayout'
 import AdminLayout from '@/layouts/AdminLayout'
 import SuperAdminLayout from '@/layouts/SuperAdminLayout'
+import LandingLayout from '@/components/landing/LandingLayout'
+
+// Pages
+import LandingPage from '@/pages/Landing'
 
 // Guards
 import ProtectedRoute from './ProtectedRoute'
@@ -44,6 +48,11 @@ import Unauthorized from '@/pages/Unauthorized'
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public Landing Page */}
+      <Route element={<LandingLayout />}>
+        <Route path={ROUTES.LANDING} element={<LandingPage />} />
+      </Route>
+
       {/* Public Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path={ROUTES.LOGIN} element={<Login />} />
