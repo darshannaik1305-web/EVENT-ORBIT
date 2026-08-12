@@ -1,45 +1,59 @@
 import api from './api'
-import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 
 export const eventService = {
   getAllEvents: async () => {
-    return { data: [] }
+    const res = await api.get('/api/events')
+    return res
   },
   getActiveEvents: async (clubId) => {
-    return { data: [] }
+    const url = clubId ? `/api/events/active?clubId=${clubId}` : '/api/events/active'
+    const res = await api.get(url)
+    return res
   },
   getExpiredEvents: async (clubId) => {
-    return { data: [] }
+    const url = clubId ? `/api/events/expired?clubId=${clubId}` : '/api/events/expired'
+    const res = await api.get(url)
+    return res
   },
   getEventsByClub: async (clubId) => {
-    return { data: [] }
+    const res = await api.get(`/api/events/club/${clubId}`)
+    return res
   },
   getEventById: async (id) => {
-    return { data: {} }
+    const res = await api.get(`/api/events/${id}`)
+    return res
   },
   createEvent: async (payload) => {
-    return { data: {} }
+    const res = await api.post('/api/events', payload)
+    return res
   },
   updateEvent: async (id, payload) => {
-    return { data: {} }
+    const res = await api.put(`/api/events/${id}`, payload)
+    return res
   },
   extendRegistrationEnd: async (id, payload) => {
-    return { data: {} }
+    const res = await api.patch(`/api/events/${id}/extend`, payload)
+    return res
   },
   deleteEvent: async (id) => {
-    return { data: {} }
+    const res = await api.delete(`/api/events/${id}`)
+    return res
   },
   registerForEvent: async (id) => {
-    return { data: {} }
+    const res = await api.post(`/api/events/${id}/register`)
+    return res
   },
   listRegistrations: async (id) => {
-    return { data: [] }
+    const res = await api.get(`/api/events/${id}/registrations`)
+    return res
   },
   removeRegistration: async (eventId, regId) => {
-    return { data: {} }
+    const res = await api.delete(`/api/events/${eventId}/registrations/${regId}`)
+    return res
   },
   getMyRegistrations: async (username) => {
-    return { data: [] }
+    const res = await api.get(`/api/events/my-registrations?username=${username}`)
+    return res
   }
 }
 export default eventService

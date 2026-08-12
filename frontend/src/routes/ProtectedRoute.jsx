@@ -21,8 +21,19 @@ export default function ProtectedRoute({ allowedRoles }) {
   }
 
   // Enforce role checks if configured
-  if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to={ROUTES.UNAUTHORIZED} replace />
+  if (allowedRoles) {
+    const userRole = user?.role?.toUpperCase()
+    const match = allowedRoles.some(
+      (r) =>
+        r.toUpperCase() === userRole ||
+        (userRole === 'STUDENT' && r.toUpperCase() === 'USER') ||
+        (userRole === 'USER' && r.toUpperCase() === 'STUDENT') ||
+        (userRole === 'SUPER_ADMIN' && r.toUpperCase() === 'ADMIN') ||
+        (userRole === 'ADMIN' && r.toUpperCase() === 'SUPER_ADMIN')
+    )
+    if (!match) {
+      return <Navigate to={ROUTES.UNAUTHORIZED} replace />
+    }
   }
 
   return <Outlet />

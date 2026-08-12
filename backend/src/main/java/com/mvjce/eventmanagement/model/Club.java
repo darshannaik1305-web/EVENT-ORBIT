@@ -18,7 +18,17 @@ public class Club {
 
     @Column(nullable = false, unique = true)
     private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private String category;
+
+    @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "banner_url")
+    private String bannerUrl;
 
     private String createdBy;
     private LocalDateTime createdAt;
@@ -31,6 +41,14 @@ public class Club {
     public Club(String name, String imageUrl) {
         this.name = name;
         this.imageUrl = imageUrl;
+    }
+
+    public Club(String name, String description, String category, String imageUrl, String bannerUrl) {
+        this.name = name;
+        this.description = description;
+        this.category = category;
+        this.imageUrl = imageUrl;
+        this.bannerUrl = bannerUrl;
     }
 
     // Getters and Setters
@@ -50,12 +68,36 @@ public class Club {
         this.name = name;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
     public String getImageUrl() {
         return imageUrl;
     }
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getBannerUrl() {
+        return bannerUrl;
+    }
+
+    public void setBannerUrl(String bannerUrl) {
+        this.bannerUrl = bannerUrl;
     }
 
     public String getCreatedBy() {

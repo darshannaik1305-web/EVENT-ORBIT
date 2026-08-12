@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/events")
-@CrossOrigin(origins = {"http://localhost:5500", "http://127.0.0.1:5500"})
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class EventController {
 
     @Autowired
@@ -328,6 +328,8 @@ public class EventController {
             if (event.getDescription() != null) existingEvent.setDescription(event.getDescription());
             if (event.getRegStart() != null) existingEvent.setRegStart(event.getRegStart());
             if (event.getRegEnd() != null) existingEvent.setRegEnd(event.getRegEnd());
+            existingEvent.setEventDate(event.getEventDate());
+            existingEvent.setVenue(event.getVenue());
             if (event.getBgImageUrl() != null) existingEvent.setBgImageUrl(event.getBgImageUrl());
             if (event.getCapacity() != null) existingEvent.setCapacity(event.getCapacity());
             if (event.getType() != null) existingEvent.setType(event.getType());

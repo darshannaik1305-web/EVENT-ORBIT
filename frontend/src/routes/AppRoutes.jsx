@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { ROUTES } from '@/config/routes'
 import { ROLES } from '@/config/roles'
 
@@ -25,12 +25,13 @@ import ForgotPassword from '@/pages/Auth/ForgotPassword'
 import StudentHome from '@/pages/Student/Home'
 import StudentEvents from '@/pages/Student/Events'
 import StudentClubs from '@/pages/Student/Clubs'
+import ClubDetails from '@/pages/Student/ClubDetails'
 import StudentProfile from '@/pages/Student/Profile'
 import StudentMyEvents from '@/pages/Student/MyEvents'
+import AIAssistant from '@/pages/Student/AIAssistant'
 import StudentSettings from '@/pages/Student/Settings'
 
 // Pages - Admin
-import AdminDashboard from '@/pages/Admin/Dashboard'
 import AdminEvents from '@/pages/Admin/Events'
 import AdminParticipants from '@/pages/Admin/Participants'
 import AdminResults from '@/pages/Admin/Results'
@@ -60,14 +61,16 @@ export default function AppRoutes() {
         <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
       </Route>
 
-      {/* Protected Student Routes */}
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.USER]} />}>
+      {/* Protected Student Routes (Shared by STUDENT and CLUB_ADMIN) */}
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.USER, ROLES.STUDENT, ROLES.CLUB_ADMIN]} />}>
         <Route element={<StudentLayout />}>
           <Route path={ROUTES.STUDENT.HOME} element={<StudentHome />} />
           <Route path={ROUTES.STUDENT.EVENTS} element={<StudentEvents />} />
           <Route path={ROUTES.STUDENT.CLUBS} element={<StudentClubs />} />
-          <Route path={ROUTES.STUDENT.PROFILE} element={<StudentProfile />} />
+          <Route path={ROUTES.STUDENT.CLUB_DETAILS} element={<ClubDetails />} />
           <Route path={ROUTES.STUDENT.MY_EVENTS} element={<StudentMyEvents />} />
+          <Route path={ROUTES.STUDENT.AI_ASSISTANT} element={<AIAssistant />} />
+          <Route path={ROUTES.STUDENT.PROFILE} element={<StudentProfile />} />
           <Route path={ROUTES.STUDENT.SETTINGS} element={<StudentSettings />} />
         </Route>
       </Route>
@@ -75,7 +78,7 @@ export default function AppRoutes() {
       {/* Protected Club Admin Routes */}
       <Route element={<ProtectedRoute allowedRoles={[ROLES.CLUB_ADMIN]} />}>
         <Route element={<AdminLayout />}>
-          <Route path={ROUTES.ADMIN.DASHBOARD} element={<AdminDashboard />} />
+          <Route path={ROUTES.ADMIN.DASHBOARD} element={<Navigate to={ROUTES.ADMIN.EVENTS} replace />} />
           <Route path={ROUTES.ADMIN.EVENTS} element={<AdminEvents />} />
           <Route path={ROUTES.ADMIN.PARTICIPANTS} element={<AdminParticipants />} />
           <Route path={ROUTES.ADMIN.RESULTS} element={<AdminResults />} />
@@ -83,7 +86,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* Protected Super Admin Routes */}
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]} />}>
         <Route element={<SuperAdminLayout />}>
           <Route path={ROUTES.SUPERADMIN.DASHBOARD} element={<SuperAdminDashboard />} />
           <Route path={ROUTES.SUPERADMIN.CLUBS} element={<SuperAdminClubs />} />

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class AuthService {
 
         String role = user.getRole();
         if (role == null || role.isBlank()) {
-            role = "USER";
+            role = "STUDENT";
         }
 
         if (!user.isEnabled()) {
@@ -50,40 +51,45 @@ public class AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        String token = jwtService.generateToken(user.getUsername(), role);
+        String normalizedRole = role.toUpperCase();
+        if ("USER".equals(normalizedRole)) normalizedRole = "STUDENT";
+        if ("ADMIN".equals(normalizedRole)) normalizedRole = "SUPER_ADMIN";
 
-        if ("CLUB_ADMIN".equalsIgnoreCase(role)) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("token", token);
-            resp.put("username", user.getUsername());
-            resp.put("role", role);
-            // Fetch all clubs this admin manages (including pending approval)
+        List<String> rolesList = new ArrayList<>();
+        if ("STUDENT".equals(normalizedRole)) {
+            rolesList.add("STUDENT");
+        } else if ("CLUB_ADMIN".equals(normalizedRole)) {
+            rolesList.add("STUDENT");
+            rolesList.add("CLUB_ADMIN");
+        } else if ("SUPER_ADMIN".equals(normalizedRole)) {
+            rolesList.add("SUPER_ADMIN");
+        } else {
+            rolesList.add(normalizedRole);
+        }
+
+        String token = jwtService.generateToken(user.getUsername(), normalizedRole);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("token", token);
+        resp.put("username", user.getUsername());
+        resp.put("role", normalizedRole);
+        resp.put("roles", rolesList);
+        resp.put("fullName", user.getFullName() != null ? user.getFullName() : user.getUsername());
+        resp.put("email", user.getEmail() != null ? user.getEmail() : "");
+        resp.put("mobile", user.getMobile() != null ? user.getMobile() : "");
+
+        if (rolesList.contains("CLUB_ADMIN")) {
             List<ClubAdmin> adminClubs = clubAdminRepository.findByUsernameIgnoreCase(user.getUsername());
             List<String> clubIds = adminClubs.stream()
                     .map(ClubAdmin::getClubId)
                     .collect(Collectors.toList());
             if (!clubIds.isEmpty()) {
                 resp.put("adminClubIds", clubIds);
-                // For backwards compatibility, also include first club
                 resp.put("adminClubId", clubIds.get(0));
             }
-            return resp;
-        }
-        if ("ADMIN".equalsIgnoreCase(role)) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("token", token);
-            resp.put("username", user.getUsername());
-            resp.put("role", role);
-            return resp;
         }
 
-        return Map.of(
-                "token", token,
-                "username", user.getUsername(),
-                "role", role,
-                "fullName", user.getFullName() != null ? user.getFullName() : "",
-                "email", user.getEmail() != null ? user.getEmail() : ""
-        );
+        return resp;
     }
 
     public User getUserByUsername(String username) {
@@ -136,7 +142,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(normalizedUsn);
         user.setPassword(passwordEncoder.encode(password));
-        user.setRole("USER");
+        user.setRole("STUDENT");
         user.setMobile(mobile);
         user.setFullName(fullName);
         user.setEmail(email);

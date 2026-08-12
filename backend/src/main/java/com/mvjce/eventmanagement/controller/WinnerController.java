@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/winners")
-@CrossOrigin(origins = {"http://localhost:5500", "http://127.0.0.1:5500"})
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class WinnerController {
 
     @Autowired
@@ -242,6 +242,17 @@ public class WinnerController {
                 .map(this::mapWinnerToResponse)
                 .collect(Collectors.toList());
                 
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/user/{username}")
+    public ResponseEntity<List<Map<String, Object>>> getWinnersByUser(@NonNull @PathVariable String username) {
+        List<Winner> winners = winnerRepository.findAll().stream()
+                .filter(w -> w.getUsername() != null && w.getUsername().equalsIgnoreCase(username.trim()))
+                .collect(Collectors.toList());
+        List<Map<String, Object>> result = winners.stream()
+                .map(this::mapWinnerToResponse)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(result);
     }
 

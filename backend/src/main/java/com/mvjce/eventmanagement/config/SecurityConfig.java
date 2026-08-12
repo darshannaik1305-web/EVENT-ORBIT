@@ -21,8 +21,11 @@ import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
 
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -52,19 +55,19 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/clubs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/winners/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/teams/event/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/events/*/registrations").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/events/*/registrations/*").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/events/*/registrations").hasAnyRole("CLUB_ADMIN", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/events/*/registrations/*").hasAnyRole("CLUB_ADMIN", "ADMIN", "SUPER_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/events/*/register").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/clubs/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/clubs/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PATCH, "/api/clubs/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/clubs/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/events/**").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/events/**").authenticated()
-                .requestMatchers(HttpMethod.PATCH, "/api/events/**").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/events/**").authenticated()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/clubs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/clubs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/clubs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/clubs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/events/**").hasAnyRole("CLUB_ADMIN", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/events/**").hasAnyRole("CLUB_ADMIN", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/events/**").hasAnyRole("CLUB_ADMIN", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/events/**").hasAnyRole("CLUB_ADMIN", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )

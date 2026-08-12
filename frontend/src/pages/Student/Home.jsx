@@ -1,264 +1,296 @@
-import React, { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import WelcomeBanner from '@/components/dashboard/WelcomeBanner'
-import SectionHeader from '@/components/dashboard/SectionHeader'
-import EventCard from '@/components/dashboard/EventCard'
-import StatsCard from '@/components/dashboard/StatsCard'
-import QuickActionCard from '@/components/dashboard/QuickActionCard'
-import { mockEvents, weeklyEvents } from '@/mock/landing/events'
-import mockClubs from '@/mock/landing/clubs'
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import useAuth from '@/hooks/useAuth'
-import Button from '@/components/common/Button'
+import eventService from '@/services/eventService'
+import winnerService from '@/services/winnerService'
+import { ROUTES } from '@/config/routes'
+import EventDetailsModal, { getEventStatus, formatDateString } from '@/components/events/EventDetailsModal'
 
 export default function StudentHome() {
   const { user } = useAuth()
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [showAIChat, setShowAIChat] = useState(false)
-  const [chatMessages, setChatMessages] = useState([
-    { sender: 'bot', text: 'Hey there! Ask me anything about campus events, registrations, or timings.' }
-  ])
-  const [chatInput, setChatInput] = useState('')
+  const [events, setEvents] = useState([])
+  const [winners, setWinners] = useState([])
+  const [myRegistrations, setMyRegistrations] = useState([])
+  const [myWinnings, setMyWinnings] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const handleSendChat = (e) => {
-    e.preventDefault()
-    if (!chatInput.trim()) return
-    const userMsg = { sender: 'user', text: chatInput }
-    setChatMessages(prev => [...prev, userMsg])
-    setChatInput('')
+  // Modal State
+  const [selectedModalEvent, setSelectedModalEvent] = useState(null)
 
-    setTimeout(() => {
-      let botText = "I'm checking that for you. The next Coding Club Hackathon starts on August 18."
-      if (chatInput.toLowerCase().includes('dance')) {
-        botText = 'The Rhythm Dance Fest auditions are on September 02 at the OAT.'
-      } else if (chatInput.toLowerCase().includes('sports') || chatInput.toLowerCase().includes('futsal')) {
-        botText = 'Futsal League Matches start this Saturday at 09:00 AM.'
+  useEffect(() => {
+    fetchDashboardData()
+  }, [user])
+
+  const fetchDashboardData = async () => {
+    setLoading(true)
+    try {
+      const [eventsRes, winnersRes] = await Promise.all([
+        eventService.getAllEvents().catch(() => ({ data: [] })),
+        winnerService.getAllWinners().catch(() => ({ data: [] }))
+      ])
+
+      const allEvents = eventsRes.data || []
+      setEvents(allEvents)
+      setWinners(winnersRes.data || [])
+
+      if (user?.username) {
+        const [myRegsRes, myWinsRes] = await Promise.all([
+          eventService.getMyRegistrations(user.username).catch(() => ({ data: [] })),
+          winnerService.getWinnersByUser(user.username).catch(() => ({ data: [] }))
+        ])
+        setMyRegistrations(myRegsRes.data || [])
+        setMyWinnings(myWinsRes.data || [])
       }
-      setChatMessages(prev => [...prev, { sender: 'bot', text: botText }])
-    }, 1000)
+    } catch (err) {
+      console.error('Dashboard data fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
+  const handleRegisterConfirm = async (eventId) => {
+    try {
+      await eventService.registerForEvent(eventId)
+      toast.success('Successfully registered for event!')
+      setSelectedModalEvent(null)
+      fetchDashboardData()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Registration failed')
+    }
+  }
+
+  const isClubAdmin = Boolean(user?.roles && user.roles.includes('CLUB_ADMIN'))
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-3 text-primary font-bold animate-pulse">
+          <span className="text-2xl">⚡</span> Loading Dashboard...
+        </div>
+      </div>
+    )
+  }
+
+  const displayEvents = events.slice(0, 4)
+
   return (
-    <div className="flex flex-col gap-8 pb-16 w-full select-none">
-      {/* 1. Welcome Banner */}
-      <WelcomeBanner name={user?.fullName || 'Rahul Roy'} role="Student" />
+    <div className="space-y-8 select-none">
+      {/* 1. Welcome Section */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900/90 to-purple-950/40 border border-white/10 p-6 md:p-8 rounded-3xl relative overflow-hidden shadow-2xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-3">
+              <span>👋 Welcome Back</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+              Hello, {user?.fullName || user?.username || 'Student'}!
+            </h1>
+            <p className="text-slate-400 text-xs md:text-sm mt-1 max-w-xl leading-relaxed">
+              Explore college events, track active participations, and view competition results.
+            </p>
+          </div>
 
-      {/* 2. Campus Spotlight (Signature Widget) */}
-      <div className="bg-gradient-to-r from-primary/30 to-secondary/3 bg-panel border border-white/5 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-md">
-        <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-secondary/10 to-transparent pointer-events-none -z-10" />
-        <span className="text-[10px] font-bold text-secondary uppercase bg-secondary/10 px-2.5 py-0.5 rounded-full select-none border border-secondary/20">
-          🔥 Campus Spotlight
-        </span>
-        <h3 className="text-xl font-black text-white mt-4">Graffiti Annual College Fest announced!</h3>
-        <p className="text-xs text-slate-400 mt-2 max-w-xl leading-relaxed">
-          The biggest cultural carnival is scheduled for Oct 12-14. Get ready for concerts, DJ nights, food trucks, and inter-college team battles. Registrations open next week!
-        </p>
-        <div className="flex items-center gap-4 mt-6 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          <span>🔔 Announcement: Prof. Sinha</span>
-          <span>📅 Dates: Oct 12-14</span>
+          {isClubAdmin && (
+            <Link
+              to={ROUTES.ADMIN.DASHBOARD}
+              className="px-5 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-2xl shadow-xl shadow-purple-600/30 transition-all flex items-center gap-2 self-start md:self-auto"
+            >
+              <span>⚡</span> Go to Admin Panel
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* Grid container splitting visual priority */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left main feed */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
-          {/* 3. Upcoming Events */}
-          <div>
-            <SectionHeader title="Upcoming Campus Events" subtitle="Contests starting this month" icon="📅" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {mockEvents.map(evt => (
-                <EventCard key={evt.id} {...evt} onAction={() => {}} actionLabel="Register Slot" />
-              ))}
-            </div>
+      {/* 2. Quick Stats Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-slate-900 border border-white/10 p-5 rounded-2xl flex items-center gap-4">
+          <div className="bg-blue-500/10 text-blue-400 p-3 rounded-xl text-2xl border border-blue-500/20">
+            🎟️
           </div>
-
-          {/* 4. My Registrations */}
-          <div className="bg-panel border border-white/5 p-6 rounded-3xl">
-            <SectionHeader title="My Active Registrations" subtitle="Verify your entry team codes" icon="🎟️" />
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between p-4 bg-slate-900/60 border border-white/5 rounded-2xl">
-                <div>
-                  <h4 className="text-xs font-bold text-white">Nexus National Hackathon 2026</h4>
-                  <p className="text-[10px] text-slate-400 mt-1">Team Code: NEX-880 • Leader: Rahul Roy</p>
-                </div>
-                <span className="text-[10px] font-bold text-success uppercase bg-success/15 px-2.5 py-0.5 rounded-full border border-success/20">Confirmed</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. Recommended Events */}
           <div>
-            <SectionHeader title="Recommended for You" subtitle="Based on your student profile" icon="🎯" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <EventCard 
-                title="Lens-Craft Street Photography Walk" 
-                clubName="Photography Club" 
-                date="Sep 10, 2026" 
-                location="Campus Gardens" 
-                seatsLeft={8} 
-                category="Photography" 
-                image="https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?w=600"
-                onAction={() => {}}
-                actionLabel="Claim Ticket"
-              />
-            </div>
+            <div className="text-xs text-slate-400 font-semibold uppercase">Events Joined</div>
+            <div className="text-2xl font-extrabold text-white mt-0.5">{myRegistrations.length}</div>
           </div>
         </div>
 
-        {/* Right sidebar details */}
-        <div className="lg:col-span-4 flex flex-col gap-8">
-          {/* 6. My Clubs */}
-          <div className="bg-panel border border-white/5 p-6 rounded-3xl">
-            <SectionHeader title="My Clubs" icon="🏛️" />
-            <div className="flex flex-col gap-3">
-              {mockClubs.slice(0, 3).map(club => (
-                <div key={club.id} className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-primary/20 transition-all">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{club.logo}</span>
+        <div className="bg-slate-900 border border-amber-500/20 p-5 rounded-xl flex items-center gap-4">
+          <div className="bg-amber-500/10 text-amber-400 p-3 rounded-xl text-2xl border border-amber-500/20">
+            🏆
+          </div>
+          <div>
+            <div className="text-xs text-slate-400 font-semibold uppercase">Total Wins</div>
+            <div className="text-2xl font-extrabold text-amber-300 mt-0.5">{myWinnings.length}</div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-emerald-500/20 p-5 rounded-xl flex items-center gap-4">
+          <div className="bg-emerald-500/10 text-emerald-400 p-3 rounded-xl text-2xl border border-emerald-500/20">
+            🎯
+          </div>
+          <div>
+            <div className="text-xs text-slate-400 font-semibold uppercase">Participation Count</div>
+            <div className="text-2xl font-extrabold text-emerald-300 mt-0.5">{myRegistrations.length}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Upcoming & Featured Events */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <span>📅</span> Featured & Upcoming Events
+            </h2>
+            <p className="text-xs text-slate-400">Discover active contests and claim your slot</p>
+          </div>
+          <Link to={ROUTES.STUDENT.EVENTS} className="text-xs font-semibold text-primary hover:underline">
+            View All Events →
+          </Link>
+        </div>
+
+        {displayEvents.length === 0 ? (
+          <div className="bg-slate-900 border border-white/5 rounded-2xl p-8 text-center text-slate-500 text-sm">
+            No active events available at the moment.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {displayEvents.map((evt) => {
+              const status = getEventStatus(evt)
+              const isRegistered = myRegistrations.some((r) => r.eventId === evt.id)
+
+              return (
+                <div
+                  key={evt.id}
+                  onClick={() => setSelectedModalEvent(evt)}
+                  className="bg-slate-900 border border-white/10 hover:border-primary/50 rounded-2xl p-5 transition-all shadow-lg flex flex-col justify-between gap-4 cursor-pointer group"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${status.style}`}>
+                        {status.label}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-mono">Capacity: {evt.capacity || '∞'}</span>
+                    </div>
+
                     <div>
-                      <h4 className="text-xs font-bold text-white">{club.name}</h4>
-                      <p className="text-[9px] text-slate-400">{club.members} Members</p>
+                      <h3 className="text-base font-bold text-white group-hover:text-primary transition-colors leading-snug">{evt.name}</h3>
+                      <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">{evt.description || 'Join this exciting campus contest!'}</p>
+                    </div>
+
+                    {/* Registration Dates Information Box */}
+                    <div className="bg-purple-950/20 border border-purple-500/20 p-2.5 rounded-xl space-y-1 text-[11px]">
+                      {status.code === 'UPCOMING' ? (
+                        <>
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span className="text-slate-400">Reg Starts:</span>
+                            <span className="font-semibold text-blue-300">{formatDateString(evt.regStart) || 'TBA'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span className="text-slate-400">Reg Ends (Last Date):</span>
+                            <span className="font-semibold text-purple-300">{formatDateString(evt.regEnd) || 'TBA'}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-between text-slate-300">
+                          <span className="text-slate-400">Last Date to Register:</span>
+                          <span className="font-bold text-amber-300">{formatDateString(evt.regEnd) || 'N/A'}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Event Date & Venue Info */}
+                    <div className="bg-slate-950/60 border border-white/5 p-2.5 rounded-xl space-y-1.5 text-[11px] text-slate-400">
+                      <div className="flex items-center justify-between">
+                        <span>📅 Event Date:</span>
+                        {evt.eventDate ? (
+                          <span className="text-slate-200 font-semibold">{formatDateString(evt.eventDate)}</span>
+                        ) : (
+                          <span className="text-amber-400/90 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 text-[10px]">
+                            Event date is not declared
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>📍 Venue:</span>
+                        {evt.venue ? (
+                          <span className="text-slate-200 font-semibold">{evt.venue}</span>
+                        ) : (
+                          <span className="text-amber-400/90 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 text-[10px]">
+                            Venue is not declared
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[9px] font-bold text-primary uppercase bg-primary/10 px-2 py-0.5 rounded-full">Active</span>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* 7. Weekly Calendar */}
-          <div className="bg-panel border border-white/5 p-6 rounded-3xl">
-            <SectionHeader title="Week Agenda" icon="🗓️" />
-            <div className="flex flex-col gap-3">
-              {weeklyEvents.map(evt => (
-                <div key={evt.id} className="flex items-center justify-between p-2.5 bg-slate-900/60 rounded-xl border border-white/5">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{evt.club}</span>
-                    <h4 className="text-xs font-bold text-white leading-snug">{evt.title}</h4>
-                    <span className="text-[9px] text-slate-500">{evt.time} • {evt.location}</span>
+                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                    <span className="text-xs text-primary font-semibold group-hover:underline">
+                      View Details →
+                    </span>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedModalEvent(evt)
+                      }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        isRegistered
+                          ? 'bg-slate-800 text-emerald-400 cursor-not-allowed border border-emerald-500/20'
+                          : status.code === 'ENDED'
+                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
+                          : 'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/20'
+                      }`}
+                    >
+                      {isRegistered ? '✓ Registered' : status.code === 'ENDED' ? 'Ended' : 'Register Now'}
+                    </button>
                   </div>
-                  <span className="text-[10px] font-bold text-secondary">{evt.day}</span>
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
-
-          {/* 11. Leaderboard */}
-          <div className="bg-panel border border-white/5 p-6 rounded-3xl">
-            <SectionHeader title="Leaderboard Standings" icon="🏆" />
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between text-xs font-semibold p-2 bg-white/5 rounded-xl">
-                <span className="text-white">🥇 1. Rohan Deshmukh</span>
-                <span className="text-primary font-bold">420 pts</span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-semibold p-2 bg-slate-900/60 rounded-xl">
-                <span className="text-slate-200">🥈 2. Aishwarya Sen</span>
-                <span className="text-primary font-bold">390 pts</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 10. Certificates */}
-          <div className="bg-panel border border-white/5 p-6 rounded-3xl">
-            <SectionHeader title="My Certificates" icon="🎓" />
-            <div className="flex flex-col gap-3">
-              <div className="p-3 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-white">Nexus Hackathon Participant</h4>
-                  <p className="text-[9px] text-slate-500 mt-0.5">Coding Club • Issued Aug 2026</p>
-                </div>
-                <span className="text-lg">📜</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 12. Quick Actions */}
-          <div className="bg-panel border border-white/5 p-6 rounded-3xl">
-            <SectionHeader title="Quick Actions" icon="⚡" />
-            <div className="flex flex-col gap-3">
-              <QuickActionCard label="AI Campus Guide" description="Ask assistant anything" icon="🤖" onClick={() => setShowAIChat(true)} />
-              <QuickActionCard label="View Notifications" description="Read active circular announcements" icon="indigo" onClick={() => setShowNotifications(true)} />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* 9. Notifications Slide-in Overlay */}
-      <AnimatePresence>
-        {showNotifications && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full max-w-sm bg-panel border-l border-white/8 h-full p-6 flex flex-col justify-between shadow-2xl"
-            >
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-6">
-                  <h3 className="text-base font-bold text-white">Notifications Panel</h3>
-                  <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white cursor-pointer select-none">✕</button>
+      {/* 4. Integrated Winners */}
+      <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl space-y-4 shadow-xl">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span>🏆</span> Recent Winners & Top Performers
+            </h2>
+            <p className="text-xs text-slate-400">Hall of fame for recent event champions</p>
+          </div>
+        </div>
+
+        {winners.length === 0 ? (
+          <div className="py-6 text-center text-xs text-slate-500">No winners declared yet. Check back after events finish!</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+            {winners.slice(0, 6).map((w, idx) => (
+              <div key={w.id || idx} className="bg-slate-950/80 border border-white/5 p-4 rounded-xl flex items-center gap-3">
+                <div className="text-2xl">
+                  {w.position === 'FIRST' ? '🥇' : w.position === 'SECOND' ? '🥈' : '🥉'}
                 </div>
-                <div className="flex flex-col gap-4">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <span className="text-[10px] font-bold text-primary uppercase">Dance Club</span>
-                    <h4 className="text-xs font-bold text-white mt-1">Audition slots expanded</h4>
-                    <p className="text-[10px] text-slate-400 mt-1">We added 10 slots for Thursday rehearsals.</p>
-                  </div>
+                <div className="overflow-hidden">
+                  <div className="text-xs font-bold text-white truncate">{w.fullName || w.username}</div>
+                  <div className="text-[10px] text-amber-400 font-semibold">{w.eventName || 'Campus Event'}</div>
+                  <div className="text-[10px] text-slate-500 uppercase">{w.positionDisplayName || w.position}</div>
                 </div>
               </div>
-              <Button variant="outline" className="w-full" onClick={() => setShowNotifications(false)}>Close Panel</Button>
-            </motion.div>
+            ))}
           </div>
         )}
-      </AnimatePresence>
+      </div>
 
-      {/* 8. AI Assistant Modal Drawer */}
-      <AnimatePresence>
-        {showAIChat && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-panel border border-white/8 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[480px]"
-            >
-              <div className="bg-slate-900/60 border-b border-white/5 p-4 flex items-center justify-between select-none">
-                <div className="flex items-center gap-3">
-                  <div className="h-2.5 w-2.5 bg-success rounded-full animate-pulse" />
-                  <span className="text-xs font-extrabold text-white">EventOrbit Assistant</span>
-                </div>
-                <button onClick={() => setShowAIChat(false)} className="text-slate-400 hover:text-white cursor-pointer">✕</button>
-              </div>
-
-              <div className="flex-1 p-6 flex flex-col gap-4 overflow-y-auto">
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex flex-col gap-1 max-w-[85%] ${msg.sender === 'user' ? 'self-end items-end' : ''}`}>
-                    <div className={`py-2.5 px-4 rounded-3xl text-xs font-semibold ${
-                      msg.sender === 'user' 
-                        ? 'bg-gradient-to-tr from-primary to-secondary text-white rounded-tr-none shadow-md shadow-primary/10' 
-                        : 'bg-white/5 text-slate-200 border border-white/5 rounded-tl-none'
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={handleSendChat} className="p-4 border-t border-white/5 bg-slate-900/40 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ask anything..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 px-4 py-2 bg-[#12182B] border border-white/8 rounded-xl text-xs text-white focus:outline-none focus:border-primary/50"
-                />
-                <Button type="submit" variant="primary" size="sm" className="text-xs px-4 py-2">Send</Button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* EVENT DETAILS MODAL WITH REGISTRATION CONFIRMATION */}
+      <EventDetailsModal
+        event={selectedModalEvent}
+        isOpen={Boolean(selectedModalEvent)}
+        onClose={() => setSelectedModalEvent(null)}
+        isRegistered={Boolean(selectedModalEvent && myRegistrations.some((r) => r.eventId === selectedModalEvent.id))}
+        onRegisterConfirm={handleRegisterConfirm}
+      />
     </div>
   )
 }

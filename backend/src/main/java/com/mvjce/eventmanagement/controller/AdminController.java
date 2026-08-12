@@ -1,5 +1,6 @@
 package com.mvjce.eventmanagement.controller;
 
+import com.mvjce.eventmanagement.model.Club;
 import com.mvjce.eventmanagement.model.ClubAdmin;
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.repository.ClubAdminRepository;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = {"http://localhost:5500", "http://127.0.0.1:5500"})
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class AdminController {
 
     @Autowired
@@ -143,20 +144,57 @@ public class AdminController {
     public ResponseEntity<?> createClubAdmin(@RequestBody Map<String, String> payload) {
         try {
             String usn = payload.get("usn");
-            String fullName = payload.get("fullName");
-            String password = payload.get("password");
-            String mobile = payload.get("mobile");
-            String email = payload.get("email");
-            String gender = payload.get("gender");
+            if (usn == null || usn.isBlank()) {
+                usn = payload.get("username");
+            }
             String clubId = payload.get("clubId");
 
-            User saved = authService.registerAdmin(usn, fullName, password, mobile, email, gender, clubId);
+            if (usn == null || usn.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Student USN / Username is required"));
+            }
+            if (clubId == null || clubId.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Club selection is required"));
+            }
+
+            final String targetUsn = usn.trim();
+
+            // Rule 1: Student Registration Check - Must be registered first as a student
+            User studentUser = userRepository.findByUsernameIgnoreCase(targetUsn)
+                    .orElseThrow(() -> new RuntimeException("Student with USN '" + targetUsn + "' is not registered. User must register as a student first."));
+
+            // Rule 2: Club existence check
+            Club club = clubRepository.findById(clubId)
+                    .orElseThrow(() -> new RuntimeException("Selected club does not exist."));
+
+            // Rule 3: Maximum 2 Club Admins Per Club Limit
+            long currentAdminsCount = clubAdminRepository.countByClubIdAndEnabledTrue(clubId);
+            if (currentAdminsCount >= 2) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Club '" + club.getName() + "' already has the maximum limit of 2 assigned Club Admins."));
+            }
+
+            // Rule 4: Check if already assigned to this club
+            if (clubAdminRepository.existsByUsernameIgnoreCaseAndClubId(targetUsn, clubId)) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Student '" + targetUsn + "' is already an assigned Club Admin for '" + club.getName() + "'."));
+            }
+
+            // Update user role to CLUB_ADMIN and set primary adminClubId
+            studentUser.setRole("CLUB_ADMIN");
+            studentUser.setAdminClubId(clubId);
+            User saved = userRepository.save(studentUser);
+
+            // Create/Update ClubAdmin mapping entry
+            ClubAdmin clubAdmin = clubAdminRepository.findByUsernameIgnoreCaseAndClubId(targetUsn, clubId)
+                    .orElseGet(() -> new ClubAdmin(targetUsn, clubId));
+            clubAdmin.setEnabled(true);
+            clubAdminRepository.save(clubAdmin);
+
             return ResponseEntity.ok(Map.of(
-                    "message", "Club admin created",
+                    "message", "Student '" + targetUsn + "' assigned as Club Admin for '" + club.getName() + "' successfully",
                     "id", saved.getId(),
                     "username", saved.getUsername(),
-                    "role", saved.getRole(),
-                    "adminClubId", saved.getAdminClubId(),
+                    "role", "CLUB_ADMIN",
+                    "adminClubId", clubId,
+                    "clubName", club.getName(),
                     "enabled", saved.isEnabled()
             ));
         } catch (RuntimeException e) {

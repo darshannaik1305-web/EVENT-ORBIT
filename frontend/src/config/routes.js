@@ -8,8 +8,10 @@ export const ROUTES = {
     HOME: '/dashboard',
     EVENTS: '/events',
     CLUBS: '/clubs',
-    PROFILE: '/profile',
+    CLUB_DETAILS: '/clubs/:id',
     MY_EVENTS: '/my-events',
+    AI_ASSISTANT: '/ai-assistant',
+    PROFILE: '/profile',
     SETTINGS: '/settings',
   },
   ADMIN: {

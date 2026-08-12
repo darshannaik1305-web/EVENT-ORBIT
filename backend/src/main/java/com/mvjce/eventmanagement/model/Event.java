@@ -31,6 +31,8 @@ public class Event {
     private String clubId;
     private LocalDateTime regStart;
     private LocalDateTime regEnd;
+    private LocalDateTime eventDate;
+    private String venue;
     private String bgImageUrl;
     private Integer capacity;
 
@@ -112,6 +114,22 @@ public class Event {
 
     public void setRegEnd(LocalDateTime regEnd) {
         this.regEnd = regEnd;
+    }
+
+    public LocalDateTime getEventDate() {
+        return eventDate;
+    }
+
+    public void setEventDate(LocalDateTime eventDate) {
+        this.eventDate = eventDate;
+    }
+
+    public String getVenue() {
+        return venue;
+    }
+
+    public void setVenue(String venue) {
+        this.venue = venue;
     }
 
     public String getBgImageUrl() {

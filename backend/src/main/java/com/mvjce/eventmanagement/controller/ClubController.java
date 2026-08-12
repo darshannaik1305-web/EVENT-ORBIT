@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/clubs")
-@CrossOrigin(origins = {"http://localhost:5500", "http://127.0.0.1:5500"})
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class ClubController {
 
     @Autowired
@@ -34,9 +34,42 @@ public class ClubController {
     @Autowired
     private WinnerRepository winnerRepository;
 
+    @Autowired
+    private com.mvjce.eventmanagement.repository.ClubAdminRepository clubAdminRepository;
+
     @GetMapping
     public ResponseEntity<List<Club>> getAllClubs() {
         List<Club> clubs = clubRepository.findAll();
+        return ResponseEntity.ok(clubs);
+    }
+
+    @GetMapping("/my-clubs")
+    public ResponseEntity<List<Club>> getMyClubs() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth != null ? auth.getName() : null;
+        if (username == null || username.isBlank() || username.equals("anonymousUser")) {
+            return ResponseEntity.status(401).build();
+        }
+
+        User user = userRepository.findByUsernameIgnoreCase(username.trim()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(404).build();
+        }
+
+        if ("ADMIN".equalsIgnoreCase(user.getRole()) || "SUPER_ADMIN".equalsIgnoreCase(user.getRole())) {
+            return ResponseEntity.ok(clubRepository.findAll());
+        }
+
+        List<com.mvjce.eventmanagement.model.ClubAdmin> adminEntries = clubAdminRepository.findByUsernameIgnoreCase(user.getUsername());
+        List<String> clubIds = adminEntries.stream()
+                .map(com.mvjce.eventmanagement.model.ClubAdmin::getClubId)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (clubIds.isEmpty() && user.getAdminClubId() != null && !user.getAdminClubId().isBlank()) {
+            clubIds.add(user.getAdminClubId());
+        }
+
+        List<Club> clubs = clubRepository.findAllById(clubIds);
         return ResponseEntity.ok(clubs);
     }
 
@@ -45,6 +78,22 @@ public class ClubController {
         return clubRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/events")
+    public ResponseEntity<List<com.mvjce.eventmanagement.model.Event>> getEventsByClub(@NonNull @PathVariable String id) {
+        List<com.mvjce.eventmanagement.model.Event> events = eventRepository.findByClubIdOrderByRegStartDesc(id);
+        return ResponseEntity.ok(events);
+    }
+
+    @GetMapping("/{id}/winners")
+    public ResponseEntity<List<com.mvjce.eventmanagement.model.Winner>> getWinnersByClub(@NonNull @PathVariable String id) {
+        List<com.mvjce.eventmanagement.model.Event> events = eventRepository.findByClubIdOrderByRegStartDesc(id);
+        List<String> eventIds = events.stream().map(com.mvjce.eventmanagement.model.Event::getId).collect(java.util.stream.Collectors.toList());
+        List<com.mvjce.eventmanagement.model.Winner> winners = winnerRepository.findAll().stream()
+                .filter(w -> eventIds.contains(w.getEventId()))
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(winners);
     }
 
     @PostMapping
@@ -68,8 +117,11 @@ public class ClubController {
     public ResponseEntity<Club> updateClub(@NonNull @PathVariable String id, @RequestBody Club club) {
         return clubRepository.findById(id)
                 .map(existingClub -> {
-                    existingClub.setName(club.getName());
-                    existingClub.setImageUrl(club.getImageUrl());
+                    if (club.getName() != null) existingClub.setName(club.getName());
+                    if (club.getDescription() != null) existingClub.setDescription(club.getDescription());
+                    if (club.getCategory() != null) existingClub.setCategory(club.getCategory());
+                    if (club.getImageUrl() != null) existingClub.setImageUrl(club.getImageUrl());
+                    if (club.getBannerUrl() != null) existingClub.setBannerUrl(club.getBannerUrl());
 
                     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
                     String actor = auth != null ? auth.getName() : "unknown";

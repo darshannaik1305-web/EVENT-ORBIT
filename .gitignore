@@ -4,6 +4,7 @@
 # Log files
 *.log
 logs/
+**/logs/
 
 # Package Files #
 *.jar
@@ -17,8 +18,9 @@ logs/
 # virtual machine crash logs
 hs_err_pid*
 
-# Maven
+# Maven & Build
 target/
+**/target/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -29,16 +31,21 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# IDE - IntelliJ
+# Node / Frontend Build
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+*.local
+
+# IDE - IntelliJ, VS Code, Eclipse
 .idea/
 *.iml
 *.iws
 *.ipr
-
-# IDE - VS Code
 .vscode/
-
-# IDE - Eclipse
 .settings/
 .project
 .classpath
@@ -49,7 +56,7 @@ buildNumber.properties
 Thumbs.db
 desktop.ini
 
-# Confidential / Secret files
+# Secrets & Local configurations
 .env
 .env.local
 .env.*.local
@@ -57,8 +64,5 @@ desktop.ini
 secrets.xml
 backups/
 knowledge.txt
+**/knowledge.txt
 
-# Spring Boot sensitive files
-src/main/resources/application.properties
-src/main/resources/application-*.properties
-!src/main/resources/application.properties.example

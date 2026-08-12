@@ -1,21 +1,29 @@
 import api from './api'
-import { API_ENDPOINTS } from '@/constants/apiEndpoints'
 
 export const clubService = {
   getAllClubs: async () => {
-    return { data: [] }
+    const res = await api.get('/api/clubs')
+    return res
   },
   getClubById: async (id) => {
-    return { data: {} }
+    const res = await api.get(`/api/clubs/${id}`)
+    return res
   },
   createClub: async (payload) => {
-    return { data: {} }
+    const res = await api.post('/api/clubs', payload)
+    return res
   },
   updateClub: async (id, payload) => {
-    return { data: {} }
+    const res = await api.put(`/api/clubs/${id}`, payload)
+    return res
   },
   deleteClub: async (id) => {
-    return { data: {} }
+    const res = await api.delete(`/api/clubs/${id}`)
+    return res
+  },
+  getMyClubs: async () => {
+    const res = await api.get('/api/clubs/my-clubs')
+    return res
   }
 }
 export default clubService

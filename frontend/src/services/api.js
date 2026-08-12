@@ -10,9 +10,12 @@ const api = axios.create({
   },
 })
 
-// Request Interceptor - Attach token if available
+// Request Interceptor - Attach token if available & prevent double /api/api/ path
 api.interceptors.request.use(
   (config) => {
+    if (config.url && config.url.startsWith('/api/')) {
+      config.url = config.url.substring(4)
+    }
     const token = storage.getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`

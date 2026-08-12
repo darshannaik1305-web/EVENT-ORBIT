@@ -116,7 +116,29 @@ public class User implements UserDetails {
     // UserDetails interface methods
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
+        if (role == null) {
+            return java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        String cleanRole = role.toUpperCase();
+        if ("STUDENT".equals(cleanRole) || "USER".equals(cleanRole)) {
+            return java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_STUDENT"));
+        }
+        if ("CLUB_ADMIN".equals(cleanRole)) {
+            return java.util.List.of(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("ROLE_STUDENT"),
+                new SimpleGrantedAuthority("ROLE_CLUB_ADMIN")
+            );
+        }
+        if ("ADMIN".equals(cleanRole) || "SUPER_ADMIN".equals(cleanRole) || "SUPERADMIN".equals(cleanRole) || cleanRole.contains("ADMIN")) {
+            return java.util.List.of(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("ROLE_STUDENT"),
+                new SimpleGrantedAuthority("ROLE_ADMIN"),
+                new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")
+            );
+        }
+        return java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + cleanRole));
     }
 
     @Override

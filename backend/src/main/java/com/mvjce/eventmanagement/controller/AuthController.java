@@ -83,35 +83,4 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/register-admin")
-    public ResponseEntity<?> registerAdmin(@RequestBody Map<String, String> payload) {
-        try {
-            String usn = payload.get("usn");
-            String fullName = payload.get("fullName");
-            String password = payload.get("password");
-            String mobile = payload.get("mobile");
-            String email = payload.get("email");
-            String gender = payload.get("gender");
-            String clubId = payload.get("clubId");
-
-            User registeredUser = authService.registerAdmin(
-                    usn,
-                    fullName,
-                    password,
-                    mobile,
-                    email,
-                    gender,
-                    clubId
-            );
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Admin registered successfully");
-            response.put("username", registeredUser.getUsername());
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        }
-    }
 }

@@ -50,9 +50,18 @@ export function AuthProvider({ children }) {
     // Authenticate through the backend service
     const data = await authService.login(username, password)
     
+    const rolesArray = Array.isArray(data.roles) && data.roles.length > 0
+      ? data.roles
+      : data.role === 'CLUB_ADMIN'
+      ? ['STUDENT', 'CLUB_ADMIN']
+      : data.role === 'SUPER_ADMIN' || data.role === 'ADMIN'
+      ? ['SUPER_ADMIN']
+      : ['STUDENT']
+
     const userObj = {
       username: data.username,
       role: data.role,
+      roles: rolesArray,
       fullName: data.fullName || '',
       email: data.email || '',
       adminClubIds: data.adminClubIds || [],
