@@ -17,14 +17,14 @@ export default function CTASection() {
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-4 justify-center relative z-10 mt-4 w-full sm:w-auto">
           <Link to={ROUTES.REGISTER} className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:px-8 py-3 text-sm font-bold bg-white text-primary border-white hover:bg-slate-50 transition-all duration-300 shadow-lg">
+            <button className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white text-slate-950 font-extrabold text-sm shadow-xl hover:bg-slate-100 transition-all hover:scale-105 cursor-pointer">
               Create Account
-            </Button>
+            </button>
           </Link>
           <Link to={ROUTES.LOGIN} className="w-full sm:w-auto">
-            <Button variant="ghost" className="w-full sm:px-8 py-3 text-sm font-bold text-white hover:bg-white/10 transition-all duration-300">
+            <button className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-slate-950/50 hover:bg-slate-950/80 text-white font-extrabold text-sm border border-white/25 hover:border-white/50 shadow-xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer">
               Sign In
-            </Button>
+            </button>
           </Link>
         </div>
       </div>

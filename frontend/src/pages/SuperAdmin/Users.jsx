@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import adminService from '@/services/adminService'
 import clubService from '@/services/clubService'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 export default function Users() {
   const [users, setUsers] = useState([])
@@ -10,6 +11,12 @@ export default function Users() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('ALL')
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [confirmState, setConfirmState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    action: null
+  })
 
   const [assignForm, setAssignForm] = useState({
     usn: '',
@@ -52,26 +59,38 @@ export default function Users() {
     }
   }
 
-  const handleRevokeClubAdmin = async (clubAdminId) => {
-    if (!window.confirm('Are you sure you want to revoke this Club Admin assignment?')) return
-    try {
-      await adminService.deleteClubAdmin(clubAdminId)
-      toast.success('Club admin role revoked')
-      fetchData()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to revoke club admin')
-    }
+  const handleRevokeClubAdmin = (clubAdminId, clubName) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Revoke Club Admin Role?',
+      message: `Are you sure you want to revoke the Club Admin assignment for '${clubName}'?`,
+      action: async () => {
+        try {
+          await adminService.deleteClubAdmin(clubAdminId)
+          toast.success('Club admin role revoked')
+          fetchData()
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Failed to revoke club admin')
+        }
+      }
+    })
   }
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user profile?')) return
-    try {
-      await adminService.deleteUser(userId)
-      toast.success('User profile deleted')
-      fetchData()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete user')
-    }
+  const handleDeleteUser = (user) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete User Profile?',
+      message: `Are you sure you want to delete user profile '${user.fullName || user.username}' (${user.username})? This action cannot be undone.`,
+      action: async () => {
+        try {
+          await adminService.deleteUser(user.id)
+          toast.success(`User '${user.username}' deleted successfully`)
+          fetchData()
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Failed to delete user')
+        }
+      }
+    })
   }
 
   const handleAssignSubmit = async (e) => {
@@ -131,7 +150,7 @@ export default function Users() {
         </div>
         <button
           onClick={() => setShowAssignModal(true)}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2 self-start md:self-auto"
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2 self-start md:self-auto cursor-pointer"
         >
           <span>➕</span> Assign Club Admin
         </button>
@@ -152,7 +171,7 @@ export default function Users() {
             <button
               key={rf}
               onClick={() => setRoleFilter(rf)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
                 roleFilter === rf
                   ? 'bg-primary text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200'
@@ -220,8 +239,8 @@ export default function Users() {
                                   {getClubName(c.clubId)}
                                 </span>
                                 <button
-                                  onClick={() => handleRevokeClubAdmin(c.clubAdminId)}
-                                  className="text-red-400 hover:text-red-300 font-semibold text-[11px]"
+                                  onClick={() => handleRevokeClubAdmin(c.clubAdminId, getClubName(c.clubId))}
+                                  className="text-red-400 hover:text-red-300 font-semibold text-[11px] cursor-pointer"
                                   title="Revoke Admin"
                                 >
                                   ✖ Revoke
@@ -251,7 +270,7 @@ export default function Users() {
                           <>
                             <button
                               onClick={() => handleToggleUserEnabled(u)}
-                              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                                 u.enabled
                                   ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
                                   : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
@@ -261,8 +280,8 @@ export default function Users() {
                             </button>
 
                             <button
-                              onClick={() => handleDeleteUser(u.id)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                              onClick={() => handleDeleteUser(u)}
+                              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer"
                             >
                               Delete
                             </button>
@@ -288,7 +307,7 @@ export default function Users() {
               </h3>
               <button
                 onClick={() => setShowAssignModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -338,13 +357,13 @@ export default function Users() {
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-lg"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-purple-600/30"
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-purple-600/30 cursor-pointer"
                 >
                   Assign Privilege
                 </button>
@@ -353,6 +372,20 @@ export default function Users() {
           </div>
         </div>
       )}
+
+      {/* Styled Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Confirm"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (confirmState.action) confirmState.action()
+        }}
+        onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }
+

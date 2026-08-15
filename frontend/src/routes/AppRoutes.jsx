@@ -28,6 +28,7 @@ import StudentClubs from '@/pages/Student/Clubs'
 import ClubDetails from '@/pages/Student/ClubDetails'
 import StudentProfile from '@/pages/Student/Profile'
 import StudentMyEvents from '@/pages/Student/MyEvents'
+import StudentResults from '@/pages/Student/Results'
 import AIAssistant from '@/pages/Student/AIAssistant'
 import StudentSettings from '@/pages/Student/Settings'
 
@@ -40,7 +41,6 @@ import AdminResults from '@/pages/Admin/Results'
 import SuperAdminDashboard from '@/pages/SuperAdmin/Dashboard'
 import SuperAdminClubs from '@/pages/SuperAdmin/Clubs'
 import SuperAdminUsers from '@/pages/SuperAdmin/Users'
-import SuperAdminRequests from '@/pages/SuperAdmin/Requests'
 
 // Fallback
 import NotFound from '@/pages/NotFound'
@@ -69,6 +69,7 @@ export default function AppRoutes() {
           <Route path={ROUTES.STUDENT.CLUBS} element={<StudentClubs />} />
           <Route path={ROUTES.STUDENT.CLUB_DETAILS} element={<ClubDetails />} />
           <Route path={ROUTES.STUDENT.MY_EVENTS} element={<StudentMyEvents />} />
+          <Route path={ROUTES.STUDENT.RESULTS} element={<StudentResults />} />
           <Route path={ROUTES.STUDENT.AI_ASSISTANT} element={<AIAssistant />} />
           <Route path={ROUTES.STUDENT.PROFILE} element={<StudentProfile />} />
           <Route path={ROUTES.STUDENT.SETTINGS} element={<StudentSettings />} />
@@ -91,7 +92,6 @@ export default function AppRoutes() {
           <Route path={ROUTES.SUPERADMIN.DASHBOARD} element={<SuperAdminDashboard />} />
           <Route path={ROUTES.SUPERADMIN.CLUBS} element={<SuperAdminClubs />} />
           <Route path={ROUTES.SUPERADMIN.USERS} element={<SuperAdminUsers />} />
-          <Route path={ROUTES.SUPERADMIN.REQUESTS} element={<SuperAdminRequests />} />
         </Route>
       </Route>
 

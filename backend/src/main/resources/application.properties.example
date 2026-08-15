@@ -22,5 +22,8 @@ spring.web.cors.allowed-headers=*
 spring.web.cors.allow-credentials=true
 
 # AI Configuration
-openai.api.key=YOUR_OPENAI_API_KEY
-openai.api.url=https://api.openai.com/v1/chat/completions
+openai.api.key=${OPENROUTER_API_KEY:${OPENAI_API_KEY:}}
+openai.api.url=${OPENROUTER_API_URL:https://openrouter.ai/api/v1/chat/completions}
+openai.model=${OPENROUTER_MODEL:google/gemini-2.0-flash-lite-preview-02-05:free}
+openai.connect.timeout.ms=5000
+openai.read.timeout.ms=10000

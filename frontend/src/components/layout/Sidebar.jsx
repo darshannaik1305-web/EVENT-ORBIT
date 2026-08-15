@@ -53,6 +53,11 @@ export default function Sidebar() {
             <span>My Participation</span>
           </NavLink>
 
+          <NavLink to={ROUTES.STUDENT.RESULTS} className={navLinkClass}>
+            <span className="text-lg">🏆</span>
+            <span>Results</span>
+          </NavLink>
+
           <NavLink to={ROUTES.STUDENT.AI_ASSISTANT} className={navLinkClass}>
             <span className="text-lg">🤖</span>
             <span>AI Assistant</span>

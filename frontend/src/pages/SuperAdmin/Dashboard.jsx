@@ -102,59 +102,27 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Action Navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl space-y-4">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span>⚡</span> Quick Management
-          </h2>
-          <div className="flex flex-col gap-3">
-            <Link
-              to={ROUTES.SUPERADMIN.USERS}
-              className="p-4 bg-slate-950 hover:bg-slate-800 border border-white/5 rounded-xl transition-all flex items-center justify-between group"
-            >
-              <div>
-                <div className="font-semibold text-white group-hover:text-primary transition-colors">User & Admin Directory</div>
-                <div className="text-xs text-slate-400">View user list, assign Club Admin privileges, or ban accounts</div>
-              </div>
-              <span className="text-slate-500 group-hover:text-primary">→</span>
-            </Link>
-
-            <Link
-              to={ROUTES.SUPERADMIN.CLUBS}
-              className="p-4 bg-slate-950 hover:bg-slate-800 border border-white/5 rounded-xl transition-all flex items-center justify-between group"
-            >
-              <div>
-                <div className="font-semibold text-white group-hover:text-primary transition-colors">Manage College Clubs</div>
-                <div className="text-xs text-slate-400">Add new clubs, edit club details, or delete clubs</div>
-              </div>
-              <span className="text-slate-500 group-hover:text-primary">→</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Database Maintenance Tools */}
-        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl space-y-4">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span>🧹</span> System Maintenance
-          </h2>
-          <p className="text-xs text-slate-400">
-            Execute safe database cleanup tasks for orphaned data.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <button
-              onClick={handleCleanupEvents}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-white/10 transition-colors"
-            >
-              Cleanup Orphaned Events
-            </button>
-            <button
-              onClick={handleCleanupWinners}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-white/10 transition-colors"
-            >
-              Cleanup Orphaned Winners
-            </button>
-          </div>
+      {/* Database Maintenance Tools */}
+      <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl space-y-4">
+        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <span>🧹</span> System Maintenance
+        </h2>
+        <p className="text-xs text-slate-400">
+          Execute safe database cleanup tasks for orphaned events and winner declarations.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <button
+            onClick={handleCleanupEvents}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-white/10 transition-colors cursor-pointer"
+          >
+            Cleanup Orphaned Events
+          </button>
+          <button
+            onClick={handleCleanupWinners}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-white/10 transition-colors cursor-pointer"
+          >
+            Cleanup Orphaned Winners
+          </button>
         </div>
       </div>
     </div>

@@ -24,10 +24,10 @@ public class Club {
 
     private String category;
 
-    @Column(name = "image_url")
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
     private String imageUrl;
 
-    @Column(name = "banner_url")
+    @Column(name = "banner_url", columnDefinition = "LONGTEXT")
     private String bannerUrl;
 
     private String createdBy;

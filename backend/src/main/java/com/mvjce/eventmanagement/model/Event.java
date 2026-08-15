@@ -33,6 +33,7 @@ public class Event {
     private LocalDateTime regEnd;
     private LocalDateTime eventDate;
     private String venue;
+    @Column(name = "bg_image_url", columnDefinition = "LONGTEXT")
     private String bgImageUrl;
     private Integer capacity;
 

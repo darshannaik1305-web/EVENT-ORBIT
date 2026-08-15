@@ -152,18 +152,29 @@ public class ClubController {
                             }
                         }
                         
-                        // Step 2: Delete the club admin associated with this club
+                        // Step 2: Revoke ClubAdmin entries for this club and demote affected users if no remaining clubs
                         try {
-                            List<User> clubAdmins = userRepository.findByRoleIgnoreCase("CLUB_ADMIN");
-                            for (User admin : clubAdmins) {
-                                if (id.equals(admin.getAdminClubId())) {
-                                    userRepository.deleteById(admin.getId());
-                                    break;
+                            List<com.mvjce.eventmanagement.model.ClubAdmin> clubAdminEntries = clubAdminRepository.findByClubId(id);
+                            for (com.mvjce.eventmanagement.model.ClubAdmin ca : clubAdminEntries) {
+                                String username = ca.getUsername();
+                                clubAdminRepository.deleteById(ca.getId());
+
+                                List<com.mvjce.eventmanagement.model.ClubAdmin> remaining = clubAdminRepository.findByUsernameIgnoreCase(username);
+                                if (remaining.isEmpty()) {
+                                    userRepository.findByUsernameIgnoreCase(username).ifPresent(user -> {
+                                        user.setRole("USER");
+                                        user.setAdminClubId(null);
+                                        userRepository.save(user);
+                                    });
+                                } else {
+                                    userRepository.findByUsernameIgnoreCase(username).ifPresent(user -> {
+                                        user.setAdminClubId(remaining.get(0).getClubId());
+                                        userRepository.save(user);
+                                    });
                                 }
                             }
                         } catch (Exception e) {
-                            // Continue even if admin delete fails
-                            System.out.println("Warning: Could not delete club admin: " + e.getMessage());
+                            System.out.println("Warning: Could not update club admins: " + e.getMessage());
                         }
                         
                         // Step 3: Delete the club

@@ -10,6 +10,7 @@ export const ROUTES = {
     CLUBS: '/clubs',
     CLUB_DETAILS: '/clubs/:id',
     MY_EVENTS: '/my-events',
+    RESULTS: '/results',
     AI_ASSISTANT: '/ai-assistant',
     PROFILE: '/profile',
     SETTINGS: '/settings',
@@ -24,7 +25,6 @@ export const ROUTES = {
     DASHBOARD: '/superadmin',
     CLUBS: '/superadmin/clubs',
     USERS: '/superadmin/users',
-    REQUESTS: '/superadmin/requests',
   },
   NOT_FOUND: '*',
 }

@@ -20,9 +20,4 @@ public interface UserRepository extends JpaRepository<User, String> {
     long countByRoleAndAdminClubIdAndEnabledTrue(String role, String adminClubId);
 
     List<User> findByRoleIgnoreCase(String role);
-
-    @Modifying
-    @Transactional
-    @Query(value = "DELETE FROM user_roles WHERE user_id = ?1", nativeQuery = true)
-    void deleteUserRoles(String userId);
 }

@@ -5,7 +5,7 @@ import eventService from '@/services/eventService'
 import ConfirmModal from '@/components/common/ConfirmModal'
 
 export default function AdminEvents() {
-  const { myClubs, selectedClubId, setSelectedClubId } = useOutletContext() || { myClubs: [], selectedClubId: '' }
+  const { myClubs, selectedClubId, setSelectedClubId, loadingClubs } = useOutletContext() || { myClubs: [], selectedClubId: '', loadingClubs: false }
 
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -33,23 +33,25 @@ export default function AdminEvents() {
   })
 
   useEffect(() => {
-    fetchEvents()
-  }, [selectedClubId, myClubs])
+    if (!loadingClubs) {
+      fetchEvents()
+    }
+  }, [selectedClubId, myClubs, loadingClubs])
 
   const fetchEvents = async () => {
+    if (loadingClubs) return
+
     setLoading(true)
     try {
-      let res
+      let list = []
       if (selectedClubId) {
-        res = await eventService.getEventsByClub(selectedClubId)
-      } else {
-        res = await eventService.getAllEvents()
-      }
-      let list = res.data || []
-      if (selectedClubId) {
-        list = list.filter((e) => e.clubId === selectedClubId)
+        const res = await eventService.getEventsByClub(selectedClubId)
+        const raw = res.data || []
+        list = raw.filter((e) => e.clubId === selectedClubId)
       } else if (myClubs.length > 0) {
-        list = list.filter((e) => myClubs.some((c) => c.id === e.clubId))
+        const res = await eventService.getAllEvents()
+        const allList = res.data || []
+        list = allList.filter((e) => myClubs.some((c) => c.id === e.clubId))
       }
       setEvents(list)
     } catch (err) {
@@ -567,14 +569,49 @@ export default function AdminEvents() {
 
               {/* Poster Image URL */}
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Banner Image URL (Optional)</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/photo-..."
-                  value={formData.bgImageUrl}
-                  onChange={(e) => setFormData({ ...formData, bgImageUrl: e.target.value })}
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none focus:border-purple-500"
-                />
+                <label className="block text-slate-300 font-bold mb-1">Banner Image (URL or Browse File)</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Paste banner image URL or browse local file..."
+                    value={formData.bgImageUrl}
+                    onChange={(e) => setFormData({ ...formData, bgImageUrl: e.target.value })}
+                    className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none focus:border-purple-500"
+                  />
+                  <label className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                    <span>📁</span> Browse...
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onload = (evt) => setFormData((prev) => ({ ...prev, bgImageUrl: evt.target.result }))
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                {formData.bgImageUrl && (
+                  <div className="mt-2 relative inline-block group">
+                    <img
+                      src={formData.bgImageUrl}
+                      alt="Banner Preview"
+                      className="h-16 w-32 object-cover rounded-lg border border-white/20 shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, bgImageUrl: '' })}
+                      className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                      title="Remove Image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
             </form>
@@ -758,13 +795,49 @@ export default function AdminEvents() {
 
               {/* Banner Image URL */}
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Banner Image URL (Optional)</label>
-                <input
-                  type="url"
-                  value={formData.bgImageUrl}
-                  onChange={(e) => setFormData({ ...formData, bgImageUrl: e.target.value })}
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none focus:border-purple-500"
-                />
+                <label className="block text-slate-300 font-bold mb-1">Banner Image (URL or Browse File)</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Paste banner image URL or browse local file..."
+                    value={formData.bgImageUrl}
+                    onChange={(e) => setFormData({ ...formData, bgImageUrl: e.target.value })}
+                    className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-slate-200 outline-none focus:border-purple-500"
+                  />
+                  <label className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                    <span>📁</span> Browse...
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onload = (evt) => setFormData((prev) => ({ ...prev, bgImageUrl: evt.target.result }))
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                {formData.bgImageUrl && (
+                  <div className="mt-2 relative inline-block group">
+                    <img
+                      src={formData.bgImageUrl}
+                      alt="Banner Preview"
+                      className="h-16 w-32 object-cover rounded-lg border border-white/20 shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, bgImageUrl: '' })}
+                      className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                      title="Remove Image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
             </form>

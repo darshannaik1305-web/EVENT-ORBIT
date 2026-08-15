@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
+@Transactional
 public class AdminController {
 
     @Autowired
@@ -53,6 +55,28 @@ public class AdminController {
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", u.getId());
                     m.put("username", u.getUsername());
+                    
+                    // For club admins, verify assigned clubs and demote to normal user if 0 clubs assigned
+                    if (u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN")) {
+                        List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
+                        if (clubAdmins.isEmpty()) {
+                            u.setRole("USER");
+                            u.setAdminClubId(null);
+                            userRepository.save(u);
+                        } else {
+                            List<Map<String, Object>> clubs = clubAdmins.stream()
+                                    .map(ca -> {
+                                        Map<String, Object> cm = new HashMap<>();
+                                        cm.put("clubAdminId", ca.getId());
+                                        cm.put("clubId", ca.getClubId());
+                                        cm.put("enabled", ca.isEnabled());
+                                        return cm;
+                                    })
+                                    .collect(Collectors.toList());
+                            m.put("clubs", clubs);
+                        }
+                    }
+
                     m.put("role", u.getRole());
                     m.put("mobile", u.getMobile());
                     m.put("fullName", u.getFullName());
@@ -60,20 +84,6 @@ public class AdminController {
                     m.put("gender", u.getGender());
                     m.put("adminClubId", u.getAdminClubId());
                     m.put("enabled", u.isEnabled());
-                    // For club admins, include clubs array
-                    if (u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN")) {
-                        List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
-                        List<Map<String, Object>> clubs = clubAdmins.stream()
-                                .map(ca -> {
-                                    Map<String, Object> cm = new HashMap<>();
-                                    cm.put("clubAdminId", ca.getId());
-                                    cm.put("clubId", ca.getClubId());
-                                    cm.put("enabled", ca.isEnabled());
-                                    return cm;
-                                })
-                                .collect(Collectors.toList());
-                        m.put("clubs", clubs);
-                    }
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -211,13 +221,11 @@ public class AdminController {
                     }
                     // Delete related records in order to avoid foreign key constraints
                     try {
-                        // Delete user roles first
-                        userRepository.deleteUserRoles(id);
-                        // Delete ClubAdmin entries for this user
+                        // Delete ClubAdmin entries for this user if any
                         clubAdminRepository.deleteByUsernameIgnoreCase(u.getUsername());
-                        // Finally delete the user
+                        // Finally delete the user from users table
                         userRepository.deleteById(id);
-                        return ResponseEntity.ok(Map.of("message", "User deleted"));
+                        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
                     } catch (Exception e) {
                         return ResponseEntity.status(500).body(Map.of("message", "Error deleting user: " + e.getMessage()));
                     }
@@ -284,8 +292,24 @@ public class AdminController {
     public ResponseEntity<?> deleteClubAdmin(@NonNull @PathVariable String clubAdminId) {
         return clubAdminRepository.findById(clubAdminId)
                 .map(ca -> {
+                    String username = ca.getUsername();
                     clubAdminRepository.deleteById(clubAdminId);
-                    return ResponseEntity.ok(Map.of("message", "Club admin mapping deleted"));
+
+                    List<ClubAdmin> remaining = clubAdminRepository.findByUsernameIgnoreCase(username);
+                    if (remaining.isEmpty()) {
+                        userRepository.findByUsernameIgnoreCase(username).ifPresent(user -> {
+                            user.setRole("USER");
+                            user.setAdminClubId(null);
+                            userRepository.save(user);
+                        });
+                    } else {
+                        userRepository.findByUsernameIgnoreCase(username).ifPresent(user -> {
+                            user.setAdminClubId(remaining.get(0).getClubId());
+                            userRepository.save(user);
+                        });
+                    }
+
+                    return ResponseEntity.ok(Map.of("message", "Club admin role revoked successfully"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import clubService from '@/services/clubService'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 export default function Clubs() {
   const [clubs, setClubs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingClub, setEditingClub] = useState(null)
+  const [confirmState, setConfirmState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    action: null
+  })
 
   const [form, setForm] = useState({
     name: '',
@@ -57,15 +64,21 @@ export default function Clubs() {
     setShowModal(true)
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this club? Associated events will also be cleaned up.')) return
-    try {
-      await clubService.deleteClub(id)
-      toast.success('Club deleted successfully')
-      fetchClubs()
-    } catch (err) {
-      toast.error('Failed to delete club')
-    }
+  const handleDelete = (club) => {
+    setConfirmState({
+      isOpen: true,
+      title: `Delete '${club.name}'?`,
+      message: `Are you sure you want to delete '${club.name}'? Associated events will also be cleaned up.`,
+      action: async () => {
+        try {
+          await clubService.deleteClub(club.id)
+          toast.success('Club deleted successfully')
+          fetchClubs()
+        } catch (err) {
+          toast.error('Failed to delete club')
+        }
+      }
+    })
   }
 
   const handleSubmit = async (e) => {
@@ -157,8 +170,8 @@ export default function Clubs() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(c.id)}
-                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border border-red-500/20 transition-colors"
+                    onClick={() => handleDelete(c)}
+                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border border-red-500/20 transition-colors cursor-pointer"
                   >
                     Delete
                   </button>
@@ -177,7 +190,7 @@ export default function Clubs() {
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <span>🏫</span> {editingClub ? 'Edit Club' : 'Add New Club'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
                 ✕
               </button>
             </div>
@@ -223,38 +236,108 @@ export default function Clubs() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Cover Image URL</label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/club-cover.jpg"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Cover Image (URL or Browse File)</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Paste image URL or browse local file..."
+                    value={form.imageUrl}
+                    onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                  <label className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                    <span>📁</span> Browse...
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onload = (evt) => setForm((prev) => ({ ...prev, imageUrl: evt.target.result }))
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                {form.imageUrl && (
+                  <div className="mt-2 relative inline-block group">
+                    <img
+                      src={form.imageUrl}
+                      alt="Cover Preview"
+                      className="h-16 w-24 object-cover rounded-lg border border-white/20 shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, imageUrl: '' })}
+                      className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                      title="Remove Image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Header Banner URL (Optional)</label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/club-banner.jpg"
-                  value={form.bannerUrl}
-                  onChange={(e) => setForm({ ...form, bannerUrl: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Header Banner Image (Optional)</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Paste banner URL or browse local file..."
+                    value={form.bannerUrl}
+                    onChange={(e) => setForm({ ...form, bannerUrl: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                  <label className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                    <span>📁</span> Browse...
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onload = (evt) => setForm((prev) => ({ ...prev, bannerUrl: evt.target.result }))
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                {form.bannerUrl && (
+                  <div className="mt-2 relative inline-block group">
+                    <img
+                      src={form.bannerUrl}
+                      alt="Banner Preview"
+                      className="h-14 w-36 object-cover rounded-lg border border-white/20 shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, bannerUrl: '' })}
+                      className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                      title="Remove Image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-lg"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-emerald-600/30"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-emerald-600/30 cursor-pointer"
                 >
                   {editingClub ? 'Save Changes' : 'Create Club'}
                 </button>
@@ -263,6 +346,19 @@ export default function Clubs() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (confirmState.action) confirmState.action()
+        }}
+        onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

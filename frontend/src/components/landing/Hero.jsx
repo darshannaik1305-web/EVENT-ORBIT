@@ -1,25 +1,27 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import Button from '@/components/common/Button'
-import HeroCard from './HeroCard'
 import { ROUTES } from '@/config/routes'
 
 export default function Hero() {
   return (
-    <section className="relative w-full max-w-5xl mx-auto px-6 py-20 lg:py-28 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center min-h-[calc(100vh-100px)] overflow-hidden select-none">
+    <section className="relative w-full max-w-5xl mx-auto px-6 pt-4 pb-8 lg:pt-6 lg:pb-10 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center select-none">
       {/* Background neon glows */}
-      <div className="absolute top-10 left-10 w-96 h-96 bg-primary/20 blur-[160px] rounded-full -z-10 animate-pulse duration-[8000ms]" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-secondary/15 blur-[160px] rounded-full -z-10 animate-pulse duration-[6000ms]" />
+      <div className="absolute top-4 left-10 w-96 h-96 bg-primary/20 blur-[160px] rounded-full -z-10 animate-pulse duration-[8000ms]" />
+      <div className="absolute bottom-4 right-10 w-96 h-96 bg-secondary/15 blur-[160px] rounded-full -z-10 animate-pulse duration-[6000ms]" />
 
       {/* Left side text */}
       <div className="lg:col-span-6 flex flex-col gap-6 text-center lg:text-left">
-        <span className="text-[10px] font-bold text-primary tracking-widest uppercase bg-primary/10 px-4 py-1.5 rounded-full w-max mx-auto lg:mx-0">
+        <span className="text-[10px] font-bold text-primary tracking-widest uppercase bg-primary/10 border border-primary/20 px-4 py-1.5 rounded-full w-max mx-auto lg:mx-0">
           🎉 Campus Event Universe
         </span>
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-white">
           Discover Events.<br />
           Meet People.<br />
-          <span className="bg-gradient-to-r from-primary via-secondary to-accent-orange bg-clip-text text-transparent">Create Memories.</span>
+          <span className="bg-gradient-to-r from-primary via-secondary to-accent-orange bg-clip-text text-transparent">
+            Create Memories.
+          </span>
         </h1>
         <p className="text-sm md:text-base text-slate-400 font-medium max-w-lg leading-relaxed mx-auto lg:mx-0">
           EventOrbit is your daily college gateway. Find hackathons, fests, matching codes, and coordinate registrations with our smart chatbot.
@@ -38,55 +40,76 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Right side floating fests cards */}
-      <div className="lg:col-span-6 h-[460px] relative flex items-center justify-center select-none mt-12 lg:mt-0">
-        {/* Decorative dynamic background concentric rings */}
-        <div className="absolute h-80 w-80 rounded-full border border-white/5 border-dashed animate-[spin_60s_linear_infinite]" />
-        <div className="absolute h-56 w-56 rounded-full border border-white/5 animate-[spin_30s_linear_infinite_reverse]" />
-        
-        <HeroCard
-          title="Coding Club Hackathon"
-          subtitle="Aug 18 • Seminar Hall"
-          badge="Technical"
-          icon="💻"
-          initialX={-30}
-          initialY={-120}
-          duration={3.5}
-          className="left-4 lg:left-8"
-        />
+      {/* Right side Platform Capability Showcase */}
+      <div className="lg:col-span-6 relative flex items-center justify-center select-none mt-6 lg:mt-0">
+        <div className="w-full max-w-md bg-[#12182B]/80 border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-5 relative">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-black text-white tracking-wide uppercase">
+                EventOrbit Campus Hub
+              </span>
+            </div>
+            <span className="text-[10px] font-extrabold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
+              LIVE PLATFORM
+            </span>
+          </div>
 
-        <HeroCard
-          title="Karan Sharma Wins 1st!"
-          subtitle="Dance Auditions podium"
-          badge="Winner Board"
-          icon="🏆"
-          initialX={40}
-          initialY={120}
-          duration={4}
-          className="right-4 lg:right-8"
-        />
+          {/* Platform Feature Modules */}
+          <div className="space-y-3">
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-slate-900/80 border border-white/5 p-3.5 rounded-2xl flex items-center gap-3.5 hover:border-primary/30 transition-all"
+            >
+              <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xl text-blue-400">
+                🎟️
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white">Smart Event Registrations</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Individual & group team code entry</div>
+              </div>
+            </motion.div>
 
-        <HeroCard
-          title="Futsal League Match"
-          subtitle="Aug 01 • Main Field"
-          badge="Sports"
-          icon="⚽"
-          initialX={-50}
-          initialY={60}
-          duration={3}
-          className="left-8 lg:left-12"
-        />
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-slate-900/80 border border-white/5 p-3.5 rounded-2xl flex items-center gap-3.5 hover:border-purple-500/30 transition-all"
+            >
+              <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xl text-purple-400">
+                🤖
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white">AI Assistant Guidance</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Instant queries for rules, dates & venues</div>
+              </div>
+            </motion.div>
 
-        <HeroCard
-          title="Acoustic Jam Session"
-          subtitle="Jul 30 • Quadrangle"
-          badge="Music"
-          icon="🎵"
-          initialX={60}
-          initialY={-60}
-          duration={4.5}
-          className="right-8 lg:right-12"
-        />
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-slate-900/80 border border-white/5 p-3.5 rounded-2xl flex items-center gap-3.5 hover:border-amber-500/30 transition-all"
+            >
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xl text-amber-400">
+                🏆
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white">Official Champion Standings</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Verified podium declarations by club admins</div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Footer Badge */}
+          <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+            <span>🛡️ Verified USN System</span>
+            <span className="text-emerald-400 font-bold">● Active Portal</span>
+          </div>
+        </div>
       </div>
     </section>
   )

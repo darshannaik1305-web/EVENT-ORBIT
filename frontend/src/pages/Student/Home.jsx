@@ -72,7 +72,7 @@ export default function StudentHome() {
     )
   }
 
-  const displayEvents = events.slice(0, 4)
+  const displayEvents = events.filter((e) => getEventStatus(e).code !== 'ENDED').slice(0, 4)
 
   return (
     <div className="space-y-8 select-none">
@@ -248,37 +248,6 @@ export default function StudentHome() {
                 </div>
               )
             })}
-          </div>
-        )}
-      </div>
-
-      {/* 4. Integrated Winners */}
-      <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>🏆</span> Recent Winners & Top Performers
-            </h2>
-            <p className="text-xs text-slate-400">Hall of fame for recent event champions</p>
-          </div>
-        </div>
-
-        {winners.length === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-500">No winners declared yet. Check back after events finish!</div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
-            {winners.slice(0, 6).map((w, idx) => (
-              <div key={w.id || idx} className="bg-slate-950/80 border border-white/5 p-4 rounded-xl flex items-center gap-3">
-                <div className="text-2xl">
-                  {w.position === 'FIRST' ? '🥇' : w.position === 'SECOND' ? '🥈' : '🥉'}
-                </div>
-                <div className="overflow-hidden">
-                  <div className="text-xs font-bold text-white truncate">{w.fullName || w.username}</div>
-                  <div className="text-[10px] text-amber-400 font-semibold">{w.eventName || 'Campus Event'}</div>
-                  <div className="text-[10px] text-slate-500 uppercase">{w.positionDisplayName || w.position}</div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>

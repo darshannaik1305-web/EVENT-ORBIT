@@ -158,13 +158,6 @@ public class EventController {
     @GetMapping
     public ResponseEntity<List<Event>> getAllEvents() {
         List<Event> events = eventRepository.findAll();
-        LocalDateTime now = LocalDateTime.now();
-        
-        // Filter out expired and full events for regular users
-        events = events.stream()
-                .filter(event -> !isEventExpiredOrFull(event, now))
-                .collect(Collectors.toList());
-        
         events.sort(Comparator.comparing(Event::getRegStart, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
         return ResponseEntity.ok(events);
     }

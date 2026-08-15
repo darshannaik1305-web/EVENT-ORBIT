@@ -7,7 +7,7 @@ import teamService from '@/services/teamService'
 import ConfirmModal from '@/components/common/ConfirmModal'
 
 export default function AdminResults() {
-  const { myClubs, selectedClubId } = useOutletContext() || { myClubs: [], selectedClubId: '' }
+  const { myClubs, selectedClubId, loadingClubs } = useOutletContext() || { myClubs: [], selectedClubId: '', loadingClubs: false }
 
   const [events, setEvents] = useState([])
   const [selectedEventId, setSelectedEventId] = useState('')
@@ -24,8 +24,10 @@ export default function AdminResults() {
   const [deleteTargetWinner, setDeleteTargetWinner] = useState(null)
 
   useEffect(() => {
-    fetchEvents()
-  }, [selectedClubId, myClubs])
+    if (!loadingClubs) {
+      fetchEvents()
+    }
+  }, [selectedClubId, myClubs, loadingClubs])
 
   useEffect(() => {
     if (selectedEventId) {
@@ -38,23 +40,23 @@ export default function AdminResults() {
   }, [selectedEventId])
 
   const fetchEvents = async () => {
+    if (loadingClubs) return
+
     setLoadingEvents(true)
     try {
-      let res
+      let list = []
       if (selectedClubId) {
-        res = await eventService.getEventsByClub(selectedClubId)
-      } else {
-        res = await eventService.getAllEvents()
-      }
-      let list = res.data || []
-      if (selectedClubId) {
-        list = list.filter((e) => e.clubId === selectedClubId)
+        const res = await eventService.getEventsByClub(selectedClubId)
+        const raw = res.data || []
+        list = raw.filter((e) => e.clubId === selectedClubId)
       } else if (myClubs.length > 0) {
-        list = list.filter((e) => myClubs.some((c) => c.id === e.clubId))
+        const res = await eventService.getAllEvents()
+        const allList = res.data || []
+        list = allList.filter((e) => myClubs.some((c) => c.id === e.clubId))
       }
       setEvents(list)
       if (list.length > 0) {
-        setSelectedEventId(list[0].id)
+        setSelectedEventId((prev) => (list.some((e) => e.id === prev) ? prev : list[0].id))
       } else {
         setSelectedEventId('')
       }
