@@ -65,29 +65,27 @@ public class ChatService {
         // 1. Retrieve Targeted Relational Context via Parameterized JPA Queries
         DatabaseSqlAgent.QueryResult dbResult = databaseSqlAgent.retrieveTargetedContext(query, authenticatedUsername);
 
-        // 2. Retrieve Verified Document Knowledge Chunks ONLY if DB didn't handle it or if query is general
-        List<KnowledgeChunker.MatchResult> docMatches = Collections.emptyList();
-        if (dbResult.getContext().isBlank()) {
-            docMatches = knowledgeChunker.search(query, 2);
-        }
+        // 2. Retrieve Verified Document Knowledge Chunks ALWAYS for comprehensive context
+        List<KnowledgeChunker.MatchResult> docMatches = knowledgeChunker.search(query, 3);
 
-        // 3. Assemble Consolidated Context and Sources
-        List<SourceMetadata> sourcesList = new ArrayList<>(dbResult.getSources());
+        // 3. Assemble Consolidated Context and Sources (Prioritize Knowledge Base FAQs)
+        List<SourceMetadata> sourcesList = new ArrayList<>();
         StringBuilder combinedContext = new StringBuilder();
 
+        if (!docMatches.isEmpty()) {
+            combinedContext.append("=== Official College Knowledge Base & FAQs ===\n");
+            for (KnowledgeChunker.MatchResult match : docMatches) {
+                sourcesList.add(match.getChunk().getMetadata());
+                combinedContext.append("Topic/Question: ").append(match.getChunk().getTitle()).append("\n")
+                        .append(match.getChunk().getContent()).append("\n\n");
+            }
+        }
+
         if (!dbResult.getContext().isBlank()) {
+            sourcesList.addAll(dbResult.getSources());
             combinedContext.append("=== EventOrbit Database Records ===\n")
                     .append(dbResult.getContext())
                     .append("\n\n");
-        }
-
-        if (!docMatches.isEmpty()) {
-            combinedContext.append("=== Official College Knowledge Base ===\n");
-            for (KnowledgeChunker.MatchResult match : docMatches) {
-                sourcesList.add(match.getChunk().getMetadata());
-                combinedContext.append("Title: ").append(match.getChunk().getTitle()).append("\n")
-                        .append(match.getChunk().getContent()).append("\n\n");
-            }
         }
 
         String contextText = combinedContext.toString().trim();
@@ -121,10 +119,11 @@ public class ChatService {
                 "You are EventOrbit AI Assistant, a college event management assistant. " +
                 "STRICT GROUNDING INSTRUCTIONS:\n" +
                 "1. Answer ONLY using the facts provided in the Context below.\n" +
-                "2. If the answer cannot be directly derived from the Context, respond EXACTLY with:\n" +
+                "2. If the user asks a guidance/how-to question (e.g., 'How can I see my registered events?'), prioritize the official FAQ answer from the Knowledge Base context.\n" +
+                "3. If the answer cannot be directly derived from the Context, respond EXACTLY with:\n" +
                 "\"" + GROUNDED_UNAVAILABLE_MESSAGE + "\"\n" +
-                "3. Do NOT invent, speculate, or infer information outside the Context.\n" +
-                "4. Format the answer cleanly with clear headings and bullet points where helpful.\n\n" +
+                "4. Do NOT invent, speculate, or infer information outside the Context.\n" +
+                "5. Format the answer cleanly with clear headings and bullet points where helpful.\n\n" +
                 "Context:\n" + context + "\n\n" +
                 "Question: " + query;
 
@@ -167,17 +166,24 @@ public class ChatService {
     }
 
     private String formatDeterministicFallback(String dbContext, List<KnowledgeChunker.MatchResult> docMatches) {
+        // If DB context is present, return DB context (only prepend doc match if score >= 25.0)
         if (dbContext != null && !dbContext.isBlank()) {
+            boolean hasHighConfidenceDoc = docMatches != null && !docMatches.isEmpty() && docMatches.get(0).getScore() >= 25.0;
+            if (hasHighConfidenceDoc) {
+                return docMatches.get(0).getChunk().getContent() + "\n\n---\n" + dbContext;
+            }
             return dbContext;
         }
+
+        // If DB context is empty, return matched knowledge chunks
         if (docMatches != null && !docMatches.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             for (KnowledgeChunker.MatchResult match : docMatches) {
-                sb.append("📌 ").append(match.getChunk().getTitle()).append("\n\n")
-                  .append(match.getChunk().getContent()).append("\n\n");
+                sb.append(match.getChunk().getContent()).append("\n\n");
             }
             return sb.toString().trim();
         }
+
         return GROUNDED_UNAVAILABLE_MESSAGE;
     }
 

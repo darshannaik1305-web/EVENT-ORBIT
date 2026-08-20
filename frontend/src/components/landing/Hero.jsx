@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Button from '@/components/common/Button'
 import { ROUTES } from '@/config/routes'
+import logoImg from '@/assets/logo.png'
 
 export default function Hero() {
   return (
@@ -40,13 +41,13 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Right side Platform Capability Showcase */}
-      <div className="lg:col-span-6 relative flex items-center justify-center select-none mt-6 lg:mt-0">
+      {/* Right side floating interactive card */}
+      <div className="lg:col-span-6 flex justify-center">
         <div className="w-full max-w-md bg-[#12182B]/80 border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-5 relative">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <div className="flex items-center gap-2.5">
-              <div className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
+              <img src={logoImg} alt="EventOrbit Logo" className="h-7 w-7 object-contain drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]" />
               <span className="text-xs font-black text-white tracking-wide uppercase">
                 EventOrbit Campus Hub
               </span>

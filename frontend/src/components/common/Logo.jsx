@@ -1,45 +1,42 @@
 import React from 'react'
+import logoImg from '@/assets/logo.png'
 
-export default function Logo({ size = 'md', variant = 'primary', className = '' }) {
-  const iconSizes = {
-    sm: 'h-5 w-5',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
+export default function Logo({ size = 'md', variant = 'primary', showText = true, className = '' }) {
+  const imageSizes = {
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-14 w-14',
+    xl: 'h-20 w-20',
   }
 
   const textSizes = {
     sm: 'text-lg',
     md: 'text-2xl',
     lg: 'text-4xl',
+    xl: 'text-5xl',
   }
 
-  const selectedIconSize = iconSizes[size] || iconSizes.md
+  const selectedImageSize = imageSizes[size] || imageSizes.md
   const selectedTextSize = textSizes[size] || textSizes.md
 
   const colorClass = variant === 'primary' 
-    ? 'bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent' 
-    : 'text-slate-200'
+    ? 'bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 bg-clip-text text-transparent' 
+    : 'text-white'
 
   return (
-    <div className={`flex items-center gap-3 select-none ${className}`}>
-      <div className={`flex items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-secondary p-1.5 text-white shadow-lg shadow-primary/20`}>
-        <svg 
-          className={selectedIconSize}
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2.5" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
+    <div className={`flex items-center gap-2.5 select-none ${className}`}>
+      <div className="relative shrink-0 flex items-center justify-center">
+        <img 
+          src={logoImg} 
+          alt="EventOrbit Logo" 
+          className={`${selectedImageSize} object-contain filter drop-shadow-[0_0_12px_rgba(236,72,153,0.5)] transition-transform hover:scale-105`} 
+        />
       </div>
-      <span className={`font-extrabold tracking-tight ${selectedTextSize} ${colorClass}`}>
-        EventOrbit
-      </span>
+      {showText && (
+        <span className={`font-black tracking-tight ${selectedTextSize} ${colorClass}`}>
+          EventOrbit
+        </span>
+      )}
     </div>
   )
 }

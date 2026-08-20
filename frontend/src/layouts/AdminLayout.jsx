@@ -3,6 +3,7 @@ import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import { ROUTES } from '@/config/routes'
 import clubService from '@/services/clubService'
+import logoImg from '@/assets/logo.png'
 
 export default function AdminLayout() {
   const { user, logout } = useAuth()
@@ -52,13 +53,11 @@ export default function AdminLayout() {
       <aside className="w-64 bg-slate-900 border-r border-purple-500/20 flex flex-col justify-between p-5 fixed inset-y-0 left-0 z-40">
         <div className="space-y-6">
           {/* Brand Header */}
-          <Link to={ROUTES.ADMIN.EVENTS} className="flex items-center gap-3 px-1 pt-1">
-            <div className="bg-purple-600/30 text-purple-300 p-2.5 rounded-2xl text-xl font-black border border-purple-500/40 shadow-lg shadow-purple-600/20">
-              🛡️
-            </div>
+          <Link to={ROUTES.ADMIN.EVENTS} className="flex items-center gap-3 px-1 pt-1 group">
+            <img src={logoImg} alt="EventOrbit Logo" className="h-10 w-10 object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] transition-transform group-hover:scale-105" />
             <div>
-              <div className="font-black text-lg text-white leading-snug">Club Admin</div>
-              <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Management Console</div>
+              <div className="font-black text-lg text-white leading-snug">EventOrbit</div>
+              <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Club Admin Console</div>
             </div>
           </Link>
 

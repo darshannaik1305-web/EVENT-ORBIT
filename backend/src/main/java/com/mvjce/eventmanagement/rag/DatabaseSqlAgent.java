@@ -195,6 +195,14 @@ public class DatabaseSqlAgent {
     }
 
     private boolean isUserPrivateQuery(String q) {
+        // How-To / Guidance / FAQ questions must NOT be intercepted as private DB data dumps
+        if (q.startsWith("how ") || q.startsWith("where ") || q.startsWith("can i ") || q.startsWith("what ") ||
+            q.contains("how do") || q.contains("how can") || q.contains("how to") || q.contains("where can") ||
+            q.contains("where do") || q.contains("where is") || q.contains("steps to") || q.contains("process to") ||
+            q.contains("can i cancel") || q.contains("can i register") || q.contains("can i view")) {
+            return false;
+        }
+
         if (q.contains("my event") || q.contains("my registration") || q.contains("my participation") ||
             q.contains("my winning") || q.contains("my result") || q.contains("my team") ||
             q.contains("did i win") || q.contains("have i registered") || q.contains("am i participating") ||

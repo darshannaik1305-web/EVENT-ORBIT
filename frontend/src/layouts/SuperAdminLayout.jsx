@@ -2,6 +2,7 @@ import React from 'react'
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import { ROUTES } from '@/config/routes'
+import logoImg from '@/assets/logo.png'
 
 export default function SuperAdminLayout() {
   const { user, logout } = useAuth()
@@ -25,10 +26,8 @@ export default function SuperAdminLayout() {
       <aside className="w-64 bg-slate-900 border-r border-white/10 flex flex-col justify-between p-4 sticky top-0 h-screen z-40 select-none flex-shrink-0">
         {/* Brand Header */}
         <div className="space-y-6">
-          <Link to={ROUTES.SUPERADMIN.DASHBOARD} className="flex items-center gap-3 px-2 pt-2">
-            <div className="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-xl text-xl font-bold border border-emerald-500/30 shadow-lg">
-              👑
-            </div>
+          <Link to={ROUTES.SUPERADMIN.DASHBOARD} className="flex items-center gap-3 px-2 pt-2 group">
+            <img src={logoImg} alt="EventOrbit Logo" className="h-10 w-10 object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] transition-transform group-hover:scale-105" />
             <div>
               <div className="font-extrabold text-lg text-white leading-tight">EventOrbit</div>
               <div className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">

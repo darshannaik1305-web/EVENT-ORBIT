@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import chatService from '@/services/chatService'
+import logoImg from '@/assets/logo.png'
 
 const SUGGESTIONS = [
   "What events are happening this week?",
@@ -91,7 +92,7 @@ export default function AIAssistant() {
       <div className="bg-slate-900 border border-white/10 p-6 md:p-8 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
-            <span className="p-2 bg-primary/20 text-primary rounded-2xl border border-primary/30">🤖</span> 
+            <img src={logoImg} alt="EventOrbit Logo" className="h-10 w-10 object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]" /> 
             EventOrbit AI Assistant
           </h1>
           <p className="text-slate-400 text-xs md:text-sm">

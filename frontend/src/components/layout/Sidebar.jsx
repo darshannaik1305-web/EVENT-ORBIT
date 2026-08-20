@@ -2,6 +2,7 @@ import React from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import { ROUTES } from '@/config/routes'
+import logoImg from '@/assets/logo.png'
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
@@ -26,13 +27,11 @@ export default function Sidebar() {
     <aside className="w-64 bg-slate-900 border-r border-white/10 flex flex-col justify-between p-4 sticky top-0 h-screen z-40 select-none">
       {/* Brand & Main Nav */}
       <div className="space-y-6">
-        <Link to={ROUTES.STUDENT.HOME} className="flex items-center gap-3 px-2 pt-2">
-          <div className="bg-primary/20 text-primary p-2 rounded-xl text-xl font-bold border border-primary/30">
-            🚀
-          </div>
+        <Link to={ROUTES.STUDENT.HOME} className="flex items-center gap-3 px-2 pt-2 group">
+          <img src={logoImg} alt="EventOrbit Logo" className="h-10 w-10 object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] transition-transform group-hover:scale-105" />
           <div>
-            <div className="font-extrabold text-lg text-white leading-tight">EventOrbit</div>
-            <div className="text-[10px] text-slate-400 font-medium">College Event Portal</div>
+            <div className="font-black text-lg text-white leading-tight">EventOrbit</div>
+            <div className="text-[10px] text-slate-400 font-bold tracking-wider">College Event Portal</div>
           </div>
         </Link>
 
