@@ -256,23 +256,75 @@ export default function AdminResults() {
 
                       {w ? (
                         <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className="text-3xl">
-                              {posKey === 'FIRST' ? '🥇' : posKey === 'SECOND' ? '🥈' : '🥉'}
-                            </div>
-                            <div>
-                              <h3 className="text-base font-extrabold text-white">{w.fullName || w.username}</h3>
-                              <div className="text-xs font-mono text-purple-300 font-bold">USN: {w.username}</div>
-                            </div>
-                          </div>
+                          {isGroupEvent || w.teamName ? (
+                            /* Group Event Winner Layout */
+                            <div className="space-y-3">
+                              {/* Team Name FIRST */}
+                              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl">
+                                <div className="text-[10px] uppercase font-extrabold text-amber-400 tracking-wider">
+                                  🛡️ Winning Team
+                                </div>
+                                <h3 className="text-base font-black text-white mt-0.5 leading-snug">
+                                  {w.teamName || 'Group Team'}
+                                </h3>
+                              </div>
 
-                          <div className="bg-slate-950/80 border border-white/5 p-3 rounded-xl space-y-1 text-xs text-slate-400 font-mono">
-                            <div><span className="text-slate-500">Email:</span> {w.email || 'N/A'}</div>
-                            <div><span className="text-slate-500">Mobile:</span> {w.mobile || 'N/A'}</div>
-                            {w.teamName && (
-                              <div className="text-amber-300 font-sans font-bold">Team: {w.teamName}</div>
-                            )}
-                          </div>
+                              {/* Team Members List (Scrollable if many members) */}
+                              <div>
+                                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 flex items-center justify-between">
+                                  <span>👥 Team Members</span>
+                                </div>
+                                <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-purple-500/30">
+                                  {(() => {
+                                    const matchedTeam = teams.find(
+                                      (t) =>
+                                        t.leaderId?.toUpperCase() === w.username?.toUpperCase() ||
+                                        t.teamName?.toUpperCase() === w.teamName?.toUpperCase()
+                                    )
+                                    const mList = w.teamMembers || matchedTeam?.members || []
+                                    if (mList.length > 0) {
+                                      return mList.map((m, mIdx) => (
+                                        <div
+                                          key={m.userId || m.id || mIdx}
+                                          className="bg-slate-950/80 border border-white/5 px-3 py-2 rounded-xl flex items-center justify-between text-xs gap-2"
+                                        >
+                                          <span className="font-bold text-slate-200 truncate">
+                                            {m.fullName || 'Member'}
+                                          </span>
+                                          <span className="font-mono text-[11px] font-extrabold text-amber-300 shrink-0">
+                                            USN: {m.userId}
+                                          </span>
+                                        </div>
+                                      ))
+                                    }
+                                    return (
+                                      <div className="bg-slate-950/80 border border-white/5 px-3 py-2 rounded-xl flex items-center justify-between text-xs gap-2">
+                                        <span className="font-bold text-slate-200 truncate">
+                                          {w.fullName || w.username}
+                                        </span>
+                                        <span className="font-mono text-[11px] font-extrabold text-amber-300 shrink-0">
+                                          USN: {w.username}
+                                        </span>
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Individual Event Winner Layout */
+                            <div className="bg-slate-950/80 border border-white/5 p-3.5 rounded-xl space-y-1">
+                              <div className="text-[10px] uppercase font-extrabold text-purple-400 tracking-wider">
+                                👤 Participant
+                              </div>
+                              <h3 className="text-base font-extrabold text-white leading-snug">
+                                {w.fullName || w.username}
+                              </h3>
+                              <div className="text-xs font-mono text-purple-300 font-bold">
+                                USN: {w.username}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="py-6 text-center text-xs text-slate-500 space-y-2">

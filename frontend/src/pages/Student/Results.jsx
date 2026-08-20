@@ -87,21 +87,25 @@ export default function StudentResults() {
     filteredWinners.forEach((w) => {
       const eId = w.eventId || 'unknown'
       if (!map.has(eId)) {
-        const evtObj = events.find((e) => e.id === eId) || {
-          name: w.eventName || 'Campus Event',
-          clubName: w.clubName || 'College Club',
-        }
+        const evtObj = events.find((e) => e.id === eId)
+        const targetClubId = evtObj?.clubId || w.clubId
+        const foundClub = clubs.find((c) => c.id === targetClubId)
+        const displayClubName = foundClub?.name || w.clubName || evtObj?.clubName || 'College Club'
+
         map.set(eId, {
-          event: evtObj,
-          eventName: w.eventName || evtObj.name || 'Campus Event',
-          clubName: w.clubName || evtObj.clubName || 'College Club',
+          event: evtObj || {
+            name: w.eventName || 'Campus Event',
+            clubName: displayClubName,
+          },
+          eventName: w.eventName || evtObj?.name || 'Campus Event',
+          clubName: displayClubName,
           items: [],
         })
       }
       map.get(eId).items.push(w)
     })
     return Array.from(map.values())
-  }, [filteredWinners, events])
+  }, [filteredWinners, events, clubs])
 
   const positionBadge = {
     FIRST: {
@@ -324,6 +328,9 @@ export default function StudentResults() {
 
                   if (!winner) return null
 
+                  const isGroup = Boolean(winner.teamName || (event && event.type === 'GROUP') || winner.eventType === 'GROUP')
+                  const members = winner.teamMembers || []
+
                   return (
                     <div
                       key={winner.id || posKey}
@@ -339,32 +346,70 @@ export default function StudentResults() {
                           <span className="text-3xl">{cfg.medal}</span>
                         </div>
 
-                        <div>
-                          <h3 className="text-base font-extrabold text-white leading-snug">
-                            {winner.fullName || winner.username}
-                          </h3>
-                          <div className={`text-xs font-mono font-bold mt-0.5 ${cfg.textColor}`}>
-                            USN: {winner.username}
-                          </div>
-                        </div>
+                        {isGroup ? (
+                          /* Group Event Winner Layout */
+                          <div className="space-y-3">
+                            {/* Team Name FIRST */}
+                            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl">
+                              <div className="text-[10px] uppercase font-extrabold text-amber-400 tracking-wider">
+                                🛡️ Winning Team
+                              </div>
+                              <h3 className="text-base font-black text-white mt-0.5 leading-snug">
+                                {winner.teamName || 'Group Team'}
+                              </h3>
+                            </div>
 
-                        <div className="bg-slate-950/80 border border-white/5 p-3 rounded-xl space-y-1 text-[11px] text-slate-400 font-mono">
-                          {winner.teamName && (
-                            <div className="text-amber-300 font-sans font-extrabold flex items-center gap-1 mb-1">
-                              <span>🛡️ Team:</span> {winner.teamName}
-                            </div>
-                          )}
-                          {winner.email && (
-                            <div className="truncate">
-                              <span className="text-slate-500">Email:</span> {winner.email}
-                            </div>
-                          )}
-                          {winner.mobile && (
+                            {/* Team Members List (Scrollable if many members) */}
                             <div>
-                              <span className="text-slate-500">Mobile:</span> {winner.mobile}
+                              <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 flex items-center justify-between">
+                                <span>👥 Team Members</span>
+                                {members.length > 0 && (
+                                  <span className="text-slate-500 font-mono">({members.length})</span>
+                                )}
+                              </div>
+                              <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-purple-500/30">
+                                {members.length > 0 ? (
+                                  members.map((m, mIdx) => (
+                                    <div
+                                      key={m.userId || mIdx}
+                                      className="bg-slate-950/80 border border-white/5 px-3 py-2 rounded-xl flex items-center justify-between text-xs gap-2"
+                                    >
+                                      <span className="font-bold text-slate-200 truncate">
+                                        {m.fullName || 'Member'}
+                                      </span>
+                                      <span className="font-mono text-[11px] font-extrabold text-amber-300 shrink-0">
+                                        USN: {m.userId}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  /* Fallback to leader if team members array is not provided */
+                                  <div className="bg-slate-950/80 border border-white/5 px-3 py-2 rounded-xl flex items-center justify-between text-xs gap-2">
+                                    <span className="font-bold text-slate-200 truncate">
+                                      {winner.fullName || winner.username}
+                                    </span>
+                                    <span className="font-mono text-[11px] font-extrabold text-amber-300 shrink-0">
+                                      USN: {winner.username}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          /* Individual Event Winner Layout */
+                          <div className="bg-slate-950/80 border border-white/5 p-3.5 rounded-xl space-y-1">
+                            <div className="text-[10px] uppercase font-extrabold text-purple-400 tracking-wider">
+                              👤 Participant
+                            </div>
+                            <h3 className="text-base font-extrabold text-white leading-snug">
+                              {winner.fullName || winner.username}
+                            </h3>
+                            <div className={`text-xs font-mono font-bold mt-0.5 ${cfg.textColor}`}>
+                              USN: {winner.username}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500">

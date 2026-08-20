@@ -7,6 +7,7 @@ import com.mvjce.eventmanagement.model.Team;
 import com.mvjce.eventmanagement.model.User;
 import com.mvjce.eventmanagement.model.Winner;
 import com.mvjce.eventmanagement.repository.ClubAdminRepository;
+import com.mvjce.eventmanagement.repository.ClubRepository;
 import com.mvjce.eventmanagement.repository.EventRepository;
 import com.mvjce.eventmanagement.repository.TeamRepository;
 import com.mvjce.eventmanagement.repository.UserRepository;
@@ -42,6 +43,9 @@ public class WinnerController {
 
     @Autowired
     private TeamRepository teamRepository;
+
+    @Autowired
+    private ClubRepository clubRepository;
 
     private User getActorUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -88,16 +92,40 @@ public class WinnerController {
         map.put("positionDisplayName", winner.getPosition().getDisplayName());
         map.put("createdAt", winner.getCreatedAt());
 
+        // Add club info
+        if (winner.getClubId() != null) {
+            clubRepository.findById(winner.getClubId()).ifPresent(c -> map.put("clubName", c.getName()));
+        }
+
         // Add event and team info
         eventRepository.findById(winner.getEventId()).ifPresent(event -> {
             map.put("eventName", event.getName());
+            if (event.getType() != null) {
+                map.put("eventType", event.getType().name());
+            }
+            if (event.getClubId() != null && !map.containsKey("clubName")) {
+                clubRepository.findById(event.getClubId()).ifPresent(c -> map.put("clubName", c.getName()));
+            }
             if (EventType.GROUP.equals(event.getType())) {
                 List<Team> teams = teamRepository.findByEventId(event.getId());
                 if (teams != null) {
                     teams.stream()
                         .filter(t -> t.getLeaderId() != null && t.getLeaderId().equalsIgnoreCase(winner.getUsername()))
                         .findFirst()
-                        .ifPresent(t -> map.put("teamName", t.getTeamName()));
+                        .ifPresent(t -> {
+                            map.put("teamName", t.getTeamName());
+                            if (t.getMembers() != null && !t.getMembers().isEmpty()) {
+                                List<Map<String, String>> membersList = t.getMembers().stream()
+                                    .map(m -> {
+                                        Map<String, String> mm = new java.util.HashMap<>();
+                                        mm.put("userId", m.getUserId() != null ? m.getUserId() : "");
+                                        mm.put("fullName", m.getFullName() != null ? m.getFullName() : "");
+                                        return mm;
+                                    })
+                                    .collect(Collectors.toList());
+                                map.put("teamMembers", membersList);
+                            }
+                        });
                 }
             }
         });
