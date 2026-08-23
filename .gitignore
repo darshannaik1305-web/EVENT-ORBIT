@@ -15,8 +15,9 @@ logs/
 *.tar.gz
 *.rar
 
-# virtual machine crash logs
+# Virtual machine crash logs
 hs_err_pid*
+replay_pid*
 
 # Maven & Build
 target/
@@ -63,7 +64,8 @@ desktop.ini
 *.properties.secret
 secrets.xml
 backups/
-knowledge.txt
-**/knowledge.txt
+**/backups/
+
+# Local Vector Cache (persistent across restarts, outside git)
 data/
 **/data/

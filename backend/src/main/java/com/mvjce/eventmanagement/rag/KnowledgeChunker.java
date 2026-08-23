@@ -7,8 +7,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
 import jakarta.annotation.PostConstruct;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -22,6 +25,7 @@ public class KnowledgeChunker {
         RULES,
         SCHOLARSHIP,
         FAQ_GENERAL,
+        CAMPUS_INFO,
         OTHER
     }
 
@@ -74,33 +78,59 @@ public class KnowledgeChunker {
         loadKnowledgeChunks();
     }
 
+    /**
+     * Dynamically loads knowledge chunks from whichever file is most recently modified
+     * (src/main/resources/knowledge.txt or target/classes/knowledge.txt) and keeps them in sync.
+     */
     public synchronized void loadKnowledgeChunks() {
         try {
-            java.io.File srcFile = new java.io.File("src/main/resources/knowledge.txt");
-            java.io.File targetFile = new java.io.File("target/classes/knowledge.txt");
-
-            java.io.File fileToRead = null;
-            if (srcFile.exists()) {
-                fileToRead = srcFile;
-            } else if (targetFile.exists()) {
-                fileToRead = targetFile;
+            File srcFile = new File("src/main/resources/knowledge.txt");
+            if (!srcFile.exists()) {
+                srcFile = new File("backend/src/main/resources/knowledge.txt");
             }
 
-            if (fileToRead != null) {
-                long modTime = fileToRead.lastModified();
-                if (modTime > lastLoadedTime || chunks.isEmpty()) {
-                    String text = java.nio.file.Files.readString(fileToRead.toPath(), StandardCharsets.UTF_8);
+            File targetFile = new File("target/classes/knowledge.txt");
+            if (!targetFile.exists()) {
+                targetFile = new File("backend/target/classes/knowledge.txt");
+            }
+
+            File fileToRead = null;
+            long srcMod = srcFile.exists() ? srcFile.lastModified() : 0;
+            long targetMod = targetFile.exists() ? targetFile.lastModified() : 0;
+            long newestMod = Math.max(srcMod, targetMod);
+
+            if (srcMod > 0 || targetMod > 0) {
+                if (srcMod >= targetMod && srcFile.exists()) {
+                    fileToRead = srcFile;
+                } else if (targetFile.exists()) {
+                    fileToRead = targetFile;
+                }
+
+                if (fileToRead != null && (newestMod > lastLoadedTime || chunks.isEmpty())) {
+                    String text = Files.readString(fileToRead.toPath(), StandardCharsets.UTF_8);
                     parseAndLoadChunks(text);
-                    lastLoadedTime = modTime;
+                    lastLoadedTime = newestMod;
+
+                    // Automatically synchronize the other file so both stay perfectly in sync
+                    try {
+                        if (srcFile.exists() && fileToRead != srcFile) {
+                            Files.writeString(srcFile.toPath(), text, StandardCharsets.UTF_8);
+                        }
+                        if (targetFile.exists() && fileToRead != targetFile) {
+                            Files.writeString(targetFile.toPath(), text, StandardCharsets.UTF_8);
+                        }
+                    } catch (Exception ignored) {}
+
                     if (vectorIndex != null) {
                         vectorIndex.indexChunks(chunks);
                     }
+                    System.out.println("📚 KnowledgeChunker: Loaded & synchronized " + chunks.size() + " chunks from " + fileToRead.getPath());
                 }
             } else {
                 ClassPathResource resource = new ClassPathResource("knowledge.txt");
                 if (resource.exists()) {
                     long modTime = System.currentTimeMillis();
-                    if (chunks.isEmpty() || modTime - lastLoadedTime > 5000) {
+                    if (chunks.isEmpty() || modTime - lastLoadedTime > 3000) {
                         InputStreamReader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
                         String text = FileCopyUtils.copyToString(reader);
                         parseAndLoadChunks(text);
@@ -160,6 +190,8 @@ public class KnowledgeChunker {
             return ChunkCategory.SCHOLARSHIP;
         } else if (lower.contains("rules") || lower.contains("code of conduct")) {
             return ChunkCategory.RULES;
+        } else if (lower.contains("department") || lower.contains("location") || lower.contains("campus")) {
+            return ChunkCategory.CAMPUS_INFO;
         }
         return ChunkCategory.OTHER;
     }
@@ -170,6 +202,8 @@ public class KnowledgeChunker {
             return ChunkCategory.ELIGIBILITY;
         } else if (lower.contains("registered events") || lower.contains("see my") || lower.contains("cancel my")) {
             return ChunkCategory.REGISTRATION_PROCEDURE;
+        } else if (lower.contains("where is") || lower.contains("department") || lower.contains("building") || lower.contains("location")) {
+            return ChunkCategory.CAMPUS_INFO;
         }
         return ChunkCategory.FAQ_GENERAL;
     }
@@ -177,7 +211,7 @@ public class KnowledgeChunker {
     private static final Set<String> STOP_WORDS = Set.of(
             "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
             "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were",
-            "will", "with", "which", "what", "who", "where", "how", "when", "why", "i",
+            "will", "with", "which", "what", "who", "how", "when", "why", "i",
             "me", "my", "am", "do", "does", "did", "can", "there", "any", "this", "should"
     );
 
@@ -199,7 +233,7 @@ public class KnowledgeChunker {
 
         for (KnowledgeChunk chunk : chunks) {
             double score = calculateScore(chunk, queryWords, lowerQuery);
-            if (score >= 6.0) {
+            if (score >= 5.0) {
                 results.add(new MatchResult(chunk, score));
             }
         }
@@ -242,14 +276,14 @@ public class KnowledgeChunker {
         String contentLower = chunk.getContent().toLowerCase();
 
         // Exact or strong substring match on title or full query
-        if (fullQuery.length() >= 4 && (titleLower.contains(fullQuery) || fullQuery.contains(titleLower))) {
+        if (fullQuery.length() >= 3 && (titleLower.contains(fullQuery) || fullQuery.contains(titleLower))) {
             score += 30.0;
         }
 
         int meaningfulMatches = 0;
 
         for (String word : queryWords) {
-            if (word.length() < 3 || STOP_WORDS.contains(word)) continue;
+            if (word.length() < 2 || STOP_WORDS.contains(word)) continue;
 
             String stem = word.length() > 5 ? word.substring(0, word.length() - 2) : word;
 
@@ -258,19 +292,17 @@ public class KnowledgeChunker {
                 meaningfulMatches++;
             } else if (titleLower.contains(stem)) {
                 score += 8.0;
-                meaningfulMatches++;
             }
 
             if (contentLower.matches(".*\\b" + Pattern.quote(word) + "\\b.*")) {
-                score += 5.0;
+                score += 6.0;
                 meaningfulMatches++;
             } else if (contentLower.contains(stem)) {
-                score += 3.0;
-                meaningfulMatches++;
+                score += 4.0;
             }
         }
 
-        if (score < 6.0 || meaningfulMatches == 0) {
+        if (score < 5.0 || meaningfulMatches == 0) {
             return 0.0;
         }
 

@@ -72,7 +72,7 @@ public class SemanticVectorIndex {
         loadFromDisk();
 
         // 2. Determine if model/provider is verified
-        boolean canEmbed = (embeddingEngine.getStatus() == SemanticEmbeddingEngine.EngineStatus.VERIFIED);
+        boolean canEmbed = (embeddingEngine != null && embeddingEngine.getStatus() == SemanticEmbeddingEngine.EngineStatus.VERIFIED);
 
         boolean updated = false;
         Set<String> currentChunkIds = new HashSet<>();
@@ -127,10 +127,21 @@ public class SemanticVectorIndex {
             JsonNode root = objectMapper.readTree(json);
 
             // Verify cache metadata: provider, model, dimension
-            String cachedProvider = root.path("provider").asText("");
-            String cachedModel = root.path("model").asText("");
+            String cachedProvider = root.path("provider").asText("").trim();
+            String cachedModel = root.path("model").asText("").trim();
+            int cachedDimension = root.path("vectorDimension").asInt(-1);
 
-            if (!cachedModel.equals(embeddingEngine.getModel()) || !cachedProvider.equals(embeddingEngine.getProvider())) {
+            String currentProvider = (embeddingEngine != null && embeddingEngine.getProvider() != null) ? embeddingEngine.getProvider().trim() : "";
+            String currentModel = (embeddingEngine != null && embeddingEngine.getModel() != null) ? embeddingEngine.getModel().trim() : "";
+
+            String normCachedModel = cachedModel.replace("models/", "");
+            String normCurrentModel = currentModel.replace("models/", "");
+
+            boolean providerMatch = cachedProvider.equalsIgnoreCase(currentProvider);
+            boolean modelMatch = normCachedModel.equalsIgnoreCase(normCurrentModel) ||
+                    (normCachedModel.contains("embedding") && normCurrentModel.contains("embedding"));
+
+            if (!providerMatch || !modelMatch) {
                 System.out.println("🔄 SemanticVectorIndex: Embedding model or provider changed. Invalidating outdated vector cache.");
                 index.clear();
                 return;
@@ -167,9 +178,9 @@ public class SemanticVectorIndex {
             Path cachePath = dirPath.resolve("knowledge_embeddings.json");
 
             ObjectNode root = objectMapper.createObjectNode();
-            root.put("provider", embeddingEngine.getProvider());
-            root.put("model", embeddingEngine.getModel());
-            root.put("vectorDimension", embeddingEngine.getVectorDimension());
+            root.put("provider", embeddingEngine != null ? embeddingEngine.getProvider() : "gemini");
+            root.put("model", embeddingEngine != null ? embeddingEngine.getModel() : "models/embedding-001");
+            root.put("vectorDimension", embeddingEngine != null ? embeddingEngine.getVectorDimension() : -1);
             root.put("lastSaved", System.currentTimeMillis());
 
             ArrayNode chunksArray = root.putArray("chunks");

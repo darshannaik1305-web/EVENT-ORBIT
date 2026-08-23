@@ -1,0 +1,129 @@
+### COLLEGE RULES
+1. College ID Card is mandatory at all times on campus and during events.
+2. Discipline & decorum must be maintained throughout all fests and competitions.
+3. No damage to college property will be tolerated under any circumstances.
+4. Consumption of alcohol, smoking, or any illicit substances is strictly prohibited on campus.
+5. Outside visitors are only allowed with valid guest passes or official invitations.
+6. Ragging is strictly prohibited by law; zero-tolerance policy applies with immediate suspension.
+7. Event registrations must be completed before the specified deadline.
+8. Professional behavior is expected from all participants, organizers, and audience members.
+
+### REGISTRATION PROCESS
+1. Login to the student portal using your student USN and password.
+2. Browse through available clubs and events on the Dashboard or Clubs section.
+3. Click on the 'Register Now' button for the desired event.
+4. For group events, create your team, specify team name, and add team member USNs.
+5. You will receive an instant confirmation upon successful registration.
+6. You can view all your registered events anytime in the 'My Participation' tab.
+
+### FREQUENTLY ASKED QUESTIONS
+
+Q: How can I register for an event?
+A: Log in to your student account, go to the Events page, select your event, and click Register. Follow the prompts to register individually or create/join a team.
+
+Q: Can I participate in multiple events?
+A: Yes, you can register for multiple events as long as their timings do not clash with each other.
+
+Q: What happens if I miss the registration deadline?
+A: Registrations strictly close at the specified end time. Late registrations are not accepted under any circumstances.
+
+Q: Who can participate in events?
+A: All currently enrolled undergraduate and postgraduate students with a valid college ID card are eligible to participate.
+
+Q: Can I cancel my registration?
+A: Yes, you can cancel your registration from the 'My Participation' section prior to the registration close date.
+
+Q: How are winners announced?
+A: Event winners are evaluated by event judges and published on the Results & Winners leaderboard by the organizing club admin.
+
+Q: How can I see my registered events?
+A: You can view your registered events by clicking on 'My Participation' in the left navigation sidebar or by visiting your Profile section.
+
+### SSP SCHOLARSHIP (State Scholarship Portal - Karnataka)
+The State Scholarship Portal (SSP) is a unified platform by the Government of Karnataka to provide pre-matric and post-matric financial assistance to eligible students.
+
+Eligibility:
+- Karnataka domicile students.
+- Belongs to SC / ST / OBC / Minorities / EWS categories.
+- Family annual income within the prescribed government limits (typically under 2.5 LPA for SC/ST, under 1 LPA to 2 LPA for OBC).
+- Enrolled in recognized post-matric professional or non-professional courses.
+
+How to Apply:
+1. Visit the official Karnataka SSP Portal (ssp.postmatric.karnataka.gov.in).
+2. Create an account using your Aadhaar number and mobile number.
+3. Enter your SATS ID / Student USN and college details.
+4. Upload required documents (Caste/Income certificate RD numbers).
+5. Submit the application and download the acknowledgment receipt.
+6. Submit a hard copy of the acknowledgment along with document photocopies to the college scholarship desk.
+
+### NSP SCHOLARSHIP (National Scholarship Portal)
+The National Scholarship Portal (NSP) is a one-stop digital platform by the Government of India that facilitates various central and state government scholarship schemes.
+
+Major Schemes under NSP:
+- Post Matric Scholarships Scheme for Minorities (Ministry of Minority Affairs).
+- Central Sector Scheme of Scholarships for College and University Students.
+- Prime Minister's Scholarship Scheme for Central Armed Police Forces & Assam Rifles.
+- Post-matric Scholarship for Students with Disabilities.
+
+Eligibility:
+- Minimum 50% to 80% marks in the previous final examination (depending on the specific scheme).
+- Annual family income limit as specified by the respective scheme (typically under 2 LPA to 8 LPA).
+- Student must have an Aadhaar-seeded bank account.
+
+How to Apply:
+1. Go to scholarships.gov.in.
+2. Click on 'New Registration' and complete Aadhaar OTP eKYC.
+3. Login using Application ID and password.
+4. Select the applicable scheme and fill in academic & personal details.
+5. Upload necessary certificates (income certificate, fee receipt, marks cards).
+6. Final submit and submit the printed application copy to the college office.
+
+### SCHOLARSHIP DOCUMENTS REQUIRED
+- Aadhaar Card
+- Income Certificate (RD Number)
+- Caste Certificate (if applicable)
+- Previous Year Marks Card
+- Bank Passbook (Aadhaar linked)
+- Passport-size photo
+- Fee Receipt
+- Bonafide / Study Certificate
+- SATS ID / Student ID (for SSP)
+
+### SCHOLARSHIP TIPS
+- Bank account must be Aadhaar-linked
+- Details must match exactly (Aadhaar, marks card)
+- Don't wait until last date (server issues)
+- Check status regularly on portal
+- If rejected, correct details and reapply
+
+### CAMPUS DEPARTMENTS & LOCATIONS
+
+Q: Where is CS department?
+A: The CS (Computer Science & Engineering) department is located on the 3rd and 4th Floors of the Main Academic Block.
+
+Q: Where is CG department?
+A: The CG (Computer Graphics & Engineering) department is located in the New Building on the 2nd Floor.
+
+Q: Where is ISE department?
+A: The ISE (Information Science & Engineering) department is located on the 2nd Floor of the Main Academic Block.
+
+Q: Where is ECE department?
+A: The ECE (Electronics & Communication Engineering) department is located on the 3rd Floor of the Circuit Branch Block.
+
+Q: Where is AIML department?
+A: The AIML (Artificial Intelligence & Machine Learning) department is located in the Tech Innovation Wing, New Building (3rd Floor).
+
+Q: Where is the Placement Cell?
+A: The Training & Placement Cell is located on the 2nd Floor of the Administrative Block.
+
+Q: Where is the Library?
+A: The Central Library is located on the Ground and 1st Floor of the Library Block, open from 8:00 AM to 8:00 PM.
+
+Q: Where is the Principal Office and Admin Office?
+A: The Principal's Office and College Administration Office are located on the Ground Floor of the Main Administrative Block.
+
+Q: Where is the Sports Complex?
+A: The Sports Complex, Gymnasium, and Indoor Badminton Courts are located adjacent to the Main College Ground.
+
+Q: Where is the College Auditorium?
+A: The Dr. M. V. Jayaraman Auditorium is located near the campus entrance gate.

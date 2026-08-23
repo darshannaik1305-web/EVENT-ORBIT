@@ -199,21 +199,40 @@ public class QueryProcessor {
                     }
                     String[] words = eName.split("\\s+");
                     for (String w : words) {
-                        if (w.length() >= 5 && normalized.matches(".*\\b" + Pattern.quote(w) + "\\b.*")) {
+                        if (w.length() >= 4 && (normalized.contains(w) || (w.length() >= 6 && normalized.contains(w.substring(0, 5))))) {
                             return event.getName();
                         }
                     }
                 }
             } catch (Exception ignored) {}
         }
+
+        // Heuristic fallback for common event names
+        if (normalized.contains("hack") || normalized.contains("hackthon") || normalized.contains("hackathon")) {
+            return "Hackathon";
+        }
+        if (normalized.contains("algorithm") || normalized.contains("arena")) {
+            return "Algorithm Arena";
+        }
+        if (normalized.contains("robo") || normalized.contains("robotics")) {
+            return "RoboWars";
+        }
+
         return null;
     }
 
     private Intent detectIntent(String normalized, String matchedClub, String matchedEvent) {
-        // Winners (LEVEL 2/3)
+        // Winners & Event Results (LEVEL 2/3)
         if (normalized.contains("winner") || normalized.contains("who won") || normalized.contains("who came first") ||
                 normalized.contains("results") || normalized.contains("result")) {
             return Intent.WINNERS;
+        }
+
+        // Event-specific participant query (e.g. "who all participated in hackathon")
+        if ((normalized.contains("who") || normalized.contains("list") || normalized.contains("tell")) &&
+                (normalized.contains("participat") || normalized.contains("joined") || normalized.contains("registered")) &&
+                (matchedEvent != null || normalized.contains("in the") || normalized.contains("in "))) {
+            return matchedEvent != null ? Intent.WINNERS : Intent.EVENT_DETAIL;
         }
 
         // Club-Specific Events (LEVEL 2)
@@ -231,7 +250,7 @@ public class QueryProcessor {
         }
 
         // Specific Event Information
-        if (matchedEvent != null && !normalized.contains("register") && !normalized.contains("participat") && !normalized.contains("how")) {
+        if (matchedEvent != null && !normalized.contains("register") && !normalized.contains("how to") && !normalized.contains("procedure")) {
             return Intent.EVENT_DETAIL;
         }
 

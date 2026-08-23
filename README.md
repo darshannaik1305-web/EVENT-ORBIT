@@ -1,107 +1,167 @@
-# 🌌 EventOrbit: College Event Management System
+# 🌌 EventOrbit: Smart College Event Management System & RAG AI Assistant
 
-![EventOrbit Banner](file:///C:/Users/darsh/.gemini/antigravity/brain/e61fa30b-0661-4ceb-9616-161c31874050/event_orbit_dashboard_mockup_1777641694855.png)
+> **Empowering Campus Life Through Seamless Event Management & Intelligent Conversational Retrieval**
 
-> **Empowering Campus Life Through Seamless Event Management**
-
-EventOrbit is a modern, full-stack event management portal designed for colleges. It provides a sleek, glassmorphic interface for students to discover, register for, and track campus events while offering administrators powerful tools to manage clubs and event logistics.
+EventOrbit is a full-stack, enterprise-grade college event management platform built with **React (Vite)** on the frontend and **Spring Boot 3 (Java 17/21)** on the backend, integrated with a state-of-the-art **Retrieval-Augmented Generation (RAG) AI Assistant** powered by **Google Gemini**.
 
 ---
 
-### 🚀 Key Features
+## 🏛️ System Architecture
 
-- **✨ Modern UI/UX**: A premium glassmorphic design that feels alive and responsive.
-- **🛡️ Secure Access**: JWT-based authentication with role-based access control (Student, Club Admin, Super Admin).
-- **📅 Event Discovery**: Browse events by club, category, or date with real-time updates.
-- **📝 Easy Registration**: One-click registration for individuals and teams.
-- **🤖 Smart Assistant**: Integrated AI chatbot to answer student queries about college rules and event details.
-- **📊 Admin Dashboard**: Comprehensive management of clubs, events, registrations, and winner announcements.
+```mermaid
+graph TD
+    User([Student / Admin]) <--> Frontend[React + Vite Frontend (Port 5500 / 5173)]
+    Frontend <--> |REST API + JWT| Backend[Spring Boot 3 Backend (Port 7070)]
+    
+    subgraph Backend Architecture
+        Backend <--> Security[Spring Security 6 + JWT Auth]
+        Backend <--> DB[(MySQL Database - JPA/Hibernate)]
+        
+        subgraph RAG AI Assistant Engine
+            ChatController[Chat Controller] --> QueryProcessor[1. Query Processor & Intent Router]
+            
+            QueryProcessor --> |Student & Live Data| DatabaseSqlAgent[2. Database SQL Agent]
+            DatabaseSqlAgent --> DB
+            
+            QueryProcessor --> |College Knowledge| KnowledgeChunker[3. Knowledge Chunker]
+            KnowledgeChunker <--> VectorIndex[4. Semantic Vector Index & Cache]
+            
+            VectorIndex <--> EmbeddingEngine[5. Semantic Embedding Engine (Gemini / OpenAI)]
+            
+            KnowledgeChunker & DatabaseSqlAgent --> HybridReranker[6. Hybrid Reranker (Lexical + Semantic)]
+            HybridReranker --> ChatService[7. Chat Service (Strict Grounding & Privacy)]
+            ChatService --> GeminiLLM[Google Gemini 2.0 Flash API]
+        end
+    end
+```
 
 ---
 
-### 🛠️ Tech Stack
+## 🚀 Key Features
 
-| Component | Technology |
+### 1. 🎓 Core Event & Club Management
+- **Role-Based Access Control**: Separate, secure workflows for **Students**, **Club Admins**, and **Super Admins**.
+- **Interactive Club Hub**: Explore college clubs (Coding Club, Robotics Club, Cultural Club, etc.), leadership, and upcoming fests.
+- **Team & Solo Event Registrations**: Create teams, add member USNs, track deadlines, and receive instant confirmation.
+- **Results & Winners Podium**: Official leaderboard for event winners with position display (1st, 2nd, 3rd) while protecting private student data.
+- **Participation History**: Personal dashboard for students to view, track, and manage registered events and individual winnings.
+
+### 2. 🤖 Enterprise RAG AI Assistant
+- **5-Layer Architecture**:
+  1. **Greeting & Privacy Defense**: Zero-leakage policy preventing prompt injection or unauthorized access to student USNs/records.
+  2. **JPA Direct DB Querying**: Live event schedules, venue info, active registration windows, and club affiliations.
+  3. **Personal Participation Context**: Secure, authenticated context queries for logged-in students.
+  4. **Multi-Strategy Hybrid Retrieval**: Combines BM25 lexical keyword matching with cosine similarity semantic embeddings.
+  5. **Dynamic Knowledge Synchronization**: Instant live re-indexing when [`knowledge.txt`](file:///d:/Event%20Management/backend/src/main/resources/knowledge.txt) is modified on disk.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology |
 | :--- | :--- |
-| **Backend** | ![Java](https://img.shields.io/badge/Java-17-orange) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.0-green) ![Spring Security](https://img.shields.io/badge/Spring_Security-6-brightgreen) |
-| **Frontend** | ![HTML5](https://img.shields.io/badge/HTML5-E34F26) ![CSS3](https://img.shields.io/badge/CSS3-1572B6) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E) |
-| **Database** | ![MySQL](https://img.shields.io/badge/MySQL-4479A1) ![Hibernate](https://img.shields.io/badge/Hibernate-59666C) |
-| **Auth** | ![JWT](https://img.shields.io/badge/JWT-black) |
-| **AI** | ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-blue) |
+| **Frontend** | React 18, Vite, React Router, Lucide Icons, Glassmorphic Vanilla CSS |
+| **Backend** | Java 17/21, Spring Boot 3.2.0, Spring Data JPA, Spring Security 6 |
+| **Database** | MySQL 8.0, Hibernate ORM |
+| **AI / RAG** | Google Gemini 2.0 Flash, Gemini Text Embeddings (`models/embedding-001`), Jackson JSON |
+| **Authentication** | JWT (JSON Web Tokens) with HMAC-SHA256 |
+| **Build Tools** | Maven 3.9+, Node.js 18+ |
 
 ---
 
-### 🏁 Getting Started
+## 📁 Project Directory Structure
 
-#### Prerequisites
-- **Java 17** or higher
-- **Maven 3.6+**
+```text
+Event Management/
+├── backend/
+│   ├── src/
+│   │   ├── main/java/com/mvjce/eventmanagement/
+│   │   │   ├── config/              # Security & CORS configuration
+│   │   │   ├── controller/          # REST API endpoints (Events, Clubs, Auth, Chat)
+│   │   │   ├── dto/                 # Data transfer objects & Source metadata
+│   │   │   ├── model/               # JPA Entities (Event, Club, User, Winner, Team)
+│   │   │   ├── repository/          # Spring Data JPA Repositories
+│   │   │   ├── rag/                 # RAG AI Engine (Processor, Chunker, Embeddings, Index)
+│   │   │   └── service/             # Business Logic & Gemini LLM Client
+│   │   ├── main/resources/
+│   │   │   ├── application.properties
+│   │   │   └── knowledge.txt        # Live College Knowledge Base & FAQs
+│   │   └── test/java/               # Unit & Connectivity Test Suites
+│   ├── data/vector-cache/           # Persistent local semantic vector index
+│   └── pom.xml
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/              # Navbar, Sidebar, Modals, Chatbot UI
+│   │   ├── pages/                   # Dashboard, Events, Clubs, Results, Profile
+│   │   ├── services/                # Axios API Services
+│   │   └── index.css                # Glassmorphic Design System
+│   ├── package.json
+│   └── vite.config.js
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+## 🏁 Getting Started
+
+### 1. Prerequisites
+- **Java 17** or **Java 21**
+- **Node.js 18+** & **npm**
 - **MySQL 8.0+**
-- **Node.js** (optional, for advanced frontend tooling)
+- **Google AI Studio API Key** (Gemini)
 
-#### 1. Database Configuration
-Create a database named `EVENTMANAGEMENT` in MySQL and update the secrets in `src/main/resources/application.properties` (or use the `.example` file).
+### 2. Database Configuration
+Create a database in MySQL:
+```sql
+CREATE DATABASE EVENTMANAGEMENT;
+```
+Configure your credentials in `backend/src/main/resources/application.properties`:
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/EVENTMANAGEMENT
+spring.datasource.username=root
+spring.datasource.password=your_mysql_password
+```
 
-#### 2. Backend Setup
-```bash
-# Clone the repository
-git clone https://github.com/your-repo/event-orbit.git
+### 3. Backend Setup & Run
+```powershell
+cd "d:\Event Management\backend"
 
-# Navigate to project
-cd event-orbit
+# Set your Gemini API key in the environment
+$env:OPENAI_API_KEY="your_google_gemini_api_key"
 
-# Install dependencies and build
-mvn clean install
+# Run tests
+mvn test
 
-# Run the application
+# Start the Spring Boot Backend (Port 7070)
 mvn spring-boot:run
 ```
-*The API will be available at `http://localhost:7070`*
 
-#### 3. Frontend Setup
-Simply serve the root directory using any web server:
-```bash
-# Using Python
-python -m http.server 5500
+### 4. Frontend Setup & Run
+```powershell
+cd "d:\Event Management\frontend"
+
+# Install dependencies
+npm install
+
+# Start Vite Dev Server (Port 5500 or 5173)
+npm run dev
 ```
-*Access the portal at `http://localhost:5500`*
+
+Open your browser at `http://localhost:5500` or `http://localhost:5173`.
 
 ---
 
-### 🔐 Default Credentials
+## 🔐 Default Credentials
 
 | Role | Username | Password |
 | :--- | :--- | :--- |
 | **Super Admin** | `admin` | `admin123` |
-| **Student** | `student` | `1234` |
+| **Student** | `1MJ23CG011` / `student` | `1234` |
 
 ---
 
-### 📁 Project Structure
-
-```text
-EventOrbit/
-├── src/main/java/          # Spring Boot Backend Source
-├── src/main/resources/     # Configuration & Static Assets
-│   ├── static/             # Frontend HTML/CSS/JS
-│   └── application.properties
-├── backups/                # Database and file backups
-├── logs/                   # Application logs
-└── pom.xml                 # Maven configuration
-```
-
----
-
-### 🤝 Contributing
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
----
-
-### 📄 License
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-<p align="center">
-  Developed with ❤️ for a better campus experience.
-</p>
+## 📄 License
+Distributed under the **MIT License**.

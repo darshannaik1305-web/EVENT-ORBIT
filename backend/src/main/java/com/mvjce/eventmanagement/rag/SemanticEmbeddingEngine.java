@@ -6,10 +6,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.*;
 
@@ -26,7 +29,7 @@ public class SemanticEmbeddingEngine {
     @Value("${embedding.provider:gemini}")
     private String provider;
 
-    @Value("${embedding.model:text-embedding-004}")
+    @Value("${embedding.model:models/embedding-001}")
     private String model;
 
     @Value("${embedding.api.url:https://generativelanguage.googleapis.com/v1beta}")
@@ -35,17 +38,16 @@ public class SemanticEmbeddingEngine {
     @Value("${embedding.api.key:${openai.api.key:}}")
     private String apiKey;
 
-    @Value("${embedding.connect.timeout.ms:5000}")
+    @Value("${embedding.connect.timeout.ms:10000}")
     private int connectTimeoutMs;
 
-    @Value("${embedding.read.timeout.ms:10000}")
+    @Value("${embedding.read.timeout.ms:15000}")
     private int readTimeoutMs;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private EngineStatus status = EngineStatus.UNCONFIGURED;
     private String compatibilityErrorMessage = null;
     private int vectorDimension = -1;
-    private String discoveredGeminiModel = null;
 
     public String getProvider() { return provider; }
     public String getModel() { return model; }
@@ -61,7 +63,8 @@ public class SemanticEmbeddingEngine {
 
     @PostConstruct
     public void init() {
-        if (apiKey != null && !apiKey.isBlank() && !apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY") && !apiKey.equalsIgnoreCase("YOUR_API_KEY")) {
+        if (hasValidApiKey()) {
+            logConnectionDiagnostic();
             boolean ok = verifyModelCompatibility();
             if (ok) {
                 System.out.println("🚀 [SEMANTIC EMBEDDINGS ACTIVE] Provider: " + provider + " | Model: " + model + " (Dimension: " + vectorDimension + ")");
@@ -74,23 +77,46 @@ public class SemanticEmbeddingEngine {
         }
     }
 
+    private boolean hasValidApiKey() {
+        return apiKey != null && !apiKey.isBlank() && 
+               !apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY") && 
+               !apiKey.equalsIgnoreCase("YOUR_API_KEY");
+    }
+
+    private void logConnectionDiagnostic() {
+        try {
+            String hostOnly = URI.create(apiUrl).getHost();
+            System.out.println("[ GEMINI CONNECTION DIAGNOSTIC ]");
+            System.out.println("Provider: " + provider);
+            System.out.println("Model: " + model);
+            System.out.println("Endpoint host: " + (hostOnly != null ? hostOnly : "generativelanguage.googleapis.com"));
+            System.out.println("API key configured: " + hasValidApiKey());
+            System.out.println("Connect timeout: " + connectTimeoutMs + "ms");
+            System.out.println("Read timeout: " + readTimeoutMs + "ms");
+        } catch (Exception ignored) {}
+    }
+
+    private HttpClient createResilientHttpClient() {
+        return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .proxy(ProxySelector.getDefault())
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .build();
+    }
+
     private boolean isGeminiProvider() {
         return (provider != null && provider.equalsIgnoreCase("gemini")) ||
                (apiUrl != null && apiUrl.contains("generativelanguage.googleapis.com"));
     }
 
     public synchronized boolean verifyModelCompatibility() {
-        if (apiKey == null || apiKey.isBlank() || apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY") || apiKey.equalsIgnoreCase("YOUR_API_KEY")) {
+        if (!hasValidApiKey()) {
             status = EngineStatus.UNCONFIGURED;
             compatibilityErrorMessage = "No API key configured.";
             return false;
         }
 
         try {
-            if (isGeminiProvider()) {
-                discoverAvailableGeminiEmbeddingModel();
-            }
-
             float[] probeVec = embedText("EventOrbit Verification Probe");
             if (probeVec != null && probeVec.length > 0) {
                 this.vectorDimension = probeVec.length;
@@ -110,84 +136,38 @@ public class SemanticEmbeddingEngine {
         }
     }
 
-    private void discoverAvailableGeminiEmbeddingModel() {
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(connectTimeoutMs))
-                    .build();
-
-            String listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey;
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(listUrl))
-                    .timeout(Duration.ofMillis(readTimeoutMs))
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                JsonNode root = objectMapper.readTree(response.body());
-                JsonNode modelsNode = root.path("models");
-                if (modelsNode.isArray()) {
-                    for (JsonNode mNode : modelsNode) {
-                        String name = mNode.path("name").asText(""); // e.g. "models/text-embedding-004"
-                        JsonNode methods = mNode.path("supportedGenerationMethods");
-                        if (methods.isArray()) {
-                            for (JsonNode meth : methods) {
-                                if (meth.asText().equalsIgnoreCase("embedContent")) {
-                                    this.discoveredGeminiModel = name;
-                                    this.model = name.replace("models/", "");
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-    }
-
     public float[] embedText(String text) {
-        if (text == null || text.isBlank() || apiKey == null || apiKey.isBlank()) {
+        if (text == null || text.isBlank() || !hasValidApiKey()) {
             return null;
         }
 
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(connectTimeoutMs))
-                    .build();
-
-            if (isGeminiProvider()) {
-                return executeGeminiEmbedding(client, text.trim());
-            } else {
-                return executeOpenAiStandardEmbedding(client, text.trim());
-            }
-        } catch (Exception e) {
-            this.status = EngineStatus.API_ERROR;
-            this.compatibilityErrorMessage = "Embedding request error: " + e.getMessage();
+        HttpClient client = createResilientHttpClient();
+        if (isGeminiProvider()) {
+            return executeGeminiEmbedding(client, text.trim());
+        } else {
+            return executeOpenAiStandardEmbedding(client, text.trim());
         }
-        return null;
     }
 
     private float[] executeGeminiEmbedding(HttpClient client, String text) {
-        try {
-            List<String> modelsToTry = new ArrayList<>();
-            if (discoveredGeminiModel != null) {
-                modelsToTry.add(discoveredGeminiModel);
-            }
-            String baseModel = model != null && !model.isBlank() ? model : "text-embedding-004";
-            if (!baseModel.startsWith("models/")) {
-                modelsToTry.add("models/" + baseModel);
-            } else {
-                modelsToTry.add(baseModel);
-            }
-            modelsToTry.add("models/text-embedding-004");
-            modelsToTry.add("models/embedding-001");
+        String mod = model != null && !model.isBlank() ? model : "models/embedding-001";
+        if (!mod.startsWith("models/")) {
+            mod = "models/" + mod;
+        }
 
-            for (String mod : modelsToTry) {
-                String targetUrl = "https://generativelanguage.googleapis.com/v1beta/" + mod + ":embedContent?key=" + apiKey;
+        List<String> modelsToTry = List.of(mod, "models/embedding-001", "models/text-embedding-004");
+
+        for (String targetModel : modelsToTry) {
+            try {
+                String baseUrl = (apiUrl != null && !apiUrl.isBlank()) ? apiUrl : "https://generativelanguage.googleapis.com/v1beta";
+                if (baseUrl.endsWith("/")) {
+                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+                }
+
+                String targetUrl = baseUrl + "/" + targetModel + ":embedContent?key=" + apiKey;
 
                 String requestBody = objectMapper.createObjectNode()
-                        .put("model", mod)
+                        .put("model", targetModel)
                         .set("content", objectMapper.createObjectNode()
                                 .set("parts", objectMapper.createArrayNode()
                                         .add(objectMapper.createObjectNode()
@@ -211,19 +191,27 @@ public class SemanticEmbeddingEngine {
                         for (int i = 0; i < valuesNode.size(); i++) {
                             vector[i] = (float) valuesNode.get(i).asDouble();
                         }
-                        this.discoveredGeminiModel = mod;
-                        this.model = mod.replace("models/", "");
+                        this.model = targetModel;
                         return vector;
                     }
-                } else {
-                    this.compatibilityErrorMessage = "HTTP " + response.statusCode() + " for [" + mod + "]: " + response.body();
+                } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                    this.status = EngineStatus.INCOMPATIBLE_MODEL;
+                    this.compatibilityErrorMessage = "[HTTP_" + response.statusCode() + "] Gemini model [" + targetModel + "] rejected: " + response.body();
+                } else if (response.statusCode() >= 500) {
+                    this.status = EngineStatus.API_ERROR;
+                    this.compatibilityErrorMessage = "[HTTP_" + response.statusCode() + "] Gemini server error: " + response.body();
                 }
-            }
-            this.status = EngineStatus.INCOMPATIBLE_MODEL;
 
-        } catch (Exception e) {
-            this.status = EngineStatus.API_ERROR;
-            this.compatibilityErrorMessage = "Gemini embedding error: " + e.getMessage();
+            } catch (HttpConnectTimeoutException e) {
+                this.status = EngineStatus.API_ERROR;
+                this.compatibilityErrorMessage = "[CONNECT_TIMEOUT] HTTP connect timed out to " + targetModel + ": " + e.getMessage();
+            } catch (HttpTimeoutException e) {
+                this.status = EngineStatus.API_ERROR;
+                this.compatibilityErrorMessage = "[READ_TIMEOUT] HTTP read timed out for " + targetModel + ": " + e.getMessage();
+            } catch (Exception e) {
+                this.status = EngineStatus.API_ERROR;
+                this.compatibilityErrorMessage = "Gemini embedding exception: " + e.getMessage();
+            }
         }
         return null;
     }
@@ -262,12 +250,20 @@ public class SemanticEmbeddingEngine {
                         return vector;
                     }
                 }
+            } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                this.status = EngineStatus.INCOMPATIBLE_MODEL;
+                this.compatibilityErrorMessage = "[HTTP_" + response.statusCode() + "] OpenAI/OpenRouter embedding rejected: " + response.body();
+            } else if (response.statusCode() >= 500) {
+                this.status = EngineStatus.API_ERROR;
+                this.compatibilityErrorMessage = "[HTTP_" + response.statusCode() + "] OpenAI/OpenRouter server error: " + response.body();
             }
 
-            this.status = (response.statusCode() == 400 || response.statusCode() == 404 || response.statusCode() == 422)
-                    ? EngineStatus.INCOMPATIBLE_MODEL : EngineStatus.API_ERROR;
-            this.compatibilityErrorMessage = "HTTP " + response.statusCode() + " from " + targetUrl + ": " + response.body();
-
+        } catch (HttpConnectTimeoutException e) {
+            this.status = EngineStatus.API_ERROR;
+            this.compatibilityErrorMessage = "[CONNECT_TIMEOUT] Connect timed out to OpenAI/OpenRouter endpoint: " + e.getMessage();
+        } catch (HttpTimeoutException e) {
+            this.status = EngineStatus.API_ERROR;
+            this.compatibilityErrorMessage = "[READ_TIMEOUT] Read timed out from OpenAI/OpenRouter endpoint: " + e.getMessage();
         } catch (Exception e) {
             this.status = EngineStatus.API_ERROR;
             this.compatibilityErrorMessage = "OpenAI standard embedding error: " + e.getMessage();

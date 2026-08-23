@@ -1,23 +1,31 @@
 package com.mvjce.eventmanagement.rag;
 
 import com.mvjce.eventmanagement.dto.SourceMetadata;
-import com.mvjce.eventmanagement.model.Club;
-import com.mvjce.eventmanagement.model.Event;
-import com.mvjce.eventmanagement.model.Winner;
-import com.mvjce.eventmanagement.repository.ClubRepository;
-import com.mvjce.eventmanagement.repository.EventRepository;
-import com.mvjce.eventmanagement.repository.WinnerRepository;
+import com.mvjce.eventmanagement.model.*;
+import com.mvjce.eventmanagement.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Service
+@Component
 public class DatabaseSqlAgent {
+
+    public static class QueryResult {
+        private final String context;
+        private final List<SourceMetadata> sources;
+
+        public QueryResult(String context, List<SourceMetadata> sources) {
+            this.context = context != null ? context : "";
+            this.sources = sources != null ? sources : Collections.emptyList();
+        }
+
+        public String getContext() { return context; }
+        public List<SourceMetadata> getSources() { return sources; }
+    }
 
     @Autowired
     private EventRepository eventRepository;
@@ -26,40 +34,28 @@ public class DatabaseSqlAgent {
     private ClubRepository clubRepository;
 
     @Autowired
+    private TeamMemberRepository teamMemberRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
     private WinnerRepository winnerRepository;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
 
-    public static class QueryResult {
-        private final String context;
-        private final List<SourceMetadata> sources;
-
-        public QueryResult(String context, List<SourceMetadata> sources) {
-            this.context = context;
-            this.sources = (sources != null) ? sources : new ArrayList<>();
-        }
-
-        public String getContext() { return context; }
-        public List<SourceMetadata> getSources() { return sources; }
-    }
-
-    public QueryResult retrieveTargetedContext(String rawQuery, String authenticatedUsername, QueryProcessor.Intent intent, String matchedClub, String matchedEvent) {
-        if (rawQuery == null || rawQuery.isBlank()) {
-            return new QueryResult("", Collections.emptyList());
-        }
-
-        String query = rawQuery.toLowerCase().trim();
+    public QueryResult retrieveTargetedContext(String query, String authenticatedUsername, QueryProcessor.Intent intent, String matchedClub, String matchedEvent) {
         StringBuilder context = new StringBuilder();
         List<SourceMetadata> sources = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
         // 1. Private Student Data Queries (LEVEL 1)
         if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
-            return getAuthenticatedUserPrivateContext(authenticatedUsername);
+            return getStudentParticipationContext(authenticatedUsername);
         }
 
-        // 2. Winner Results Queries (LEVEL 2/3)
-        if (intent == QueryProcessor.Intent.WINNERS) {
+        // 2. Winner Results & Event Participant Queries (LEVEL 2/3)
+        if (intent == QueryProcessor.Intent.WINNERS || (matchedEvent != null && (query.contains("participat") || query.contains("who")))) {
             QueryResult winnerResult = getWinnersContext(query, matchedEvent);
             if (!winnerResult.getContext().isBlank()) {
                 return winnerResult;
@@ -147,99 +143,99 @@ public class DatabaseSqlAgent {
         return new QueryResult("", Collections.emptyList());
     }
 
-    public QueryResult retrieveTargetedContext(String rawQuery, String authenticatedUsername) {
-        return retrieveTargetedContext(rawQuery, authenticatedUsername, QueryProcessor.Intent.GENERAL, null, null);
-    }
-
-    private QueryResult getClubEventsContext(String query, String matchedClub, LocalDateTime now) {
-        List<Club> allClubs = clubRepository.findAll();
-        StringBuilder context = new StringBuilder();
+    private QueryResult getClubEventsContext(String query, String matchedClubName, LocalDateTime now) {
+        StringBuilder sb = new StringBuilder();
         List<SourceMetadata> sources = new ArrayList<>();
+        List<Club> allClubs = clubRepository.findAll();
 
-        for (Club club : allClubs) {
-            boolean match = (matchedClub != null && club.getName().equalsIgnoreCase(matchedClub)) ||
-                    query.contains(club.getName().toLowerCase()) ||
-                    (club.getName().toLowerCase().replace("club", "").trim().length() >= 4 &&
-                            query.matches(".*\\b" + Pattern.quote(club.getName().toLowerCase().replace("club", "").trim()) + "\\b.*"));
-
-            if (match) {
-                sources.add(new SourceMetadata("CLUB", club.getId(), club.getName()));
-                List<Event> clubEvents = eventRepository.findByClubId(club.getId());
-
-                boolean wantOngoing = query.contains("ongoing") || query.contains("active") || query.contains("running") || query.contains("upcoming");
-                boolean wantEnded = query.contains("ended") || query.contains("past") || query.contains("completed") || query.contains("expired") || query.contains("closed");
-
-                List<Event> filteredEvents = clubEvents;
-                String statusHeader = "Events hosted by " + club.getName();
-
-                if (wantOngoing) {
-                    filteredEvents = clubEvents.stream()
-                            .filter(e -> e.getRegEnd() == null || e.getRegEnd().isAfter(now))
-                            .collect(Collectors.toList());
-                    statusHeader = "🟢 Ongoing & Upcoming Events hosted by " + club.getName();
-                } else if (wantEnded) {
-                    filteredEvents = clubEvents.stream()
-                            .filter(e -> e.getRegEnd() != null && e.getRegEnd().isBefore(now))
-                            .collect(Collectors.toList());
-                    statusHeader = "🔴 Ended & Past Events hosted by " + club.getName();
-                }
-
-                context.append("🏛️ Club: ").append(club.getName()).append("\n");
-                if (club.getDescription() != null) {
-                    context.append("Description: ").append(club.getDescription()).append("\n");
-                }
-
-                if (!filteredEvents.isEmpty()) {
-                    context.append(statusHeader).append(":\n");
-                    for (Event e : filteredEvents) {
-                        sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                        appendEventDetails(context, e);
-                    }
-                } else {
-                    if (wantOngoing) {
-                        context.append("No ongoing or upcoming events currently registered for ").append(club.getName()).append(".\n");
-                    } else if (wantEnded) {
-                        context.append("No ended or past events currently recorded for ").append(club.getName()).append(".\n");
-                    } else {
-                        context.append("No events found for ").append(club.getName()).append(".\n");
-                    }
-                }
-                return new QueryResult(context.toString(), sources);
+        Club matchedClub = null;
+        for (Club c : allClubs) {
+            if ((matchedClubName != null && c.getName().equalsIgnoreCase(matchedClubName)) ||
+                    query.contains(c.getName().toLowerCase()) ||
+                    c.getName().toLowerCase().contains(query.replace("events", "").replace("club", "").trim())) {
+                matchedClub = c;
+                break;
             }
+        }
+
+        if (matchedClub != null) {
+            sources.add(new SourceMetadata("CLUB", matchedClub.getId(), matchedClub.getName()));
+            List<Event> clubEvents = eventRepository.findByClubId(matchedClub.getId());
+
+            sb.append("🏛️ Club: ").append(matchedClub.getName());
+            if (matchedClub.getDescription() != null && !matchedClub.getDescription().isBlank()) {
+                sb.append(" - ").append(matchedClub.getDescription());
+            }
+            sb.append("\n");
+
+            if (clubEvents.isEmpty()) {
+                sb.append("There are currently no events registered for ").append(matchedClub.getName()).append(".\n");
+                return new QueryResult(sb.toString(), sources);
+            }
+
+            List<Event> ongoingEvents = clubEvents.stream()
+                    .filter(e -> e.getRegEnd() == null || e.getRegEnd().isAfter(now))
+                    .collect(Collectors.toList());
+
+            List<Event> pastEvents = clubEvents.stream()
+                    .filter(e -> e.getRegEnd() != null && e.getRegEnd().isBefore(now))
+                    .collect(Collectors.toList());
+
+            if (!ongoingEvents.isEmpty()) {
+                sb.append("\n🟢 Ongoing / Upcoming Events:\n");
+                for (Event e : ongoingEvents) {
+                    sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                    appendEventDetails(sb, e);
+                }
+            }
+
+            if (!pastEvents.isEmpty()) {
+                sb.append("\n🔴 Past / Concluded Events:\n");
+                for (Event e : pastEvents) {
+                    sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                    appendEventDetails(sb, e);
+                }
+            }
+
+            return new QueryResult(sb.toString(), sources);
         }
 
         return new QueryResult("", Collections.emptyList());
     }
 
-    private QueryResult getAuthenticatedUserPrivateContext(String username) {
-        if (username == null || username.isBlank() || username.equalsIgnoreCase("anonymousUser")) {
-            return new QueryResult("You need to be logged in to view your private registrations and participation status. Please log in to your student account.", Collections.emptyList());
+    private QueryResult getStudentParticipationContext(String authenticatedUsername) {
+        if (authenticatedUsername == null || authenticatedUsername.isBlank() || authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
+            return new QueryResult("Please log in with your student account to view your event registrations and winnings.", Collections.emptyList());
         }
 
-        StringBuilder sb = new StringBuilder();
+        String username = authenticatedUsername.trim();
+        List<TeamMember> myMemberships = teamMemberRepository.findByUserId(username);
         List<SourceMetadata> sources = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
 
-        // Fetch student's registered events
-        List<Event> allEvents = eventRepository.findAll();
-        List<Event> myRegisteredEvents = allEvents.stream()
-                .filter(e -> e.getRegistrations() != null && e.getRegistrations().stream()
-                        .anyMatch(r -> r.getUsername() != null && r.getUsername().trim().equalsIgnoreCase(username)))
-                .collect(Collectors.toList());
+        sb.append("👤 Participation History for Student (").append(username).append("):\n");
 
-        sb.append("👤 Personal Participation for Student [").append(username).append("]:\n\n");
-
-        if (myRegisteredEvents.isEmpty()) {
-            sb.append("• You have not registered for any events yet. You can browse upcoming events and register through the Events tab.\n");
+        if (myMemberships == null || myMemberships.isEmpty()) {
+            sb.append("You have not registered for any events yet in EventOrbit.\n");
         } else {
-            sb.append("📋 Events You Registered For:\n");
-            for (Event e : myRegisteredEvents) {
-                sources.add(new SourceMetadata("PARTICIPATION", e.getId(), e.getName()));
-                sb.append("• ").append(e.getName())
-                  .append(" | Venue: ").append(e.getVenue() != null && !e.getVenue().isBlank() ? e.getVenue() : "Campus Main Center")
-                  .append(" | Event Date: ").append(e.getEventDate() != null ? e.getEventDate().format(DATE_FORMATTER) : "TBD")
-                  .append("\n");
+            sb.append("📅 Registered Events:\n");
+            for (TeamMember tm : myMemberships) {
+                Team team = tm.getTeam();
+                if (team != null && team.getEventId() != null) {
+                    Optional<Event> evOpt = eventRepository.findById(team.getEventId());
+                    String eventName = evOpt.map(Event::getName).orElse("Event");
+                    if (evOpt.isPresent()) {
+                        sources.add(new SourceMetadata("PARTICIPATION", tm.getId(), eventName + " Registration"));
+                    }
+
+                    String dateStr = tm.getJoinedAt() != null ? tm.getJoinedAt().format(DATE_FORMATTER) : "N/A";
+                    sb.append("• ").append(eventName)
+                      .append(" [Team: ").append(team.getTeamName() != null ? team.getTeamName() : "Solo")
+                      .append(", Registered on: ").append(dateStr).append("]")
+                      .append("\n");
+                }
             }
-            sb.append("\nYou can also manage or cancel registrations in the 'My Participation' tab before the deadline.\n");
+            sb.append("\nYou can view details in the 'My Participation' tab.\n");
         }
 
         // Fetch student's winnings
@@ -284,7 +280,7 @@ public class DatabaseSqlAgent {
             List<Winner> winners = winnerRepository.findByEventId(matchedEvent.getId());
             sources.add(new SourceMetadata("EVENT", matchedEvent.getId(), matchedEvent.getName()));
             if (winners.isEmpty()) {
-                return new QueryResult("📌 Results for " + matchedEvent.getName() + ": Winners have not been announced yet.", sources);
+                return new QueryResult("📌 Results for " + matchedEvent.getName() + ": Winners have not been announced yet. (Note: Participant rosters are private to protect student privacy).", sources);
             }
             sb.append("🏆 Winners for ").append(matchedEvent.getName()).append(":\n");
             for (Winner w : winners) {
@@ -300,20 +296,15 @@ public class DatabaseSqlAgent {
             return new QueryResult("No event winners have been announced yet in EventOrbit.", Collections.emptyList());
         }
 
-        sb.append("🏆 Recently Announced Event Winners:\n");
-        Map<String, List<Winner>> groupedByEvent = allWinners.stream()
-                .collect(Collectors.groupingBy(Winner::getEventId));
-
-        for (Map.Entry<String, List<Winner>> entry : groupedByEvent.entrySet()) {
+        sb.append("🏆 Official EventOrbit Winners Podium:\n");
+        Map<String, List<Winner>> winnersByEvent = allWinners.stream().collect(Collectors.groupingBy(Winner::getEventId));
+        for (Map.Entry<String, List<Winner>> entry : winnersByEvent.entrySet()) {
             Optional<Event> evOpt = eventRepository.findById(entry.getKey());
-            String eventName = evOpt.map(Event::getName).orElse("Event " + entry.getKey());
-            if (evOpt.isPresent()) {
-                sources.add(new SourceMetadata("EVENT", evOpt.get().getId(), eventName));
-            }
-            sb.append("\n📌 ").append(eventName).append(":\n");
+            String eventName = evOpt.map(Event::getName).orElse("Event (" + entry.getKey() + ")");
+            sb.append("\n• Event: ").append(eventName).append("\n");
             for (Winner w : entry.getValue()) {
-                sb.append("  - ").append(w.getPosition() != null ? w.getPosition().getDisplayName() : "Winner")
-                  .append(": ").append(w.getFullName()).append("\n");
+                sources.add(new SourceMetadata("WINNER", w.getId(), eventName + " - " + w.getPosition().getDisplayName()));
+                sb.append("  - ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
             }
         }
 
@@ -344,7 +335,10 @@ public class DatabaseSqlAgent {
     private boolean isKeywordMatch(String query, String eventName) {
         String[] queryWords = query.split("\\s+");
         for (String w : queryWords) {
-            if (w.length() >= 4 && eventName.contains(w)) {
+            if (w.length() >= 4 && (eventName.contains(w) || (w.length() >= 6 && eventName.contains(w.substring(0, 5))))) {
+                return true;
+            }
+            if (w.startsWith("hack") && eventName.contains("hack")) {
                 return true;
             }
         }

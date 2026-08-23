@@ -9,10 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,16 +47,16 @@ public class ChatService {
     @Value("${openai.api.key:}")
     private String apiKey;
 
-    @Value("${openai.api.url:https://generativelanguage.googleapis.com/v1beta/openai/chat/completions}")
+    @Value("${openai.api.url:https://generativelanguage.googleapis.com/v1beta}")
     private String apiUrl;
 
     @Value("${openai.model:gemini-2.0-flash}")
     private String model;
 
-    @Value("${openai.connect.timeout.ms:5000}")
+    @Value("${openai.connect.timeout.ms:10000}")
     private int connectTimeoutMs;
 
-    @Value("${openai.read.timeout.ms:10000}")
+    @Value("${openai.read.timeout.ms:15000}")
     private int readTimeoutMs;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -88,13 +91,19 @@ public class ChatService {
                     processed.getNormalizedQuery(), authenticatedUsername, intent, null, null);
 
             List<SourceMetadata> sources = deduplicateSources(dbResult.getSources());
-            if (apiKey != null && !apiKey.isBlank() && !apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY")) {
-                String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), dbResult.getContext(), "PRIVATE_DATA");
-                if (llmAnswer != null && !llmAnswer.isBlank()) {
-                    return new ChatResponse(llmAnswer, sources);
+            String context = dbResult.getContext();
+
+            if (context != null && !context.isBlank()) {
+                if (hasValidApiKey()) {
+                    logSafeLlmRequest(intent, 1, context.length());
+                    String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "PRIVATE_DATA");
+                    if (llmAnswer != null && !llmAnswer.isBlank()) {
+                        return new ChatResponse(llmAnswer, sources);
+                    }
                 }
+                return new ChatResponse(context, sources);
             }
-            return new ChatResponse(dbResult.getContext(), sources);
+            return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
         }
 
         // LEVEL 2 & 3: Database Entity & Live Application Data (Clubs, Winners, Events)
@@ -110,15 +119,17 @@ public class ChatService {
                     processed.getNormalizedQuery(), authenticatedUsername, intent,
                     processed.getTargetClubName(), processed.getTargetEventName());
 
-            if (!dbResult.getContext().isBlank()) {
+            String context = dbResult.getContext();
+            if (context != null && !context.isBlank()) {
                 List<SourceMetadata> sources = deduplicateSources(dbResult.getSources());
-                if (apiKey != null && !apiKey.isBlank() && !apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY")) {
-                    String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), dbResult.getContext(), "DATABASE_DATA");
+                if (hasValidApiKey()) {
+                    logSafeLlmRequest(intent, sources.size(), context.length());
+                    String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "DATABASE_DATA");
                     if (llmAnswer != null && !llmAnswer.isBlank()) {
                         return new ChatResponse(llmAnswer, sources);
                     }
                 }
-                return new ChatResponse(dbResult.getContext(), sources);
+                return new ChatResponse(context, sources);
             }
         }
 
@@ -142,7 +153,7 @@ public class ChatService {
         List<KnowledgeChunker.MatchResult> lexicalMatches = new ArrayList<>(candidateMatches.values());
         long lexicalLatencyMs = System.currentTimeMillis() - lexicalStart;
 
-        // Semantic Embedding Search
+        // Semantic Embedding Search (using vector index / active engine)
         long semanticStart = System.currentTimeMillis();
         Map<String, Double> semanticScores = Collections.emptyMap();
         if (embeddingEngine.getStatus() == SemanticEmbeddingEngine.EngineStatus.VERIFIED) {
@@ -178,16 +189,18 @@ public class ChatService {
             }
 
             List<SourceMetadata> uniqueSources = deduplicateSources(sourcesList);
+            String context = knowledgeContext.toString().trim();
 
-            if (apiKey != null && !apiKey.isBlank() && !apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY")) {
-                String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), knowledgeContext.toString().trim(), "KNOWLEDGE");
+            if (hasValidApiKey()) {
+                logSafeLlmRequest(intent, rankedChunks.size(), context.length());
+                String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "KNOWLEDGE");
                 if (llmAnswer != null && !llmAnswer.isBlank()) {
                     logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
                     return new ChatResponse(llmAnswer, uniqueSources);
                 }
             }
 
-            // Fallback: Format top knowledge chunks cleanly
+            // Deterministic Fallback: Format top knowledge chunks cleanly
             StringBuilder fallbackSb = new StringBuilder();
             for (HybridReranker.ScoredChunk sc : rankedChunks) {
                 fallbackSb.append(sc.getChunk().getContent()).append("\n\n");
@@ -196,9 +209,23 @@ public class ChatService {
             return new ChatResponse(fallbackSb.toString().trim(), uniqueSources);
         }
 
-        // LEVEL 5: Grounded Fallback
+        // LEVEL 5: Grounded Fallback (No context found, do not invoke LLM)
         logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
         return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
+    }
+
+    private boolean hasValidApiKey() {
+        return apiKey != null && !apiKey.isBlank() && 
+               !apiKey.equalsIgnoreCase("YOUR_OPENAI_API_KEY") && 
+               !apiKey.equalsIgnoreCase("YOUR_API_KEY");
+    }
+
+    private void logSafeLlmRequest(QueryProcessor.Intent intent, int contextChunks, int promptLength) {
+        System.out.println("🤖 [LLM REQUEST]");
+        System.out.println("Intent: " + intent);
+        System.out.println("Context chunks: " + contextChunks);
+        System.out.println("Prompt length: " + promptLength);
+        System.out.println("Prompt empty: " + (promptLength <= 0));
     }
 
     private void logLatencyMetrics(long lexicalMs, long semanticMs, long rankingMs, long totalStartMs) {
@@ -209,11 +236,26 @@ public class ChatService {
         }
     }
 
+    private HttpClient createResilientHttpClient() {
+        return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .proxy(ProxySelector.getDefault())
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .build();
+    }
+
+    private boolean isGeminiApi() {
+        return (apiUrl != null && apiUrl.contains("generativelanguage.googleapis.com")) ||
+               (model != null && model.toLowerCase().contains("gemini"));
+    }
+
     private String callLlmWithStrictGrounding(String query, String context, String contextType) {
+        if (context == null || context.isBlank()) {
+            return null;
+        }
+
         try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(connectTimeoutMs))
-                    .build();
+            HttpClient client = createResilientHttpClient();
 
             String systemPrompt = 
                 "You are EventOrbit AI Assistant, a college event management assistant.\n" +
@@ -229,45 +271,89 @@ public class ChatService {
                 "Context:\n" + context + "\n\n" +
                 "Question: " + query;
 
-            String requestBody = objectMapper.createObjectNode()
-                    .put("model", model)
-                    .set("messages", objectMapper.createArrayNode()
-                            .add(objectMapper.createObjectNode()
-                                    .put("role", "system")
-                                    .put("content", systemPrompt)))
-                    .toString();
+            if (isGeminiApi()) {
+                // Google Gemini Native GenerateContent API Format
+                String mod = model != null && !model.isBlank() ? model.replace("models/", "") : "gemini-2.0-flash";
+                String geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + mod + ":generateContent?key=" + apiKey;
 
-            String targetUrl = apiUrl;
-            if (apiUrl.contains("generativelanguage.googleapis.com") && !apiUrl.contains("key=")) {
-                targetUrl = apiUrl + (apiUrl.contains("?") ? "&" : "?") + "key=" + apiKey;
-            }
+                String geminiBody = objectMapper.createObjectNode()
+                        .set("contents", objectMapper.createArrayNode()
+                                .add(objectMapper.createObjectNode()
+                                        .put("role", "user")
+                                        .set("parts", objectMapper.createArrayNode()
+                                                .add(objectMapper.createObjectNode()
+                                                        .put("text", systemPrompt)))))
+                        .toString();
 
-            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(targetUrl))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("HTTP-Referer", "http://localhost:7070")
-                    .header("X-Title", "EventOrbit")
-                    .timeout(Duration.ofMillis(readTimeoutMs))
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody));
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(geminiUrl))
+                        .header("Content-Type", "application/json")
+                        .timeout(Duration.ofMillis(readTimeoutMs))
+                        .POST(HttpRequest.BodyPublishers.ofString(geminiBody))
+                        .build();
 
-            HttpRequest request = reqBuilder.build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() == 200) {
-                JsonNode root = objectMapper.readTree(response.body());
-                JsonNode choices = root.path("choices");
-                if (choices.isArray() && choices.size() > 0) {
-                    String answer = choices.get(0).path("message").path("content").asText().trim();
-                    if (!answer.isBlank()) {
-                        return answer;
+                if (response.statusCode() == 200) {
+                    JsonNode root = objectMapper.readTree(response.body());
+                    JsonNode candidates = root.path("candidates");
+                    if (candidates.isArray() && candidates.size() > 0) {
+                        JsonNode parts = candidates.get(0).path("content").path("parts");
+                        if (parts.isArray() && parts.size() > 0) {
+                            String answer = parts.get(0).path("text").asText().trim();
+                            if (!answer.isBlank()) {
+                                return answer;
+                            }
+                        }
                     }
+                } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                    System.err.println("Gemini LLM API [HTTP_" + response.statusCode() + "]: " + response.body());
+                } else if (response.statusCode() >= 500) {
+                    System.err.println("Gemini LLM Server Error [HTTP_" + response.statusCode() + "]: " + response.body());
                 }
             } else {
-                System.err.println("LLM API Error Code " + response.statusCode() + ": " + response.body());
+                // OpenAI / OpenRouter Standard Format
+                String requestBody = objectMapper.createObjectNode()
+                        .put("model", model)
+                        .set("messages", objectMapper.createArrayNode()
+                                .add(objectMapper.createObjectNode()
+                                        .put("role", "system")
+                                        .put("content", systemPrompt)))
+                        .toString();
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(apiUrl))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + apiKey)
+                        .header("HTTP-Referer", "http://localhost:7070")
+                        .header("X-Title", "EventOrbit")
+                        .timeout(Duration.ofMillis(readTimeoutMs))
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                        .build();
+
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() == 200) {
+                    JsonNode root = objectMapper.readTree(response.body());
+                    JsonNode choices = root.path("choices");
+                    if (choices.isArray() && choices.size() > 0) {
+                        String answer = choices.get(0).path("message").path("content").asText().trim();
+                        if (!answer.isBlank()) {
+                            return answer;
+                        }
+                    }
+                } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                    System.err.println("OpenAI LLM API [HTTP_" + response.statusCode() + "]: " + response.body());
+                } else if (response.statusCode() >= 500) {
+                    System.err.println("OpenAI LLM Server Error [HTTP_" + response.statusCode() + "]: " + response.body());
+                }
             }
+        } catch (HttpConnectTimeoutException e) {
+            System.err.println("LLM Connection Timeout [CONNECT_TIMEOUT]: " + e.getMessage());
+        } catch (HttpTimeoutException e) {
+            System.err.println("LLM Read Timeout [READ_TIMEOUT]: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("LLM Exception / Timeout: " + e.getMessage());
+            System.err.println("LLM Exception: " + e.getMessage());
         }
         return null;
     }
