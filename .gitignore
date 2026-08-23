@@ -65,4 +65,5 @@ secrets.xml
 backups/
 knowledge.txt
 **/knowledge.txt
-
+data/
+**/data/

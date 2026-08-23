@@ -6,7 +6,6 @@ import com.mvjce.eventmanagement.model.Event;
 import com.mvjce.eventmanagement.model.Winner;
 import com.mvjce.eventmanagement.repository.ClubRepository;
 import com.mvjce.eventmanagement.repository.EventRepository;
-import com.mvjce.eventmanagement.repository.TeamRepository;
 import com.mvjce.eventmanagement.repository.WinnerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,9 +27,6 @@ public class DatabaseSqlAgent {
 
     @Autowired
     private WinnerRepository winnerRepository;
-
-    @Autowired
-    private TeamRepository teamRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a", Locale.ENGLISH);
 
@@ -46,7 +43,7 @@ public class DatabaseSqlAgent {
         public List<SourceMetadata> getSources() { return sources; }
     }
 
-    public QueryResult retrieveTargetedContext(String rawQuery, String authenticatedUsername) {
+    public QueryResult retrieveTargetedContext(String rawQuery, String authenticatedUsername, QueryProcessor.Intent intent, String matchedClub, String matchedEvent) {
         if (rawQuery == null || rawQuery.isBlank()) {
             return new QueryResult("", Collections.emptyList());
         }
@@ -56,26 +53,119 @@ public class DatabaseSqlAgent {
         List<SourceMetadata> sources = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
-        // 1. Check Student-Specific Private Queries (ONLY for authenticatedUsername)
-        if (isUserPrivateQuery(query)) {
+        // 1. Private Student Data Queries (LEVEL 1)
+        if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
             return getAuthenticatedUserPrivateContext(authenticatedUsername);
         }
 
-        // 2. Check Winners Intent
-        if (query.contains("winner") || query.contains("who won") || query.contains("results")) {
-            QueryResult winnerResult = getWinnersContext(query);
+        // 2. Winner Results Queries (LEVEL 2/3)
+        if (intent == QueryProcessor.Intent.WINNERS) {
+            QueryResult winnerResult = getWinnersContext(query, matchedEvent);
             if (!winnerResult.getContext().isBlank()) {
                 return winnerResult;
             }
         }
 
-        // 3. Check Club Specific Events Intent
+        // 3. Club Specific Events (LEVEL 2)
+        if (intent == QueryProcessor.Intent.CLUB_EVENTS || matchedClub != null) {
+            QueryResult clubResult = getClubEventsContext(query, matchedClub, now);
+            if (!clubResult.getContext().isBlank()) {
+                return clubResult;
+            }
+        }
+
+        // 4. Available Clubs List (LEVEL 3)
+        if (intent == QueryProcessor.Intent.CLUBS_LIST) {
+            List<Club> allClubs = clubRepository.findAll();
+            if (allClubs.isEmpty()) {
+                return new QueryResult("No clubs registered in EventOrbit at the moment.", Collections.emptyList());
+            }
+            context.append("📋 Available Clubs in EventOrbit:\n");
+            for (Club c : allClubs) {
+                sources.add(new SourceMetadata("CLUB", c.getId(), c.getName()));
+                context.append("• ").append(c.getName());
+                if (c.getCategory() != null && !c.getCategory().isBlank()) {
+                    context.append(" (Category: ").append(c.getCategory()).append(")");
+                }
+                context.append("\n");
+            }
+            return new QueryResult(context.toString(), sources);
+        }
+
+        // 5. Specific Event Detail (LEVEL 2)
+        if (intent == QueryProcessor.Intent.EVENT_DETAIL || matchedEvent != null) {
+            List<Event> allEvents = eventRepository.findAll();
+            for (Event e : allEvents) {
+                if (matchedEvent != null && e.getName().equalsIgnoreCase(matchedEvent) ||
+                        query.contains(e.getName().toLowerCase()) || isKeywordMatch(query, e.getName().toLowerCase())) {
+                    sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                    context.append("📌 Event Information:\n");
+                    appendEventDetails(context, e);
+                    return new QueryResult(context.toString(), sources);
+                }
+            }
+        }
+
+        // 6. Global Ended / Past Events (LEVEL 3)
+        if (intent == QueryProcessor.Intent.EVENTS_ENDED) {
+            List<Event> allEvents = eventRepository.findAll();
+            List<Event> endedEvents = allEvents.stream()
+                    .filter(e -> e.getRegEnd() != null && e.getRegEnd().isBefore(now))
+                    .collect(Collectors.toList());
+
+            if (endedEvents.isEmpty()) {
+                return new QueryResult("Currently, there are no ended or past events in the records.", Collections.emptyList());
+            }
+
+            context.append("🔴 Ended & Past Events:\n");
+            for (Event e : endedEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(context, e);
+            }
+            return new QueryResult(context.toString(), sources);
+        }
+
+        // 7. Active / Upcoming Events (LEVEL 3)
+        if (intent == QueryProcessor.Intent.EVENTS_ACTIVE) {
+            List<Event> allEvents = eventRepository.findAll();
+            List<Event> activeEvents = allEvents.stream()
+                    .filter(e -> e.getRegEnd() == null || e.getRegEnd().isAfter(now))
+                    .collect(Collectors.toList());
+
+            if (activeEvents.isEmpty()) {
+                return new QueryResult("Currently, there are no active or upcoming events available for registration.", Collections.emptyList());
+            }
+
+            context.append("🟢 Active & Upcoming Events:\n");
+            for (Event e : activeEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(context, e);
+            }
+            return new QueryResult(context.toString(), sources);
+        }
+
+        return new QueryResult("", Collections.emptyList());
+    }
+
+    public QueryResult retrieveTargetedContext(String rawQuery, String authenticatedUsername) {
+        return retrieveTargetedContext(rawQuery, authenticatedUsername, QueryProcessor.Intent.GENERAL, null, null);
+    }
+
+    private QueryResult getClubEventsContext(String query, String matchedClub, LocalDateTime now) {
         List<Club> allClubs = clubRepository.findAll();
+        StringBuilder context = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+
         for (Club club : allClubs) {
-            if (query.contains(club.getName().toLowerCase()) || (club.getCategory() != null && query.contains(club.getCategory().toLowerCase()))) {
+            boolean match = (matchedClub != null && club.getName().equalsIgnoreCase(matchedClub)) ||
+                    query.contains(club.getName().toLowerCase()) ||
+                    (club.getName().toLowerCase().replace("club", "").trim().length() >= 4 &&
+                            query.matches(".*\\b" + Pattern.quote(club.getName().toLowerCase().replace("club", "").trim()) + "\\b.*"));
+
+            if (match) {
                 sources.add(new SourceMetadata("CLUB", club.getId(), club.getName()));
                 List<Event> clubEvents = eventRepository.findByClubId(club.getId());
-                
+
                 boolean wantOngoing = query.contains("ongoing") || query.contains("active") || query.contains("running") || query.contains("upcoming");
                 boolean wantEnded = query.contains("ended") || query.contains("past") || query.contains("completed") || query.contains("expired") || query.contains("closed");
 
@@ -111,121 +201,25 @@ public class DatabaseSqlAgent {
                     } else if (wantEnded) {
                         context.append("No ended or past events currently recorded for ").append(club.getName()).append(".\n");
                     } else {
-                        context.append("No events found for this club.\n");
+                        context.append("No events found for ").append(club.getName()).append(".\n");
                     }
                 }
                 return new QueryResult(context.toString(), sources);
             }
         }
 
-        // 4. Check Available Clubs List Intent
-        if (query.contains("list clubs") || query.contains("available clubs") || query.contains("which clubs") || query.contains("all clubs")) {
-            if (allClubs.isEmpty()) {
-                return new QueryResult("No clubs registered in EventOrbit at the moment.", Collections.emptyList());
-            }
-            context.append("📋 Available Clubs in EventOrbit:\n");
-            for (Club c : allClubs) {
-                sources.add(new SourceMetadata("CLUB", c.getId(), c.getName()));
-                context.append("• ").append(c.getName());
-                if (c.getCategory() != null && !c.getCategory().isBlank()) {
-                    context.append(" (Category: ").append(c.getCategory()).append(")");
-                }
-                context.append("\n");
-            }
-            return new QueryResult(context.toString(), sources);
-        }
-
-        // 5. Check Target Event Detail Intent (Match by event name)
-        List<Event> allEvents = eventRepository.findAll();
-        List<Event> matchedEvents = new ArrayList<>();
-
-        for (Event e : allEvents) {
-            String nameLower = e.getName().toLowerCase();
-            if (query.contains(nameLower) || isKeywordMatch(query, nameLower)) {
-                matchedEvents.add(e);
-            }
-        }
-
-        if (!matchedEvents.isEmpty()) {
-            context.append("📌 Event Information:\n");
-            for (Event e : matchedEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
-        }
-
-        // 6. Check Global Ended / Past Events Intent
-        if (query.contains("ended events") || query.contains("past events") || query.contains("completed events") || query.contains("expired events")) {
-            List<Event> endedEvents = allEvents.stream()
-                    .filter(e -> e.getRegEnd() != null && e.getRegEnd().isBefore(now))
-                    .collect(Collectors.toList());
-
-            if (endedEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no ended or past events in the records.", Collections.emptyList());
-            }
-
-            context.append("🔴 Ended & Past Events:\n");
-            for (Event e : endedEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
-        }
-
-        // 7. Check Active / Upcoming Events Intent
-        if (query.contains("upcoming") || query.contains("active") || query.contains("ongoing") || query.contains("happening") || query.contains("available events") || query.contains("list events") || query.contains("events this week")) {
-            List<Event> activeEvents = allEvents.stream()
-                    .filter(e -> e.getRegEnd() == null || e.getRegEnd().isAfter(now))
-                    .collect(Collectors.toList());
-
-            if (activeEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no active or upcoming events available for registration.", Collections.emptyList());
-            }
-
-            context.append("🟢 Active & Upcoming Events:\n");
-            for (Event e : activeEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
-        }
-
         return new QueryResult("", Collections.emptyList());
-    }
-
-    private boolean isUserPrivateQuery(String q) {
-        // How-To / Guidance / FAQ questions must NOT be intercepted as private DB data dumps
-        if (q.startsWith("how ") || q.startsWith("where ") || q.startsWith("can i ") || q.startsWith("what ") ||
-            q.contains("how do") || q.contains("how can") || q.contains("how to") || q.contains("where can") ||
-            q.contains("where do") || q.contains("where is") || q.contains("steps to") || q.contains("process to") ||
-            q.contains("can i cancel") || q.contains("can i register") || q.contains("can i view")) {
-            return false;
-        }
-
-        if (q.contains("my event") || q.contains("my registration") || q.contains("my participation") ||
-            q.contains("my winning") || q.contains("my result") || q.contains("my team") ||
-            q.contains("did i win") || q.contains("have i registered") || q.contains("am i participating") ||
-            q.contains("i am participating") || q.contains("i joined") || q.contains("i registered") ||
-            q.contains("i participated") || q.contains("i signed up") || q.contains("i entered")) {
-            return true;
-        }
-        if ((q.contains(" i ") || q.startsWith("i ") || q.contains("my ")) &&
-            (q.contains("participat") || q.contains("register") || q.contains("join") || q.contains("event") || q.contains("win"))) {
-            return true;
-        }
-        return false;
     }
 
     private QueryResult getAuthenticatedUserPrivateContext(String username) {
         if (username == null || username.isBlank() || username.equalsIgnoreCase("anonymousUser")) {
-            return new QueryResult("You need to be logged in to view your private registrations and participation status.", Collections.emptyList());
+            return new QueryResult("You need to be logged in to view your private registrations and participation status. Please log in to your student account.", Collections.emptyList());
         }
 
         StringBuilder sb = new StringBuilder();
         List<SourceMetadata> sources = new ArrayList<>();
 
-        // Fetch student's registered events using JPA
+        // Fetch student's registered events
         List<Event> allEvents = eventRepository.findAll();
         List<Event> myRegisteredEvents = allEvents.stream()
                 .filter(e -> e.getRegistrations() != null && e.getRegistrations().stream()
@@ -235,16 +229,17 @@ public class DatabaseSqlAgent {
         sb.append("👤 Personal Participation for Student [").append(username).append("]:\n\n");
 
         if (myRegisteredEvents.isEmpty()) {
-            sb.append("• You have not registered for any events yet.\n");
+            sb.append("• You have not registered for any events yet. You can browse upcoming events and register through the Events tab.\n");
         } else {
             sb.append("📋 Events You Registered For:\n");
             for (Event e : myRegisteredEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                sources.add(new SourceMetadata("PARTICIPATION", e.getId(), e.getName()));
                 sb.append("• ").append(e.getName())
                   .append(" | Venue: ").append(e.getVenue() != null && !e.getVenue().isBlank() ? e.getVenue() : "Campus Main Center")
                   .append(" | Event Date: ").append(e.getEventDate() != null ? e.getEventDate().format(DATE_FORMATTER) : "TBD")
                   .append("\n");
             }
+            sb.append("\nYou can also manage or cancel registrations in the 'My Participation' tab before the deadline.\n");
         }
 
         // Fetch student's winnings
@@ -270,14 +265,16 @@ public class DatabaseSqlAgent {
         return new QueryResult(sb.toString(), sources);
     }
 
-    private QueryResult getWinnersContext(String query) {
+    private QueryResult getWinnersContext(String query, String matchedEventName) {
         StringBuilder sb = new StringBuilder();
         List<SourceMetadata> sources = new ArrayList<>();
         List<Event> allEvents = eventRepository.findAll();
 
         Event matchedEvent = null;
         for (Event e : allEvents) {
-            if (query.contains(e.getName().toLowerCase())) {
+            if ((matchedEventName != null && e.getName().equalsIgnoreCase(matchedEventName)) ||
+                    query.contains(e.getName().toLowerCase()) ||
+                    isKeywordMatch(query, e.getName().toLowerCase())) {
                 matchedEvent = e;
                 break;
             }
@@ -292,7 +289,8 @@ public class DatabaseSqlAgent {
             sb.append("🏆 Winners for ").append(matchedEvent.getName()).append(":\n");
             for (Winner w : winners) {
                 sources.add(new SourceMetadata("WINNER", w.getId(), matchedEvent.getName() + " - " + w.getPosition().getDisplayName()));
-                sb.append("• ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append(" (").append(w.getUsername()).append(")\n");
+                // Strictly DO NOT expose student USNs in public winner responses
+                sb.append("• ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
             }
             return new QueryResult(sb.toString(), sources);
         }
@@ -315,7 +313,7 @@ public class DatabaseSqlAgent {
             sb.append("\n📌 ").append(eventName).append(":\n");
             for (Winner w : entry.getValue()) {
                 sb.append("  - ").append(w.getPosition() != null ? w.getPosition().getDisplayName() : "Winner")
-                  .append(": ").append(w.getFullName()).append(" (").append(w.getUsername()).append(")\n");
+                  .append(": ").append(w.getFullName()).append("\n");
             }
         }
 

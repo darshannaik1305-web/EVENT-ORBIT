@@ -1,6 +1,7 @@
 package com.mvjce.eventmanagement.rag;
 
 import com.mvjce.eventmanagement.dto.SourceMetadata;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
@@ -15,23 +16,38 @@ import java.util.stream.Collectors;
 @Component
 public class KnowledgeChunker {
 
+    public enum ChunkCategory {
+        REGISTRATION_PROCEDURE,
+        ELIGIBILITY,
+        RULES,
+        SCHOLARSHIP,
+        FAQ_GENERAL,
+        OTHER
+    }
+
     public static class KnowledgeChunk {
         private final String id;
         private final String title;
         private final String content;
+        private final ChunkCategory category;
         private final SourceMetadata metadata;
+        private float[] vector;
 
-        public KnowledgeChunk(String id, String title, String content) {
+        public KnowledgeChunk(String id, String title, String content, ChunkCategory category) {
             this.id = id;
             this.title = title;
             this.content = content;
+            this.category = category;
             this.metadata = new SourceMetadata("KNOWLEDGE", id, title);
         }
 
         public String getId() { return id; }
         public String getTitle() { return title; }
         public String getContent() { return content; }
+        public ChunkCategory getCategory() { return category; }
         public SourceMetadata getMetadata() { return metadata; }
+        public float[] getVector() { return vector; }
+        public void setVector(float[] vector) { this.vector = vector; }
     }
 
     public static class MatchResult {
@@ -46,6 +62,9 @@ public class KnowledgeChunker {
         public KnowledgeChunk getChunk() { return chunk; }
         public double getScore() { return score; }
     }
+
+    @Autowired(required = false)
+    private SemanticVectorIndex vectorIndex;
 
     private final List<KnowledgeChunk> chunks = new ArrayList<>();
     private long lastLoadedTime = 0;
@@ -73,6 +92,9 @@ public class KnowledgeChunker {
                     String text = java.nio.file.Files.readString(fileToRead.toPath(), StandardCharsets.UTF_8);
                     parseAndLoadChunks(text);
                     lastLoadedTime = modTime;
+                    if (vectorIndex != null) {
+                        vectorIndex.indexChunks(chunks);
+                    }
                 }
             } else {
                 ClassPathResource resource = new ClassPathResource("knowledge.txt");
@@ -83,6 +105,9 @@ public class KnowledgeChunker {
                         String text = FileCopyUtils.copyToString(reader);
                         parseAndLoadChunks(text);
                         lastLoadedTime = modTime;
+                        if (vectorIndex != null) {
+                            vectorIndex.indexChunks(chunks);
+                        }
                     }
                 }
             }
@@ -102,10 +127,11 @@ public class KnowledgeChunker {
             String[] lines = sec.split("\\n", 2);
             String title = lines[0].trim();
             String body = (lines.length > 1) ? lines[1].trim() : "";
-            
+
             if (!title.isEmpty() && !body.isEmpty()) {
+                ChunkCategory cat = categorizeSection(title, body);
                 String id = "KNOW-" + index++;
-                chunks.add(new KnowledgeChunk(id, title, body));
+                chunks.add(new KnowledgeChunk(id, title, body, cat));
 
                 // Extract individual FAQ Q&A entries as dedicated high-priority chunks
                 if (body.contains("Q:") || body.contains("Q.")) {
@@ -116,7 +142,8 @@ public class KnowledgeChunker {
                             String[] qLines = item.split("\\n", 2);
                             String qTitle = qLines[0].replaceAll("^Q[:.]\\s*", "").trim();
                             if (!qTitle.isEmpty()) {
-                                chunks.add(new KnowledgeChunk("FAQ-" + index++, qTitle, item));
+                                ChunkCategory faqCat = categorizeFaq(qTitle);
+                                chunks.add(new KnowledgeChunk("FAQ-" + index++, qTitle, item, faqCat));
                             }
                         }
                     }
@@ -125,12 +152,33 @@ public class KnowledgeChunker {
         }
     }
 
+    private ChunkCategory categorizeSection(String title, String body) {
+        String lower = (title + " " + body).toLowerCase();
+        if (lower.contains("registration process") || lower.contains("how to register")) {
+            return ChunkCategory.REGISTRATION_PROCEDURE;
+        } else if (lower.contains("scholarship") || lower.contains("ssp") || lower.contains("nsp")) {
+            return ChunkCategory.SCHOLARSHIP;
+        } else if (lower.contains("rules") || lower.contains("code of conduct")) {
+            return ChunkCategory.RULES;
+        }
+        return ChunkCategory.OTHER;
+    }
+
+    private ChunkCategory categorizeFaq(String question) {
+        String lower = question.toLowerCase();
+        if (lower.contains("who can participate") || lower.contains("who is eligible")) {
+            return ChunkCategory.ELIGIBILITY;
+        } else if (lower.contains("registered events") || lower.contains("see my") || lower.contains("cancel my")) {
+            return ChunkCategory.REGISTRATION_PROCEDURE;
+        }
+        return ChunkCategory.FAQ_GENERAL;
+    }
+
     private static final Set<String> STOP_WORDS = Set.of(
-        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
-        "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were",
-        "will", "with", "which", "what", "who", "where", "how", "when", "why", "i",
-        "me", "my", "am", "now", "till", "till now", "event", "events", "did", "do",
-        "does", "can", "there", "any", "this", "week", "latest", "participated", "participate"
+            "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
+            "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were",
+            "will", "with", "which", "what", "who", "where", "how", "when", "why", "i",
+            "me", "my", "am", "do", "does", "did", "can", "there", "any", "this", "should"
     );
 
     public List<MatchResult> search(String query, int maxResults) {
@@ -142,7 +190,6 @@ public class KnowledgeChunker {
 
         String lowerQuery = query.toLowerCase().trim();
 
-        // Ignore generic short words like "hi", "hello", "hey"
         if (lowerQuery.matches("^(hi|hello|hey|hola|greetings|help|sup|ss)$")) {
             return Collections.emptyList();
         }
@@ -152,7 +199,7 @@ public class KnowledgeChunker {
 
         for (KnowledgeChunk chunk : chunks) {
             double score = calculateScore(chunk, queryWords, lowerQuery);
-            if (score >= 10.0) { // Require high confidence score threshold
+            if (score >= 6.0) {
                 results.add(new MatchResult(chunk, score));
             }
         }
@@ -164,12 +211,37 @@ public class KnowledgeChunker {
                 .collect(Collectors.toList());
     }
 
+    public Map<String, Double> searchSemantic(float[] queryVector, SemanticEmbeddingEngine engine) {
+        if (queryVector == null || engine == null || chunks.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Double> scoreMap = new HashMap<>();
+
+        for (KnowledgeChunk chunk : chunks) {
+            float[] chunkVec = chunk.getVector();
+            if (chunkVec == null && vectorIndex != null) {
+                chunkVec = vectorIndex.getVector(chunk.getId());
+                chunk.setVector(chunkVec);
+            }
+
+            if (chunkVec != null) {
+                double sim = engine.cosineSimilarity(queryVector, chunkVec);
+                if (sim >= 0.25) {
+                    scoreMap.put(chunk.getId(), sim);
+                }
+            }
+        }
+
+        return scoreMap;
+    }
+
     private double calculateScore(KnowledgeChunk chunk, String[] queryWords, String fullQuery) {
         double score = 0.0;
         String titleLower = chunk.getTitle().toLowerCase();
         String contentLower = chunk.getContent().toLowerCase();
 
-        // Check exact or strong substring match on title or full query
+        // Exact or strong substring match on title or full query
         if (fullQuery.length() >= 4 && (titleLower.contains(fullQuery) || fullQuery.contains(titleLower))) {
             score += 30.0;
         }
@@ -179,22 +251,26 @@ public class KnowledgeChunker {
         for (String word : queryWords) {
             if (word.length() < 3 || STOP_WORDS.contains(word)) continue;
 
-            // Word boundary match in title
+            String stem = word.length() > 5 ? word.substring(0, word.length() - 2) : word;
+
             if (titleLower.matches(".*\\b" + Pattern.quote(word) + "\\b.*")) {
-                score += 12.0;
+                score += 14.0;
                 meaningfulMatches++;
-            } else if (titleLower.contains(word)) {
-                score += 5.0;
+            } else if (titleLower.contains(stem)) {
+                score += 8.0;
                 meaningfulMatches++;
             }
 
-            // Word boundary match in content
             if (contentLower.matches(".*\\b" + Pattern.quote(word) + "\\b.*")) {
-                score += 4.0;
+                score += 5.0;
+                meaningfulMatches++;
+            } else if (contentLower.contains(stem)) {
+                score += 3.0;
+                meaningfulMatches++;
             }
         }
 
-        if (score < 25.0 && meaningfulMatches == 0) {
+        if (score < 6.0 || meaningfulMatches == 0) {
             return 0.0;
         }
 
