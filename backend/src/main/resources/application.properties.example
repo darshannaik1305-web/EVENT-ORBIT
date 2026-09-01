@@ -24,13 +24,13 @@ spring.web.cors.allow-credentials=true
 # AI LLM Configuration (Google Gemini / OpenRouter / OpenAI)
 openai.api.key=${OPENAI_API_KEY:${OPENROUTER_API_KEY:}}
 openai.api.url=${OPENAI_API_URL:https://generativelanguage.googleapis.com/v1beta/openai/chat/completions}
-openai.model=${OPENAI_MODEL:gemini-2.0-flash}
+openai.model=${OPENAI_MODEL:gemini-3.6-flash}
 openai.connect.timeout.ms=5000
 openai.read.timeout.ms=10000
 
 # Semantic Embedding Configuration (Google Gemini / OpenRouter / OpenAI)
 embedding.provider=${EMBEDDING_PROVIDER:gemini}
-embedding.model=${EMBEDDING_MODEL:models/embedding-001}
+embedding.model=${EMBEDDING_MODEL:gemini-embedding-001}
 embedding.api.url=${EMBEDDING_API_URL:https://generativelanguage.googleapis.com/v1beta}
 embedding.api.key=${EMBEDDING_API_KEY:${openai.api.key:}}
 embedding.connect.timeout.ms=5000

@@ -150,12 +150,12 @@ public class SemanticEmbeddingEngine {
     }
 
     private float[] executeGeminiEmbedding(HttpClient client, String text) {
-        String mod = model != null && !model.isBlank() ? model : "models/embedding-001";
+        String mod = model != null && !model.isBlank() ? model : "models/gemini-embedding-001";
         if (!mod.startsWith("models/")) {
             mod = "models/" + mod;
         }
 
-        List<String> modelsToTry = List.of(mod, "models/embedding-001", "models/text-embedding-004");
+        List<String> modelsToTry = List.of(mod, "models/gemini-embedding-001", "models/gemini-embedding-2", "models/embedding-001", "models/text-embedding-004");
 
         for (String targetModel : modelsToTry) {
             try {
