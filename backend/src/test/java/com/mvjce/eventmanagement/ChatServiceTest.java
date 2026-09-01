@@ -880,4 +880,146 @@ public class ChatServiceTest {
         assertFalse(res32.getReply().contains("New Building"));
         assertFalse(res32.getReply().contains("Official Winners"));
     }
+
+    @Test
+    @DisplayName("Phase 3: Event Lifecycle, Time-Aware Discovery, Club Filtering, Personalized Participation & Latest Winner Intelligence")
+    void testPhase3EventLifecycleTimeAwareDiscoveryAndParticipation() {
+        chatService.clearAllContexts();
+
+        SourceMetadata aakritiSrc = new SourceMetadata("CLUB", "CLUB-AAKRITI", "AAKRITI");
+        SourceMetadata activeEvSrc = new SourceMetadata("EVENT", "EV-ACTIVE", "Active Hackfest 2026");
+        SourceMetadata upcomingEvSrc = new SourceMetadata("EVENT", "EV-UPCOMING", "Future AI Workshop");
+        SourceMetadata endedEvSrc = new SourceMetadata("EVENT", "EV-ENDED", "Past RoboWars");
+        SourceMetadata weekEvSrc = new SourceMetadata("EVENT", "EV-WEEK", "Weekly Codeathon");
+        SourceMetadata winnerSrc = new SourceMetadata("WINNER", "WIN-1", "AI Challenge 2026 - 1st");
+        SourceMetadata partSrc = new SourceMetadata("PARTICIPATION", "REG-1", "Active Hackfest 2026 Registration");
+
+        // Mock DatabaseSqlAgent for Phase 3 intents
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_ACTIVE), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🟢 Active Events:\n• Active Hackfest 2026", List.of(activeEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_ONGOING), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🟢 Ongoing Events:\n• Active Hackfest 2026", List.of(activeEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_UPCOMING), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📅 Upcoming Events:\n• Future AI Workshop", List.of(upcomingEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_ENDED), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🔴 Ended Events:\n• Past RoboWars", List.of(endedEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.CLUB_EVENTS), eq("AAKRITI"), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏛️ Club: AAKRITI\n• Cultural Dance Fest", List.of(aakritiSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.CLUB_EVENTS), eq("UnknownClub"), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("I couldn't identify that club. Please specify the club name.", Collections.emptyList()));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq("1MJ23CS200"), eq(QueryProcessor.Intent.PRIVATE_STUDENT_DATA), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("👤 Participation History for Student (1MJ23CS200):\n• Active Hackfest 2026 [Type: Individual]", List.of(partSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq("anonymousUser"), eq(QueryProcessor.Intent.PRIVATE_STUDENT_DATA), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("Please log in with your student account to view your participation.", Collections.emptyList()));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_THIS_WEEK), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📅 Events Happening This Week:\n• Weekly Codeathon", List.of(weekEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.REGISTRATION_OPENING_THIS_WEEK), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🟢 Event Registrations Opening This Week:\n• Weekly Codeathon", List.of(weekEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.REGISTRATION_CLOSING_THIS_WEEK), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("⏳ Event Registrations Closing This Week:\n• Weekly Codeathon", List.of(weekEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.RECOMMENDED_REGISTRATIONS_THIS_WEEK), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🎯 Recommended Events with Open Registration This Week:\n• Active Hackfest 2026", List.of(activeEvSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.LATEST_WINNER), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Latest Declared Winner:\n• Event: AI Challenge 2026\n• Position: 1st\n• Winner: Priya CG", List.of(winnerSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.LATEST_EVENT_WINNER), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Winners for the Latest Event (AI Challenge 2026):\n• 1st: Priya CG", List.of(winnerSrc)));
+
+        // 1. Active Events Query
+        ChatResponse res1 = chatService.processQuery("What are the active events?", "user1");
+        assertTrue(res1.getReply().contains("Active Hackfest 2026"));
+        assertEquals("EVENT", res1.getSources().get(0).getType());
+
+        // 2. Ongoing Events Query
+        ChatResponse res2 = chatService.processQuery("What are the ongoing events?", "user1");
+        assertTrue(res2.getReply().contains("Active Hackfest 2026"));
+
+        // 3. Upcoming Events Query
+        ChatResponse res3 = chatService.processQuery("Show me upcoming events", "user1");
+        assertTrue(res3.getReply().contains("Future AI Workshop"));
+
+        // 4. Ended Events Query
+        ChatResponse res4 = chatService.processQuery("Which events are ended?", "user1");
+        assertTrue(res4.getReply().contains("Past RoboWars"));
+
+        // 5. Club-Specific Events Query
+        ChatResponse res5 = chatService.processQuery("What events are there in AAKRITI?", "user1");
+        assertTrue(res5.getReply().contains("Cultural Dance Fest"));
+
+        // 6. Unknown Club Query
+        ChatResponse res6 = chatService.processQuery("What events are in UnknownClub?", "user1");
+        assertTrue(res6.getReply().contains("couldn't identify that club") || res6.getReply().contains("specify"));
+
+        // 7. My Participation (Authenticated)
+        ChatResponse res7 = chatService.processQuery("Show my participation", "1MJ23CS200");
+        assertTrue(res7.getReply().contains("Active Hackfest 2026"));
+        assertEquals("PARTICIPATION", res7.getSources().get(0).getType());
+
+        // 8. My Participation (Unauthenticated)
+        ChatResponse res8 = chatService.processQuery("Show my participation", "anonymousUser");
+        assertTrue(res8.getReply().contains("Please log in with your student account"));
+
+        // 9. Events This Week
+        ChatResponse res9 = chatService.processQuery("What is happening this week?", "user1");
+        assertTrue(res9.getReply().contains("Weekly Codeathon"));
+
+        // 10. Registrations Opening This Week
+        ChatResponse res10 = chatService.processQuery("Which registrations open this week?", "user1");
+        assertTrue(res10.getReply().contains("Weekly Codeathon"));
+
+        // 11. Registrations Closing This Week
+        ChatResponse res11 = chatService.processQuery("Which registrations close this week?", "user1");
+        assertTrue(res11.getReply().contains("Weekly Codeathon"));
+
+        // 12. Recommended Registrations This Week
+        ChatResponse res12 = chatService.processQuery("What should I register for this week?", "1MJ23CS200");
+        assertTrue(res12.getReply().contains("Active Hackfest 2026"));
+
+        // 13. Latest Winner
+        ChatResponse res13 = chatService.processQuery("Who is the latest winner?", "user1");
+        assertTrue(res13.getReply().contains("Priya CG"));
+        assertTrue(res13.getReply().contains("AI Challenge 2026"));
+
+        // 14. Latest Event Winner
+        ChatResponse res14 = chatService.processQuery("Who won the latest event?", "user1");
+        assertTrue(res14.getReply().contains("AI Challenge 2026"));
+        assertTrue(res14.getReply().contains("Priya CG"));
+
+        // 15. Contextual Pronoun Reference to Club:
+        // Turn 1: "What events does AAKRITI have?" -> Turn 2: "Which ones are upcoming?"
+        chatService.clearUserContext("userClubCtx");
+        chatService.processQuery("What events does AAKRITI have?", "userClubCtx");
+        ChatResponse res15 = chatService.processQuery("Which ones are upcoming?", "userClubCtx");
+        assertTrue(res15.getReply().contains("AAKRITI") || res15.getReply().contains("Cultural Dance Fest"));
+
+        // 16. Static FAQ vs Database Separation: Registration Procedure vs Active Events
+        ChatResponse res16 = chatService.processQuery("How do I register for an event?", "user1");
+        assertTrue(res16.getReply().contains("student portal") || res16.getReply().contains("Register"));
+        assertEquals("KNOWLEDGE", res16.getSources().get(0).getType());
+
+        // 17. Compound Query: "What is happening this week and what has CG won?"
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), nullable(String.class), nullable(String.class), eq("CG")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CG Department:\n• Priya CG", List.of(winnerSrc)));
+
+        ChatResponse res17 = chatService.processQuery("What is happening this week and what has CG won?", "user1");
+        assertTrue(res17.getReply().contains("Weekly Codeathon"));
+        assertTrue(res17.getReply().contains("Priya CG"));
+
+        // 18. Compound Query: "What is happening this week and where is CS?"
+        ChatResponse res18 = chatService.processQuery("What is happening this week and where is CS?", "user1");
+        assertTrue(res18.getReply().contains("Weekly Codeathon"));
+        assertTrue(res18.getReply().contains("Main Academic Block"));
+    }
 }

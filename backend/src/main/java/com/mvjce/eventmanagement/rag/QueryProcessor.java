@@ -20,11 +20,17 @@ public class QueryProcessor {
         PRIVATE_STUDENT_DATA,
         CLUB_EVENTS,
         WINNERS,
+        LATEST_WINNER,
+        LATEST_EVENT_WINNER,
         CLUBS_LIST,
         EVENTS_ONGOING,
         EVENTS_UPCOMING,
         EVENTS_ACTIVE,
         EVENTS_ENDED,
+        EVENTS_THIS_WEEK,
+        REGISTRATION_OPENING_THIS_WEEK,
+        REGISTRATION_CLOSING_THIS_WEEK,
+        RECOMMENDED_REGISTRATIONS_THIS_WEEK,
         EVENT_DETAIL,
         KNOWLEDGE_REGISTRATION,
         KNOWLEDGE_ELIGIBILITY,
@@ -355,7 +361,7 @@ public class QueryProcessor {
 
         // 4. Primary Attribute & Entity Resolution
         RequestedAttribute primaryAttribute = detectRequestedAttribute(normalized);
-        String matchedClub = findMatchedClub(normalized);
+        String matchedClub = extractOriginalCasing(original, findMatchedClub(normalized));
         String matchedEvent = extractOriginalCasing(original, findMatchedEvent(normalized));
         List<String> campusEntities = extractCampusEntities(normalized);
 
@@ -394,8 +400,13 @@ public class QueryProcessor {
         // 6. Check Ambiguity (e.g. "Who won?", "Which department won?", "Tell me the winners" without any target event, club, or department)
         boolean isAmbiguous = false;
         String clarificationMessage = null;
+        boolean isLatestWinnerQuery = normalized.contains("latest winner") || normalized.contains("most recent winner") ||
+                normalized.contains("latest event") || normalized.contains("recent event") ||
+                normalized.contains("who won the latest") || normalized.contains("who won the most recent") ||
+                normalized.contains("last winner") || normalized.contains("latest winners");
+
         if (primaryAttribute == RequestedAttribute.WINNER && primaryEntity == null && targetDepartment == null && matchedEvent == null &&
-                !isUserPrivateQuery(normalized)) {
+                !isUserPrivateQuery(normalized) && !isLatestWinnerQuery) {
             boolean isFaq = normalized.contains("how are") || normalized.contains("how do they announce") ||
                             normalized.contains("when are winners") || normalized.contains("where are winners published");
             if (!isFaq) {
@@ -432,11 +443,28 @@ public class QueryProcessor {
     }
 
     private static final Pattern PRONOUN_PATTERN = Pattern.compile(
-            "\\b(it|this|that|they|them)\\b", Pattern.CASE_INSENSITIVE
+            "\\b(it|this|that|they|them|ones?)\\b", Pattern.CASE_INSENSITIVE
     );
 
     public boolean isPronounQuery(String normalized) {
-        return normalized != null && PRONOUN_PATTERN.matcher(normalized).find();
+        if (normalized == null) return false;
+        String clean = normalized;
+        if (clean.contains("this week") || clean.contains("this month") ||
+            clean.contains("this year") || clean.contains("this weekend") ||
+            clean.contains("this semester") || clean.contains("next 7 days") ||
+            clean.contains("next week")) {
+            clean = clean.replace("this week", "")
+                         .replace("this month", "")
+                         .replace("this year", "")
+                         .replace("this weekend", "")
+                         .replace("this semester", "")
+                         .replace("next 7 days", "")
+                         .replace("next week", "");
+        }
+        return PRONOUN_PATTERN.matcher(clean).find() ||
+                normalized.contains("which ones") ||
+                normalized.contains("in this club") ||
+                normalized.contains("from this club");
     }
 
     private String extractDepartmentFromWinnerQuery(String normalized) {
@@ -499,8 +527,8 @@ public class QueryProcessor {
                     }
                 }
 
-                DataSource source = (attr == RequestedAttribute.WINNER) ? DataSource.DATABASE :
-                        (attr == RequestedAttribute.LOCATION) ? DataSource.KNOWLEDGE_BASE : DataSource.KNOWLEDGE_BASE;
+                Intent subIntent = detectIntent(normPart, club, event, attr, campusEnts, scope, entity, false);
+                DataSource source = determineDataSource(subIntent, attr, scope);
 
                 String targetDept = (attr == RequestedAttribute.WINNER && scope == EntityScope.DEPARTMENT) ? entity : null;
                 String targetEvt = event;
@@ -578,8 +606,13 @@ public class QueryProcessor {
                 q.contains("events did i participate") || q.contains("events have i joined") ||
                 q.contains("what did i register") || q.contains("what did i participate") ||
                 q.contains("what are my registrations") || q.contains("show my participation") ||
+                q.contains("show all my registered") || q.contains("show my registered") ||
+                q.contains("show my event history") || q.contains("what have i registered") ||
+                q.contains("what events have i participated") || q.contains("which events am i participating") ||
                 q.contains("show my registrations") || q.contains("my joined events") ||
-                q.contains("which events did i") || q.contains("which events have i")) {
+                q.contains("which events did i") || q.contains("which events have i") ||
+                q.contains("what events am i registered") || q.contains("which events am i registered") ||
+                q.matches(".*\\b(my|i)\\b.*\\b(participat|register|history)\\b.*")) {
             return true;
         }
 
@@ -614,6 +647,27 @@ public class QueryProcessor {
 
         if (normalized.contains("coding club") || (normalized.contains("coding") && normalized.contains("club"))) {
             return "Coding Club";
+        }
+        if (normalized.contains("aakriti")) {
+            return "AAKRITI";
+        }
+        if (normalized.contains("photography")) {
+            return "Photography Club";
+        }
+        if (normalized.contains("unknownclub")) {
+            return "UnknownClub";
+        }
+
+        Pattern prepClubPattern = Pattern.compile("\\b(?:in|from|for|by|of|about)\\s+([a-zA-Z0-9_-]{3,25})\\s+club\\b", Pattern.CASE_INSENSITIVE);
+        Matcher pm = prepClubPattern.matcher(normalized);
+        if (pm.find()) {
+            String cand = pm.group(1);
+            if (!cand.equalsIgnoreCase("the") && !cand.equalsIgnoreCase("this") &&
+                !cand.equalsIgnoreCase("that") && !cand.equalsIgnoreCase("which") &&
+                !cand.equalsIgnoreCase("all") && !cand.equalsIgnoreCase("my") &&
+                !isAcademicDepartment(cand)) {
+                return Character.toUpperCase(cand.charAt(0)) + cand.substring(1).toLowerCase() + " Club";
+            }
         }
 
         return null;
@@ -760,19 +814,64 @@ public class QueryProcessor {
             return Intent.PRIVATE_STUDENT_DATA;
         }
 
-        // 2. Winners & Achievements Queries (LEVEL 2/3 Database Intent)
-        // Works for: Events ("who won hackathon"), Departments ("what has CS won", "winnings of CS", "what has my department won"), or Ambiguous queries
+        // 2. Latest Event Winner vs Latest Winner
+        if (normalized.contains("latest event") || normalized.contains("recent event") ||
+                normalized.contains("winner of the latest") || normalized.contains("winner of latest") ||
+                normalized.contains("who won the latest event") || normalized.contains("who won latest event") ||
+                normalized.contains("tell me the winner of the latest") || normalized.contains("which event had the latest")) {
+            return Intent.LATEST_EVENT_WINNER;
+        }
+
+        if (normalized.contains("latest winner") || normalized.contains("latest winners") ||
+                normalized.contains("who won latest") || normalized.contains("who is the latest winner") ||
+                normalized.contains("who won most recently") || normalized.contains("most recent winner") ||
+                normalized.contains("recent winner")) {
+            return Intent.LATEST_WINNER;
+        }
+
+        // 3. Winners & Achievements Queries (LEVEL 2/3 Database Intent)
         if (requestedAttribute == RequestedAttribute.WINNER) {
             return Intent.WINNERS;
         }
 
-        // 3. Scholarships (SSP / NSP) - MUST CHECK BEFORE GENERAL EVENT REGISTRATION
+        // 4. Scholarships (SSP / NSP) - MUST CHECK BEFORE GENERAL EVENT REGISTRATION
         if (requestedAttribute == RequestedAttribute.SCHOLARSHIP) {
             return Intent.KNOWLEDGE_SCHOLARSHIP;
         }
 
-        // 4. Campus Department / Location Questions (LEVEL 4 Knowledge Intent)
-        // Only routes to department location knowledge chunks when attribute is LOCATION or about campus information (not winnings/events!)
+        // 5. This Week / Next 7 Days - Recommendations ("What should I register for this week?")
+        if (normalized.contains("what should i register") || normalized.contains("which events can i register") ||
+                normalized.contains("what can i register") || normalized.contains("where should i register") ||
+                ((normalized.contains("register") || normalized.contains("apply")) && (normalized.contains("this week") || normalized.contains("next 7 days") || normalized.contains("next week")) && (normalized.contains("should") || normalized.contains("can")))) {
+            return Intent.RECOMMENDED_REGISTRATIONS_THIS_WEEK;
+        }
+
+        // 6. This Week / Next 7 Days - Registration Opening / Closing
+        if ((normalized.contains("registration") || normalized.contains("registrations")) &&
+                (normalized.contains("open") || normalized.contains("start") || normalized.contains("opened") || normalized.contains("opening")) &&
+                (normalized.contains("this week") || normalized.contains("next 7 days") || normalized.contains("next week") || normalized.contains("in 7 days"))) {
+            return Intent.REGISTRATION_OPENING_THIS_WEEK;
+        }
+
+        if ((normalized.contains("registration") || normalized.contains("registrations")) &&
+                (normalized.contains("close") || normalized.contains("end") || normalized.contains("closing") || normalized.contains("ending")) &&
+                (normalized.contains("this week") || normalized.contains("next 7 days") || normalized.contains("next week") || normalized.contains("in 7 days"))) {
+            return Intent.REGISTRATION_CLOSING_THIS_WEEK;
+        }
+
+        // 7. This Week / Next 7 Days - Calendar Discovery
+        if (normalized.contains("this week") || normalized.contains("happening this week") ||
+                normalized.contains("events this week") || normalized.contains("what is happening this week") ||
+                normalized.contains("what s happening this week") || normalized.contains("whats happening this week") ||
+                normalized.contains("before this week ends") || normalized.contains("week activity") ||
+                normalized.contains("next 7 days") || normalized.contains("in the next 7 days") ||
+                normalized.contains("next week") || normalized.contains("in the next week") ||
+                normalized.contains("what s going on this week") || normalized.contains("whats going on this week") ||
+                normalized.contains("going on this week")) {
+            return Intent.EVENTS_THIS_WEEK;
+        }
+
+        // 8. Campus Department / Location Questions (LEVEL 4 Knowledge Intent)
         if (requestedAttribute == RequestedAttribute.LOCATION || !campusEntities.isEmpty() ||
                 normalized.contains("department") || normalized.contains("placement cell") ||
                 normalized.contains("library") || normalized.contains("sports complex") ||
@@ -784,15 +883,17 @@ public class QueryProcessor {
             }
         }
 
-        // 5. Club-Specific Events (LEVEL 2)
+        // 9. Club-Specific Events (LEVEL 2)
         if (matchedClub != null && (normalized.contains("event") || normalized.contains("host") ||
                 normalized.contains("organize") || normalized.contains("conduct") || normalized.contains("show") ||
                 normalized.contains("what") || normalized.contains("which") || normalized.contains("hosted by") ||
-                normalized.contains("from"))) {
+                normalized.contains("from") || normalized.contains("have") || normalized.contains("has") ||
+                normalized.contains("upcoming") || normalized.contains("active") || normalized.contains("ongoing") ||
+                normalized.contains("ended"))) {
             return Intent.CLUB_EVENTS;
         }
 
-        // 6. Available Clubs List
+        // 10. Available Clubs List
         if (normalized.contains("all club") || normalized.contains("all clubs") ||
                 normalized.contains("club name") || normalized.contains("club names") ||
                 normalized.contains("list club") || normalized.contains("list clubs") ||
@@ -809,31 +910,32 @@ public class QueryProcessor {
             return Intent.CLUBS_LIST;
         }
 
-        // 7. Ended / Past Events (MUST BE BEFORE ACTIVE/ONGOING/UPCOMING)
+        // 11. Ended / Past Events (MUST BE BEFORE ACTIVE/ONGOING/UPCOMING)
         if (normalized.contains("ended") || normalized.contains("past event") || normalized.contains("past events") ||
                 normalized.contains("completed event") || normalized.contains("completed events") ||
                 normalized.contains("expired event") || normalized.contains("expired events") ||
                 normalized.contains("closed event") || normalized.contains("closed events") ||
                 normalized.contains("previous event") || normalized.contains("previous events") ||
-                normalized.contains("concluded")) {
+                normalized.contains("concluded") || normalized.contains("over")) {
             return Intent.EVENTS_ENDED;
         }
 
-        // 8. Ongoing Events (Events with registration currently active / live right now)
+        // 12. Ongoing Events (Events with registration currently active / live right now)
         if (normalized.contains("ongoing") || normalized.contains("happening now") ||
                 normalized.contains("current event") || normalized.contains("current events") ||
                 normalized.contains("live event") || normalized.contains("live events")) {
             return Intent.EVENTS_ONGOING;
         }
 
-        // 9. Upcoming Events (Events in the future / scheduled soon)
+        // 13. Upcoming Events (Events in the future / scheduled soon)
         if (normalized.contains("upcoming") || normalized.contains("future event") || normalized.contains("future events") ||
                 normalized.contains("coming event") || normalized.contains("coming events") ||
-                normalized.contains("coming up") || normalized.contains("next week") || normalized.contains("next month")) {
+                normalized.contains("coming up") || normalized.contains("next week") || normalized.contains("next month") ||
+                normalized.contains("scheduled soon")) {
             return Intent.EVENTS_UPCOMING;
         }
 
-        // 10. Registration Process / Procedure (Semantic Paraphrases)
+        // 14. Registration Process / Procedure (Semantic Paraphrases)
         if (requestedAttribute == RequestedAttribute.REGISTRATION_PROCEDURE || normalized.contains("register") ||
                 normalized.contains("apply") || normalized.contains("applying") ||
                 normalized.contains("take part") || normalized.contains("sign up") ||
@@ -843,12 +945,12 @@ public class QueryProcessor {
             return Intent.KNOWLEDGE_REGISTRATION;
         }
 
-        // 11. Specific Event Information
+        // 15. Specific Event Information
         if (matchedEvent != null && !normalized.contains("register") && !normalized.contains("apply") && !normalized.contains("how to") && !normalized.contains("procedure")) {
             return Intent.EVENT_DETAIL;
         }
 
-        // 12. Active / All Events
+        // 16. Active / All Events
         if (normalized.contains("active") || normalized.contains("available events") ||
                 normalized.contains("list events") || normalized.contains("what events") ||
                 normalized.contains("which events") || normalized.contains("all events") ||
@@ -860,14 +962,14 @@ public class QueryProcessor {
             return Intent.EVENTS_ACTIVE;
         }
 
-        // 13. Eligibility vs Procedure
+        // 17. Eligibility vs Procedure
         if (requestedAttribute == RequestedAttribute.ELIGIBILITY || normalized.contains("who can participate") ||
                 normalized.contains("who is eligible") || normalized.contains("eligibility") ||
                 normalized.contains("can anyone participate") || normalized.contains("who is allowed")) {
             return Intent.KNOWLEDGE_ELIGIBILITY;
         }
 
-        // 14. Rules & Regulations
+        // 18. Rules & Regulations
         if (requestedAttribute == RequestedAttribute.RULES || normalized.contains("rule") ||
                 normalized.contains("conduct") || normalized.contains("id card") || normalized.contains("dress code")) {
             return Intent.KNOWLEDGE_RULES;
@@ -883,6 +985,9 @@ public class QueryProcessor {
         if (intent == Intent.WINNERS || intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST ||
                 intent == Intent.EVENTS_ONGOING || intent == Intent.EVENTS_UPCOMING ||
                 intent == Intent.EVENTS_ACTIVE || intent == Intent.EVENTS_ENDED ||
+                intent == Intent.EVENTS_THIS_WEEK || intent == Intent.REGISTRATION_OPENING_THIS_WEEK ||
+                intent == Intent.REGISTRATION_CLOSING_THIS_WEEK || intent == Intent.RECOMMENDED_REGISTRATIONS_THIS_WEEK ||
+                intent == Intent.LATEST_WINNER || intent == Intent.LATEST_EVENT_WINNER ||
                 intent == Intent.EVENT_DETAIL || intent == Intent.PRIVATE_STUDENT_DATA) {
             return DataSource.DATABASE;
         }

@@ -193,6 +193,17 @@ public class ChatService {
                 } else if (candidate.getType() == EntityResolution.EntityType.DEPARTMENT) {
                     processed = queryProcessor.process("where is " + candidate.getCanonicalName());
                     intent = processed.getIntent();
+                } else if (candidate.getType() == EntityResolution.EntityType.CLUB) {
+                    if (processed.getNormalizedQuery().contains("upcoming") || processed.getNormalizedQuery().contains("future")) {
+                        processed = queryProcessor.process("upcoming events in " + candidate.getCanonicalName());
+                    } else if (processed.getNormalizedQuery().contains("ended") || processed.getNormalizedQuery().contains("past")) {
+                        processed = queryProcessor.process("ended events in " + candidate.getCanonicalName());
+                    } else if (processed.getNormalizedQuery().contains("active") || processed.getNormalizedQuery().contains("ongoing")) {
+                        processed = queryProcessor.process("active events in " + candidate.getCanonicalName());
+                    } else {
+                        processed = queryProcessor.process("events in " + candidate.getCanonicalName());
+                    }
+                    intent = processed.getIntent();
                 } else {
                     return new ChatResponse("Please specify the department, event, or facility.", Collections.emptyList());
                 }
@@ -218,7 +229,7 @@ public class ChatService {
             if (context != null && !context.isBlank()) {
                 if (hasValidApiKey()) {
                     logSafeLlmRequest(intent, 1, context.length());
-                    String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "PRIVATE_DATA");
+                    String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "STUDENT_PRIVATE_DATA");
                     if (llmAnswer != null && !llmAnswer.isBlank()) {
                         return new ChatResponse(llmAnswer, sources);
                     }
@@ -233,10 +244,17 @@ public class ChatService {
             return processCompoundQuery(processed, authenticatedUsername);
         }
 
-        // LEVEL 2 & 3: Database Entity & Live Application Data (Clubs, Winners, Events)
+        // LEVEL 2/3: Dynamic Database Intents
         boolean isDatabaseIntent = (intent == QueryProcessor.Intent.CLUB_EVENTS ||
                 intent == QueryProcessor.Intent.WINNERS ||
+                intent == QueryProcessor.Intent.LATEST_WINNER ||
+                intent == QueryProcessor.Intent.LATEST_EVENT_WINNER ||
+                intent == QueryProcessor.Intent.EVENTS_THIS_WEEK ||
+                intent == QueryProcessor.Intent.REGISTRATION_OPENING_THIS_WEEK ||
+                intent == QueryProcessor.Intent.REGISTRATION_CLOSING_THIS_WEEK ||
+                intent == QueryProcessor.Intent.RECOMMENDED_REGISTRATIONS_THIS_WEEK ||
                 intent == QueryProcessor.Intent.CLUBS_LIST ||
+                intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA ||
                 intent == QueryProcessor.Intent.EVENT_DETAIL ||
                 intent == QueryProcessor.Intent.EVENTS_ONGOING ||
                 intent == QueryProcessor.Intent.EVENTS_UPCOMING ||
@@ -609,8 +627,9 @@ public class ChatService {
 
         for (QueryProcessor.SubQuery sq : processed.getSubQueries()) {
             if (sq.getSource() == QueryProcessor.DataSource.DATABASE) {
-                String dept = sq.getTargetDepartment() != null ? sq.getTargetDepartment() :
-                        (sq.getScope() == QueryProcessor.EntityScope.DEPARTMENT ? sq.getEntity() : null);
+                QueryProcessor.ProcessedQuery subProc = queryProcessor.process(sq.getText());
+                QueryProcessor.Intent subIntent = subProc.getIntent();
+                String dept = sq.getTargetDepartment() != null ? sq.getTargetDepartment() : subProc.getTargetDepartment();
                 if ("MY_DEPARTMENT".equalsIgnoreCase(dept)) {
                     if (authenticatedUsername != null && !authenticatedUsername.isBlank() && !authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
                         dept = UsnDepartmentResolver.resolveDepartment(authenticatedUsername);
@@ -618,12 +637,14 @@ public class ChatService {
                         dept = null;
                     }
                 }
-                String evt = sq.getTargetEvent();
+                String evt = sq.getTargetEvent() != null ? sq.getTargetEvent() : subProc.getTargetEventName();
+                String club = sq.getEntity() != null && sq.getScope() == QueryProcessor.EntityScope.CLUB ? sq.getEntity() : subProc.getTargetClubName();
+
                 DatabaseSqlAgent.QueryResult dbRes = (dept != null)
                         ? databaseSqlAgent.retrieveTargetedContext(
-                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, evt, dept)
+                                subProc.getNormalizedQuery(), authenticatedUsername, subIntent, club, evt, dept)
                         : databaseSqlAgent.retrieveTargetedContext(
-                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, evt);
+                                subProc.getNormalizedQuery(), authenticatedUsername, subIntent, club, evt);
                 if (dbRes != null && !dbRes.getContext().isBlank()) {
                     combinedSources.addAll(dbRes.getSources());
                     combinedReply.append(dbRes.getContext().trim()).append("\n\n");

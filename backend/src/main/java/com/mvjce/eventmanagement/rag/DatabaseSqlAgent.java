@@ -54,12 +54,25 @@ public class DatabaseSqlAgent {
         List<SourceMetadata> sources = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
-        // 1. Private Student Data Queries (LEVEL 1)
+        // Calculate rolling 7-day window (NOW to NOW + 7 DAYS)
+        LocalDateTime sevenDaysLater = now.plusDays(7);
+
+        // 1. Private Student Data / Participation Queries (LEVEL 1)
         if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
             return getStudentParticipationContext(authenticatedUsername);
         }
 
-        // 2. Winner Results & Event Participant Queries (LEVEL 2/3)
+        // 2. Latest Event Winner Queries
+        if (intent == QueryProcessor.Intent.LATEST_EVENT_WINNER) {
+            return getLatestEventWinnerContext();
+        }
+
+        // 3. Latest Winner Queries
+        if (intent == QueryProcessor.Intent.LATEST_WINNER) {
+            return getLatestWinnerContext();
+        }
+
+        // 4. Winner Results & Event Participant Queries (LEVEL 2/3)
         if (intent == QueryProcessor.Intent.WINNERS) {
             QueryResult winnerResult = getWinnersContext(query, matchedEvent, targetDepartment);
             if (!winnerResult.getContext().isBlank()) {
@@ -67,15 +80,32 @@ public class DatabaseSqlAgent {
             }
         }
 
-        // 3. Club Specific Events (LEVEL 2)
-        if (intent == QueryProcessor.Intent.CLUB_EVENTS || matchedClub != null) {
-            QueryResult clubResult = getClubEventsContext(query, matchedClub, now);
-            if (!clubResult.getContext().isBlank()) {
-                return clubResult;
-            }
+        // 5. This Week - Recommendations ("What should I register for this week?")
+        if (intent == QueryProcessor.Intent.RECOMMENDED_REGISTRATIONS_THIS_WEEK) {
+            return getRecommendedRegistrationsContext(authenticatedUsername, now, sevenDaysLater);
         }
 
-        // 4. Available Clubs List (LEVEL 3)
+        // 6. This Week - Registration Opening in the Next 7 Days
+        if (intent == QueryProcessor.Intent.REGISTRATION_OPENING_THIS_WEEK) {
+            return getRegistrationsOpeningThisWeekContext(now, sevenDaysLater);
+        }
+
+        // 7. This Week - Registration Closing in the Next 7 Days
+        if (intent == QueryProcessor.Intent.REGISTRATION_CLOSING_THIS_WEEK) {
+            return getRegistrationsClosingThisWeekContext(now, sevenDaysLater);
+        }
+
+        // 8. This Week - Calendar Discovery (Rolling 7-day 3-Section Discovery)
+        if (intent == QueryProcessor.Intent.EVENTS_THIS_WEEK) {
+            return getEventsThisWeekContext(now, sevenDaysLater);
+        }
+
+        // 9. Club Specific Events (LEVEL 2)
+        if (intent == QueryProcessor.Intent.CLUB_EVENTS || matchedClub != null) {
+            return getClubEventsContext(query, matchedClub, now);
+        }
+
+        // 10. Available Clubs List (LEVEL 3)
         if (intent == QueryProcessor.Intent.CLUBS_LIST) {
             List<Club> allClubs = clubRepository.findAll();
             if (allClubs.isEmpty()) {
@@ -93,7 +123,7 @@ public class DatabaseSqlAgent {
             return new QueryResult(context.toString(), sources);
         }
 
-        // 5. Specific Event Detail (LEVEL 2)
+        // 11. Specific Event Detail (LEVEL 2)
         if (intent == QueryProcessor.Intent.EVENT_DETAIL || matchedEvent != null) {
             List<Event> allEvents = eventRepository.findAll();
             Event e = findBestMatchingEvent(allEvents, query, matchedEvent);
@@ -105,86 +135,325 @@ public class DatabaseSqlAgent {
             }
         }
 
-        // 6. Global Ended / Past Events (LEVEL 3)
+        // 12. Global Ended / Past Events (LEVEL 3)
         if (intent == QueryProcessor.Intent.EVENTS_ENDED) {
-            List<Event> allEvents = eventRepository.findAll();
-            List<Event> endedEvents = allEvents.stream()
-                    .filter(e -> (e.getRegEnd() != null && e.getRegEnd().isBefore(now)) ||
-                                 (e.getEventDate() != null && e.getEventDate().isBefore(now)))
-                    .collect(Collectors.toList());
-
-            if (endedEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no ended or past events in the records.", Collections.emptyList());
-            }
-
-            context.append("🔴 Ended / Past Events:\n");
-            for (Event e : endedEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
+            return getEndedEventsContext(now);
         }
 
-        // 7. Ongoing Events (LEVEL 3 - registration open and active right now)
+        // 13. Ongoing Events (LEVEL 3 - registration open and active right now)
         if (intent == QueryProcessor.Intent.EVENTS_ONGOING) {
-            List<Event> allEvents = eventRepository.findAll();
-            List<Event> ongoingEvents = allEvents.stream()
-                    .filter(e -> (e.getRegStart() == null || !e.getRegStart().isAfter(now)) &&
-                                 (e.getRegEnd() == null || e.getRegEnd().isAfter(now)))
-                    .collect(Collectors.toList());
-
-            if (ongoingEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no ongoing events with active registration.", Collections.emptyList());
-            }
-
-            context.append("🟢 Ongoing Events (Registration Currently Open):\n");
-            for (Event e : ongoingEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
+            return getActiveEventsContext(now);
         }
 
-        // 8. Upcoming Events (LEVEL 3 - scheduled in the future or registration starting in future)
+        // 14. Upcoming Events (LEVEL 3 - scheduled in the future by actual eventDate)
         if (intent == QueryProcessor.Intent.EVENTS_UPCOMING) {
-            List<Event> allEvents = eventRepository.findAll();
-            List<Event> upcomingEvents = allEvents.stream()
-                    .filter(e -> (e.getRegStart() != null && e.getRegStart().isAfter(now)) ||
-                                 (e.getEventDate() != null && e.getEventDate().isAfter(now)))
-                    .collect(Collectors.toList());
-
-            if (upcomingEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no upcoming events scheduled.", Collections.emptyList());
-            }
-
-            context.append("📅 Upcoming Events:\n");
-            for (Event e : upcomingEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
+            return getUpcomingEventsContext(now);
         }
 
-        // 9. All Active Events (LEVEL 3)
+        // 15. All Active Events (LEVEL 3)
         if (intent == QueryProcessor.Intent.EVENTS_ACTIVE) {
-            List<Event> allEvents = eventRepository.findAll();
-            List<Event> activeEvents = allEvents.stream()
-                    .filter(e -> e.getRegEnd() == null || e.getRegEnd().isAfter(now))
-                    .collect(Collectors.toList());
-
-            if (activeEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no active events available for registration.", Collections.emptyList());
-            }
-
-            context.append("🟢 Active Events:\n");
-            for (Event e : activeEvents) {
-                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                appendEventDetails(context, e);
-            }
-            return new QueryResult(context.toString(), sources);
+            return getActiveEventsContext(now);
         }
 
         return new QueryResult("", Collections.emptyList());
+    }
+
+    private QueryResult getLatestEventWinnerContext() {
+        List<Event> allEvents = eventRepository.findAll();
+        if (allEvents.isEmpty()) {
+            return new QueryResult("No declared winner is available yet.", Collections.emptyList());
+        }
+
+        // Sort events descending by eventDate / regEnd / createdAt to find latest event
+        List<Event> sortedEvents = new ArrayList<>(allEvents);
+        sortedEvents.sort((a, b) -> {
+            LocalDateTime da = a.getEventDate() != null ? a.getEventDate() : (a.getRegEnd() != null ? a.getRegEnd() : (a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN));
+            LocalDateTime db = b.getEventDate() != null ? b.getEventDate() : (b.getRegEnd() != null ? b.getRegEnd() : (b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN));
+            return db.compareTo(da);
+        });
+
+        // Find the most recent event
+        Event latestEvent = sortedEvents.get(0);
+        List<Winner> winners = winnerRepository.findByEventId(latestEvent.getId());
+        List<SourceMetadata> sources = new ArrayList<>();
+        sources.add(new SourceMetadata("EVENT", latestEvent.getId(), latestEvent.getName()));
+
+        if (winners.isEmpty()) {
+            return new QueryResult("The latest event does not have a declared winner yet.", sources);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("🏆 Winners for the Latest Event (").append(latestEvent.getName()).append("):\n");
+        for (Winner w : winners) {
+            sources.add(new SourceMetadata("WINNER", w.getId(), latestEvent.getName() + " - " + w.getPosition().getDisplayName()));
+            sb.append("• ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
+        }
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getLatestWinnerContext() {
+        List<Winner> allWinners = winnerRepository.findAll();
+        if (allWinners.isEmpty()) {
+            return new QueryResult("No declared winner is available yet.", Collections.emptyList());
+        }
+
+        // Sort winners descending by createdAt timestamp
+        List<Winner> sortedWinners = new ArrayList<>(allWinners);
+        sortedWinners.sort((a, b) -> {
+            LocalDateTime da = a.getCreatedAt() != null ? a.getCreatedAt() : (a.getUpdatedAt() != null ? a.getUpdatedAt() : LocalDateTime.MIN);
+            LocalDateTime db = b.getCreatedAt() != null ? b.getCreatedAt() : (b.getUpdatedAt() != null ? b.getUpdatedAt() : LocalDateTime.MIN);
+            return db.compareTo(da);
+        });
+
+        Winner latest = sortedWinners.get(0);
+        Optional<Event> evOpt = eventRepository.findById(latest.getEventId());
+        String eventName = evOpt.map(Event::getName).orElse("Event");
+
+        List<SourceMetadata> sources = new ArrayList<>();
+        if (evOpt.isPresent()) {
+            sources.add(new SourceMetadata("EVENT", evOpt.get().getId(), eventName));
+        }
+        sources.add(new SourceMetadata("WINNER", latest.getId(), eventName + " - " + latest.getPosition().getDisplayName()));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("🏆 Latest Declared Winner:\n")
+          .append("• Event: ").append(eventName).append("\n")
+          .append("• Position: ").append(latest.getPosition().getDisplayName()).append("\n")
+          .append("• Winner: ").append(latest.getFullName()).append("\n");
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getEventsThisWeekContext(LocalDateTime now, LocalDateTime sevenDaysLater) {
+        List<Event> allEvents = eventRepository.findAll();
+        List<SourceMetadata> sources = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+
+        // 1. Events happening in the next 7 days (actual eventDate within now -> now + 7 days)
+        List<Event> happeningEvents = allEvents.stream()
+                .filter(e -> !e.isResultPublished() && e.getEventDate() != null &&
+                             !e.getEventDate().isBefore(now) && !e.getEventDate().isAfter(sevenDaysLater))
+                .sorted(Comparator.comparing(Event::getEventDate))
+                .collect(Collectors.toList());
+
+        // 2. Registrations opening in the next 7 days
+        List<Event> openingEvents = allEvents.stream()
+                .filter(e -> e.getRegStart() != null &&
+                             !e.getRegStart().isBefore(now) && !e.getRegStart().isAfter(sevenDaysLater))
+                .sorted(Comparator.comparing(Event::getRegStart))
+                .collect(Collectors.toList());
+
+        // 3. Registrations closing in the next 7 days
+        List<Event> closingEvents = allEvents.stream()
+                .filter(e -> e.getRegEnd() != null &&
+                             !e.getRegEnd().isBefore(now) && !e.getRegEnd().isAfter(sevenDaysLater))
+                .sorted(Comparator.comparing(Event::getRegEnd))
+                .collect(Collectors.toList());
+
+        // Section 1
+        sb.append("📅 Events Happening in the Next 7 Days:\n");
+        if (happeningEvents.isEmpty()) {
+            sb.append("No events are happening in the next 7 days.\n");
+        } else {
+            for (Event e : happeningEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(sb, e);
+            }
+        }
+
+        // Section 2
+        sb.append("\n🟢 Registrations Opening in the Next 7 Days:\n");
+        if (openingEvents.isEmpty()) {
+            sb.append("No registrations are opening in the next 7 days.\n");
+        } else {
+            for (Event e : openingEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(sb, e);
+            }
+        }
+
+        // Section 3
+        sb.append("\n🔴 Registrations Closing in the Next 7 Days:\n");
+        if (closingEvents.isEmpty()) {
+            sb.append("No registrations are closing in the next 7 days.\n");
+        } else {
+            for (Event e : closingEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(sb, e);
+            }
+        }
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getRegistrationsOpeningThisWeekContext(LocalDateTime now, LocalDateTime sevenDaysLater) {
+        List<Event> allEvents = eventRepository.findAll();
+        List<Event> openingEvents = allEvents.stream()
+                .filter(e -> e.getRegStart() != null && !e.getRegStart().isBefore(now) && !e.getRegStart().isAfter(sevenDaysLater))
+                .sorted(Comparator.comparing(Event::getRegStart))
+                .collect(Collectors.toList());
+
+        if (openingEvents.isEmpty()) {
+            return new QueryResult("No event registrations are opening in the next 7 days.", Collections.emptyList());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+        sb.append("🟢 Event Registrations Opening in the Next 7 Days:\n");
+        for (Event e : openingEvents) {
+            sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+            appendEventDetails(sb, e);
+        }
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getRegistrationsClosingThisWeekContext(LocalDateTime now, LocalDateTime sevenDaysLater) {
+        List<Event> allEvents = eventRepository.findAll();
+        List<Event> closingEvents = allEvents.stream()
+                .filter(e -> e.getRegEnd() != null && !e.getRegEnd().isBefore(now) && !e.getRegEnd().isAfter(sevenDaysLater))
+                .sorted(Comparator.comparing(Event::getRegEnd))
+                .collect(Collectors.toList());
+
+        if (closingEvents.isEmpty()) {
+            return new QueryResult("No event registrations are closing in the next 7 days.", Collections.emptyList());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+        sb.append("🔴 Event Registrations Closing in the Next 7 Days:\n");
+        for (Event e : closingEvents) {
+            sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+            appendEventDetails(sb, e);
+        }
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getRecommendedRegistrationsContext(String authenticatedUsername, LocalDateTime now, LocalDateTime sevenDaysLater) {
+        List<Event> allEvents = eventRepository.findAll();
+        List<Event> openEvents = allEvents.stream()
+                .filter(e -> !e.isResultPublished() &&
+                             (e.getRegStart() == null || !e.getRegStart().isAfter(now)) &&
+                             (e.getRegEnd() == null || e.getRegEnd().isAfter(now)))
+                .collect(Collectors.toList());
+
+        if (authenticatedUsername != null && !authenticatedUsername.isBlank() && !authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
+            String uname = authenticatedUsername.trim();
+            // Filter out events where the user is already registered individually or via team
+            openEvents = openEvents.stream()
+                    .filter(e -> {
+                        boolean indivReg = (e.getRegistrations() != null && e.getRegistrations().stream().anyMatch(r -> r.getUsername() != null && r.getUsername().equalsIgnoreCase(uname)));
+                        boolean teamReg = teamMemberRepository.existsByEventIdAndUserId(e.getId(), uname);
+                        return !indivReg && !teamReg;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        if (openEvents.isEmpty()) {
+            return new QueryResult("There are no open event registrations available for you to register at the moment.", Collections.emptyList());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+        sb.append("🎯 Recommended Events with Open Registration:\n");
+        for (Event e : openEvents) {
+            sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+            appendEventDetails(sb, e);
+        }
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getUpcomingEventsContext(LocalDateTime now) {
+        List<Event> allEvents = eventRepository.findAll();
+
+        // 1. Dated upcoming events: actual eventDate strictly in the future, and result not published
+        List<Event> datedUpcoming = allEvents.stream()
+                .filter(e -> !e.isResultPublished() && e.getEventDate() != null && e.getEventDate().isAfter(now))
+                .sorted(Comparator.comparing(Event::getEventDate))
+                .collect(Collectors.toList());
+
+        // 2. TBD upcoming events: eventDate is null, and registration has not ended yet / result not published
+        List<Event> tbdUpcoming = allEvents.stream()
+                .filter(e -> !e.isResultPublished() && e.getEventDate() == null && (e.getRegEnd() == null || e.getRegEnd().isAfter(now)))
+                .collect(Collectors.toList());
+
+        if (datedUpcoming.isEmpty() && tbdUpcoming.isEmpty()) {
+            return new QueryResult("There are no upcoming events at the moment.", Collections.emptyList());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+
+        if (!datedUpcoming.isEmpty()) {
+            sb.append("📅 Upcoming Events:\n");
+            for (Event e : datedUpcoming) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(sb, e);
+            }
+        }
+
+        if (!tbdUpcoming.isEmpty()) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append("📌 Upcoming Events — Date TBD:\n");
+            for (Event e : tbdUpcoming) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(sb, e);
+            }
+        }
+
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getEndedEventsContext(LocalDateTime now) {
+        List<Event> allEvents = eventRepository.findAll();
+        List<Event> endedEvents = allEvents.stream()
+                .filter(e -> e.isResultPublished() ||
+                             (e.getEventDate() != null && e.getEventDate().isBefore(now)) ||
+                             (e.getEventDate() == null && e.getRegEnd() != null && e.getRegEnd().isBefore(now)))
+                .sorted((a, b) -> {
+                    LocalDateTime da = a.getEventDate() != null ? a.getEventDate() : (a.getRegEnd() != null ? a.getRegEnd() : LocalDateTime.MIN);
+                    LocalDateTime db = b.getEventDate() != null ? b.getEventDate() : (b.getRegEnd() != null ? b.getRegEnd() : LocalDateTime.MIN);
+                    return db.compareTo(da); // Newest ended first
+                })
+                .collect(Collectors.toList());
+
+        if (endedEvents.isEmpty()) {
+            return new QueryResult("No ended events were found.", Collections.emptyList());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+        sb.append("🔴 Ended / Past Events:\n");
+        for (Event e : endedEvents) {
+            sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+            appendEventDetails(sb, e);
+        }
+        return new QueryResult(sb.toString(), sources);
+    }
+
+    private QueryResult getActiveEventsContext(LocalDateTime now) {
+        List<Event> allEvents = eventRepository.findAll();
+        List<Event> activeEvents = allEvents.stream()
+                .filter(e -> !e.isResultPublished() &&
+                             (e.getRegStart() == null || !e.getRegStart().isAfter(now)) &&
+                             (e.getRegEnd() == null || e.getRegEnd().isAfter(now)))
+                .collect(Collectors.toList());
+
+        if (activeEvents.isEmpty()) {
+            return new QueryResult("No events are currently active.", Collections.emptyList());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<SourceMetadata> sources = new ArrayList<>();
+        sb.append("🟢 Active Events (Registration Currently Open):\n");
+        for (Event e : activeEvents) {
+            sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+            appendEventDetails(sb, e);
+        }
+        return new QueryResult(sb.toString(), sources);
     }
 
     private QueryResult getClubEventsContext(String query, String matchedClubName, LocalDateTime now) {
@@ -202,74 +471,121 @@ public class DatabaseSqlAgent {
             }
         }
 
-        if (matchedClub != null) {
-            sources.add(new SourceMetadata("CLUB", matchedClub.getId(), matchedClub.getName()));
-            List<Event> clubEvents = eventRepository.findByClubId(matchedClub.getId());
-
-            sb.append("🏛️ Club: ").append(matchedClub.getName());
-            if (matchedClub.getDescription() != null && !matchedClub.getDescription().isBlank()) {
-                sb.append(" - ").append(matchedClub.getDescription());
-            }
-            sb.append("\n");
-
-            if (clubEvents.isEmpty()) {
-                sb.append("There are currently no events registered for ").append(matchedClub.getName()).append(".\n");
-                return new QueryResult(sb.toString(), sources);
-            }
-
-            List<Event> ongoingEvents = clubEvents.stream()
-                    .filter(e -> e.getRegEnd() == null || e.getRegEnd().isAfter(now))
-                    .collect(Collectors.toList());
-
-            List<Event> pastEvents = clubEvents.stream()
-                    .filter(e -> e.getRegEnd() != null && e.getRegEnd().isBefore(now))
-                    .collect(Collectors.toList());
-
-            if (!ongoingEvents.isEmpty()) {
-                sb.append("\n🟢 Ongoing / Upcoming Events:\n");
-                for (Event e : ongoingEvents) {
-                    sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                    appendEventDetails(sb, e);
-                }
-            }
-
-            if (!pastEvents.isEmpty()) {
-                sb.append("\n🔴 Past / Concluded Events:\n");
-                for (Event e : pastEvents) {
-                    sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                    appendEventDetails(sb, e);
-                }
-            }
-
-            return new QueryResult(sb.toString(), sources);
+        if (matchedClub == null) {
+            return new QueryResult("I couldn't identify that club. Please specify the club name.", Collections.emptyList());
         }
 
-        return new QueryResult("", Collections.emptyList());
+        sources.add(new SourceMetadata("CLUB", matchedClub.getId(), matchedClub.getName()));
+        List<Event> clubEvents = eventRepository.findByClubId(matchedClub.getId());
+
+        if (clubEvents.isEmpty()) {
+            return new QueryResult("No events were found for " + matchedClub.getName() + ".", sources);
+        }
+
+        sb.append("🏛️ Club: ").append(matchedClub.getName());
+        if (matchedClub.getDescription() != null && !matchedClub.getDescription().isBlank()) {
+            sb.append(" - ").append(matchedClub.getDescription());
+        }
+        sb.append("\n");
+
+        boolean upcomingOnly = query.contains("upcoming") || query.contains("future") || query.contains("coming");
+        boolean endedOnly = query.contains("ended") || query.contains("past") || query.contains("completed") || query.contains("concluded");
+        boolean activeOnly = query.contains("active") || query.contains("ongoing") || query.contains("now");
+
+        List<Event> filteredEvents;
+        if (upcomingOnly) {
+            filteredEvents = clubEvents.stream()
+                    .filter(e -> (e.getEventDate() != null && e.getEventDate().isAfter(now)) ||
+                                 (e.getEventDate() == null && e.getRegStart() != null && e.getRegStart().isAfter(now)))
+                    .sorted(Comparator.comparing(e -> e.getEventDate() != null ? e.getEventDate() : (e.getRegStart() != null ? e.getRegStart() : LocalDateTime.MAX)))
+                    .collect(Collectors.toList());
+            if (filteredEvents.isEmpty()) {
+                return new QueryResult("No upcoming events were found for " + matchedClub.getName() + ".", sources);
+            }
+            sb.append("\n📅 Upcoming Events:\n");
+        } else if (endedOnly) {
+            filteredEvents = clubEvents.stream()
+                    .filter(e -> (e.getRegEnd() != null && e.getRegEnd().isBefore(now)) ||
+                                 (e.getEventDate() != null && e.getEventDate().isBefore(now)) ||
+                                 e.isResultPublished())
+                    .collect(Collectors.toList());
+            if (filteredEvents.isEmpty()) {
+                return new QueryResult("No ended events were found for " + matchedClub.getName() + ".", sources);
+            }
+            sb.append("\n🔴 Past / Concluded Events:\n");
+        } else if (activeOnly) {
+            filteredEvents = clubEvents.stream()
+                    .filter(e -> (e.getRegStart() == null || !e.getRegStart().isAfter(now)) &&
+                                 (e.getRegEnd() == null || e.getRegEnd().isAfter(now)))
+                    .collect(Collectors.toList());
+            if (filteredEvents.isEmpty()) {
+                return new QueryResult("No active events are currently running for " + matchedClub.getName() + ".", sources);
+            }
+            sb.append("\n🟢 Ongoing / Active Events:\n");
+        } else {
+            filteredEvents = clubEvents;
+            sb.append("\n📅 Events:\n");
+        }
+
+        for (Event e : filteredEvents) {
+            sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+            appendEventDetails(sb, e);
+        }
+
+        return new QueryResult(sb.toString(), sources);
     }
 
     private QueryResult getStudentParticipationContext(String authenticatedUsername) {
         if (authenticatedUsername == null || authenticatedUsername.isBlank() || authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
-            return new QueryResult("Please log in with your student account to view your event registrations and winnings.", Collections.emptyList());
+            return new QueryResult("Please log in with your student account to view your participation.", Collections.emptyList());
         }
 
         String username = authenticatedUsername.trim();
         List<TeamMember> myMemberships = teamMemberRepository.findByUserId(username);
+        List<Event> allEvents = eventRepository.findAll();
         List<SourceMetadata> sources = new ArrayList<>();
         StringBuilder sb = new StringBuilder();
 
-        sb.append("👤 Participation History for Student (").append(username).append("):\n");
+        // 1. Individual Registrations
+        List<EventRegistration> individualRegs = new ArrayList<>();
+        for (Event ev : allEvents) {
+            if (ev.getRegistrations() != null) {
+                for (EventRegistration reg : ev.getRegistrations()) {
+                    if (reg.getUsername() != null && reg.getUsername().trim().equalsIgnoreCase(username)) {
+                        individualRegs.add(reg);
+                    }
+                }
+            }
+        }
 
-        if (myMemberships == null || myMemberships.isEmpty()) {
-            sb.append("You have not registered for any events yet in EventOrbit.\n");
-        } else {
-            sb.append("📅 Registered Events:\n");
+        boolean hasTeamRegs = (myMemberships != null && !myMemberships.isEmpty());
+        boolean hasIndivRegs = !individualRegs.isEmpty();
+
+        if (!hasTeamRegs && !hasIndivRegs) {
+            return new QueryResult("You have not registered for or participated in any events yet.", Collections.emptyList());
+        }
+
+        sb.append("👤 Participation History for Student (").append(username).append("):\n");
+        sb.append("📅 Registered Events:\n");
+
+        for (EventRegistration reg : individualRegs) {
+            Event ev = reg.getEvent();
+            String eventName = ev != null ? ev.getName() : "Event";
+            sources.add(new SourceMetadata("PARTICIPATION", reg.getId(), eventName + " Registration"));
+            String dateStr = reg.getRegistrationTime() != null ? reg.getRegistrationTime().format(DATE_FORMATTER) : "N/A";
+            sb.append("• ").append(eventName)
+              .append(" [Type: Individual, Registered on: ").append(dateStr).append("]")
+              .append("\n");
+        }
+
+        if (myMemberships != null) {
             for (TeamMember tm : myMemberships) {
                 Team team = tm.getTeam();
                 if (team != null && team.getEventId() != null) {
                     Optional<Event> evOpt = eventRepository.findById(team.getEventId());
                     String eventName = evOpt.map(Event::getName).orElse("Event");
                     if (evOpt.isPresent()) {
-                        sources.add(new SourceMetadata("PARTICIPATION", tm.getId(), eventName + " Registration"));
+                        sources.add(new SourceMetadata("PARTICIPATION", tm.getId(), eventName + " Team Registration"));
                     }
 
                     String dateStr = tm.getJoinedAt() != null ? tm.getJoinedAt().format(DATE_FORMATTER) : "N/A";
@@ -279,8 +595,8 @@ public class DatabaseSqlAgent {
                       .append("\n");
                 }
             }
-            sb.append("\nYou can view details in the 'My Participation' tab.\n");
         }
+        sb.append("\nYou can view full details in the 'My Participation' tab.\n");
 
         // Fetch student's winnings
         List<Winner> allWinners = winnerRepository.findAll();
@@ -390,9 +706,29 @@ public class DatabaseSqlAgent {
 
     private void appendEventDetails(StringBuilder sb, Event e) {
         LocalDateTime now = LocalDateTime.now();
-        boolean isEnded = (e.getRegEnd() != null && e.getRegEnd().isBefore(now));
 
-        String statusBadge = isEnded ? "🔴 Status: Ended / Closed" : "🟢 Status: Active / Registration Open";
+        // Distinct Event Lifecycle Status
+        String eventStatus;
+        if (e.isResultPublished() || (e.getEventDate() != null && e.getEventDate().isBefore(now))) {
+            eventStatus = "Ended";
+        } else if (e.getEventDate() != null && e.getEventDate().isAfter(now)) {
+            eventStatus = "Upcoming";
+        } else if (e.getEventDate() != null && e.getEventDate().isEqual(now)) {
+            eventStatus = "Ongoing";
+        } else {
+            eventStatus = "Date TBD";
+        }
+
+        // Distinct Registration Status
+        String regStatus;
+        if (e.getRegEnd() != null && e.getRegEnd().isBefore(now)) {
+            regStatus = "Closed";
+        } else if (e.getRegStart() != null && e.getRegStart().isAfter(now)) {
+            regStatus = "Not Open Yet (Opens: " + e.getRegStart().format(DATE_FORMATTER) + ")";
+        } else {
+            regStatus = "Open";
+        }
+
         String regStartStr = (e.getRegStart() != null) ? e.getRegStart().format(DATE_FORMATTER) : "N/A";
         String regEndStr = (e.getRegEnd() != null) ? e.getRegEnd().format(DATE_FORMATTER) : "N/A";
         String eventDateStr = (e.getEventDate() != null) ? e.getEventDate().format(DATE_FORMATTER) : "TBD";
@@ -400,11 +736,12 @@ public class DatabaseSqlAgent {
         String desc = (e.getDescription() != null) ? e.getDescription() : "No description provided.";
 
         sb.append("\n• Event Name: ").append(e.getName())
-          .append("\n  - ").append(statusBadge)
-          .append("\n  - Description: ").append(desc)
-          .append("\n  - Venue: ").append(venueStr)
           .append("\n  - Event Date: ").append(eventDateStr)
+          .append("\n  - Event Status: ").append(eventStatus)
+          .append("\n  - Registration Status: ").append(regStatus)
+          .append("\n  - Venue: ").append(venueStr)
           .append("\n  - Registration Period: ").append(regStartStr).append(" to ").append(regEndStr)
+          .append("\n  - Description: ").append(desc)
           .append("\n  - Category/Type: ").append(e.getType() != null ? e.getType() : "General")
           .append("\n");
     }
