@@ -26,6 +26,7 @@ public class KnowledgeChunker {
         SCHOLARSHIP,
         FAQ_GENERAL,
         CAMPUS_INFO,
+        DEPARTMENT_LOCATION,
         OTHER
     }
 
@@ -83,6 +84,10 @@ public class KnowledgeChunker {
      * (src/main/resources/knowledge.txt or target/classes/knowledge.txt) and keeps them in sync.
      */
     public synchronized void loadKnowledgeChunks() {
+        if (!chunks.isEmpty() && System.currentTimeMillis() - lastLoadedTime < 300000) {
+            return;
+        }
+
         try {
             File srcFile = new File("src/main/resources/knowledge.txt");
             if (!srcFile.exists()) {
@@ -95,49 +100,30 @@ public class KnowledgeChunker {
             }
 
             File fileToRead = null;
-            long srcMod = srcFile.exists() ? srcFile.lastModified() : 0;
-            long targetMod = targetFile.exists() ? targetFile.lastModified() : 0;
-            long newestMod = Math.max(srcMod, targetMod);
+            if (srcFile.exists()) {
+                fileToRead = srcFile;
+            } else if (targetFile.exists()) {
+                fileToRead = targetFile;
+            }
 
-            if (srcMod > 0 || targetMod > 0) {
-                if (srcMod >= targetMod && srcFile.exists()) {
-                    fileToRead = srcFile;
-                } else if (targetFile.exists()) {
-                    fileToRead = targetFile;
+            if (fileToRead != null) {
+                String text = Files.readString(fileToRead.toPath(), StandardCharsets.UTF_8);
+                parseAndLoadChunks(text);
+                lastLoadedTime = System.currentTimeMillis();
+
+                if (vectorIndex != null) {
+                    vectorIndex.indexChunks(chunks);
                 }
-
-                if (fileToRead != null && (newestMod > lastLoadedTime || chunks.isEmpty())) {
-                    String text = Files.readString(fileToRead.toPath(), StandardCharsets.UTF_8);
-                    parseAndLoadChunks(text);
-                    lastLoadedTime = newestMod;
-
-                    // Automatically synchronize the other file so both stay perfectly in sync
-                    try {
-                        if (srcFile.exists() && fileToRead != srcFile) {
-                            Files.writeString(srcFile.toPath(), text, StandardCharsets.UTF_8);
-                        }
-                        if (targetFile.exists() && fileToRead != targetFile) {
-                            Files.writeString(targetFile.toPath(), text, StandardCharsets.UTF_8);
-                        }
-                    } catch (Exception ignored) {}
-
-                    if (vectorIndex != null) {
-                        vectorIndex.indexChunks(chunks);
-                    }
-                    System.out.println("📚 KnowledgeChunker: Loaded & synchronized " + chunks.size() + " chunks from " + fileToRead.getPath());
-                }
+                System.out.println("📚 KnowledgeChunker: Loaded " + chunks.size() + " chunks from " + fileToRead.getPath());
             } else {
                 ClassPathResource resource = new ClassPathResource("knowledge.txt");
                 if (resource.exists()) {
-                    long modTime = System.currentTimeMillis();
-                    if (chunks.isEmpty() || modTime - lastLoadedTime > 3000) {
-                        InputStreamReader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
-                        String text = FileCopyUtils.copyToString(reader);
-                        parseAndLoadChunks(text);
-                        lastLoadedTime = modTime;
-                        if (vectorIndex != null) {
-                            vectorIndex.indexChunks(chunks);
-                        }
+                    InputStreamReader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
+                    String text = FileCopyUtils.copyToString(reader);
+                    parseAndLoadChunks(text);
+                    lastLoadedTime = System.currentTimeMillis();
+                    if (vectorIndex != null) {
+                        vectorIndex.indexChunks(chunks);
                     }
                 }
             }
@@ -159,12 +145,15 @@ public class KnowledgeChunker {
             String body = (lines.length > 1) ? lines[1].trim() : "";
 
             if (!title.isEmpty() && !body.isEmpty()) {
-                ChunkCategory cat = categorizeSection(title, body);
-                String id = "KNOW-" + index++;
-                chunks.add(new KnowledgeChunk(id, title, body, cat));
-
-                // Extract individual FAQ Q&A entries as dedicated high-priority chunks
-                if (body.contains("Q:") || body.contains("Q.")) {
+                boolean hasIndividualFaqs = body.contains("Q:") || body.contains("Q.");
+                
+                // If section does NOT contain individual FAQ items, index the whole section as a chunk
+                if (!hasIndividualFaqs) {
+                    ChunkCategory cat = categorizeSection(title, body);
+                    String id = "KNOW-" + index++;
+                    chunks.add(new KnowledgeChunk(id, title, body, cat));
+                } else {
+                    // Extract individual FAQ Q&A entries as dedicated atomic chunks to prevent cross-entity bleed
                     String[] faqItems = body.split("(?=Q[:.])");
                     for (String item : faqItems) {
                         item = item.trim();
@@ -191,19 +180,22 @@ public class KnowledgeChunker {
         } else if (lower.contains("rules") || lower.contains("code of conduct")) {
             return ChunkCategory.RULES;
         } else if (lower.contains("department") || lower.contains("location") || lower.contains("campus")) {
-            return ChunkCategory.CAMPUS_INFO;
+            return ChunkCategory.DEPARTMENT_LOCATION;
         }
-        return ChunkCategory.OTHER;
+        return ChunkCategory.CAMPUS_INFO;
     }
 
     private ChunkCategory categorizeFaq(String question) {
         String lower = question.toLowerCase();
-        if (lower.contains("who can participate") || lower.contains("who is eligible")) {
+        if (lower.contains("where is") || lower.contains("department") || lower.contains("placement cell") ||
+                lower.contains("library") || lower.contains("sports complex") || lower.contains("auditorium") ||
+                lower.contains("office") || lower.contains("building") || lower.contains("location")) {
+            return ChunkCategory.DEPARTMENT_LOCATION;
+        } else if (lower.contains("who can participate") || lower.contains("who is eligible") || lower.contains("eligibility")) {
             return ChunkCategory.ELIGIBILITY;
-        } else if (lower.contains("registered events") || lower.contains("see my") || lower.contains("cancel my")) {
+        } else if (lower.contains("register") || lower.contains("apply") || lower.contains("participation") ||
+                   lower.contains("registered events") || lower.contains("see my") || lower.contains("cancel my")) {
             return ChunkCategory.REGISTRATION_PROCEDURE;
-        } else if (lower.contains("where is") || lower.contains("department") || lower.contains("building") || lower.contains("location")) {
-            return ChunkCategory.CAMPUS_INFO;
         }
         return ChunkCategory.FAQ_GENERAL;
     }
@@ -216,7 +208,9 @@ public class KnowledgeChunker {
     );
 
     public List<MatchResult> search(String query, int maxResults) {
-        loadKnowledgeChunks();
+        if (chunks.isEmpty()) {
+            loadKnowledgeChunks();
+        }
 
         if (query == null || query.isBlank() || chunks.isEmpty()) {
             return Collections.emptyList();

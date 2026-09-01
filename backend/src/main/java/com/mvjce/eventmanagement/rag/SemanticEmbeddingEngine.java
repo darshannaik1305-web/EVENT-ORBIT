@@ -155,7 +155,10 @@ public class SemanticEmbeddingEngine {
             mod = "models/" + mod;
         }
 
-        List<String> modelsToTry = List.of(mod, "models/gemini-embedding-001", "models/gemini-embedding-2", "models/embedding-001", "models/text-embedding-004");
+        Set<String> modelsToTry = new LinkedHashSet<>();
+        modelsToTry.add(mod);
+        modelsToTry.add("models/gemini-embedding-001");
+        modelsToTry.add("models/gemini-embedding-2");
 
         for (String targetModel : modelsToTry) {
             try {

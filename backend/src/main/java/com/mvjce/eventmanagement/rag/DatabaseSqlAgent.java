@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
@@ -45,6 +46,10 @@ public class DatabaseSqlAgent {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
 
     public QueryResult retrieveTargetedContext(String query, String authenticatedUsername, QueryProcessor.Intent intent, String matchedClub, String matchedEvent) {
+        return retrieveTargetedContext(query, authenticatedUsername, intent, matchedClub, matchedEvent, null);
+    }
+
+    public QueryResult retrieveTargetedContext(String query, String authenticatedUsername, QueryProcessor.Intent intent, String matchedClub, String matchedEvent, String targetDepartment) {
         StringBuilder context = new StringBuilder();
         List<SourceMetadata> sources = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
@@ -55,8 +60,8 @@ public class DatabaseSqlAgent {
         }
 
         // 2. Winner Results & Event Participant Queries (LEVEL 2/3)
-        if (intent == QueryProcessor.Intent.WINNERS || (matchedEvent != null && (query.contains("participat") || query.contains("who")))) {
-            QueryResult winnerResult = getWinnersContext(query, matchedEvent);
+        if (intent == QueryProcessor.Intent.WINNERS) {
+            QueryResult winnerResult = getWinnersContext(query, matchedEvent, targetDepartment);
             if (!winnerResult.getContext().isBlank()) {
                 return winnerResult;
             }
@@ -91,14 +96,12 @@ public class DatabaseSqlAgent {
         // 5. Specific Event Detail (LEVEL 2)
         if (intent == QueryProcessor.Intent.EVENT_DETAIL || matchedEvent != null) {
             List<Event> allEvents = eventRepository.findAll();
-            for (Event e : allEvents) {
-                if (matchedEvent != null && e.getName().equalsIgnoreCase(matchedEvent) ||
-                        query.contains(e.getName().toLowerCase()) || isKeywordMatch(query, e.getName().toLowerCase())) {
-                    sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
-                    context.append("📌 Event Information:\n");
-                    appendEventDetails(context, e);
-                    return new QueryResult(context.toString(), sources);
-                }
+            Event e = findBestMatchingEvent(allEvents, query, matchedEvent);
+            if (e != null) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                context.append("📌 Event Information:\n");
+                appendEventDetails(context, e);
+                return new QueryResult(context.toString(), sources);
             }
         }
 
@@ -106,14 +109,15 @@ public class DatabaseSqlAgent {
         if (intent == QueryProcessor.Intent.EVENTS_ENDED) {
             List<Event> allEvents = eventRepository.findAll();
             List<Event> endedEvents = allEvents.stream()
-                    .filter(e -> e.getRegEnd() != null && e.getRegEnd().isBefore(now))
+                    .filter(e -> (e.getRegEnd() != null && e.getRegEnd().isBefore(now)) ||
+                                 (e.getEventDate() != null && e.getEventDate().isBefore(now)))
                     .collect(Collectors.toList());
 
             if (endedEvents.isEmpty()) {
                 return new QueryResult("Currently, there are no ended or past events in the records.", Collections.emptyList());
             }
 
-            context.append("🔴 Ended & Past Events:\n");
+            context.append("🔴 Ended / Past Events:\n");
             for (Event e : endedEvents) {
                 sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
                 appendEventDetails(context, e);
@@ -121,7 +125,47 @@ public class DatabaseSqlAgent {
             return new QueryResult(context.toString(), sources);
         }
 
-        // 7. Active / Upcoming Events (LEVEL 3)
+        // 7. Ongoing Events (LEVEL 3 - registration open and active right now)
+        if (intent == QueryProcessor.Intent.EVENTS_ONGOING) {
+            List<Event> allEvents = eventRepository.findAll();
+            List<Event> ongoingEvents = allEvents.stream()
+                    .filter(e -> (e.getRegStart() == null || !e.getRegStart().isAfter(now)) &&
+                                 (e.getRegEnd() == null || e.getRegEnd().isAfter(now)))
+                    .collect(Collectors.toList());
+
+            if (ongoingEvents.isEmpty()) {
+                return new QueryResult("Currently, there are no ongoing events with active registration.", Collections.emptyList());
+            }
+
+            context.append("🟢 Ongoing Events (Registration Currently Open):\n");
+            for (Event e : ongoingEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(context, e);
+            }
+            return new QueryResult(context.toString(), sources);
+        }
+
+        // 8. Upcoming Events (LEVEL 3 - scheduled in the future or registration starting in future)
+        if (intent == QueryProcessor.Intent.EVENTS_UPCOMING) {
+            List<Event> allEvents = eventRepository.findAll();
+            List<Event> upcomingEvents = allEvents.stream()
+                    .filter(e -> (e.getRegStart() != null && e.getRegStart().isAfter(now)) ||
+                                 (e.getEventDate() != null && e.getEventDate().isAfter(now)))
+                    .collect(Collectors.toList());
+
+            if (upcomingEvents.isEmpty()) {
+                return new QueryResult("Currently, there are no upcoming events scheduled.", Collections.emptyList());
+            }
+
+            context.append("📅 Upcoming Events:\n");
+            for (Event e : upcomingEvents) {
+                sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
+                appendEventDetails(context, e);
+            }
+            return new QueryResult(context.toString(), sources);
+        }
+
+        // 9. All Active Events (LEVEL 3)
         if (intent == QueryProcessor.Intent.EVENTS_ACTIVE) {
             List<Event> allEvents = eventRepository.findAll();
             List<Event> activeEvents = allEvents.stream()
@@ -129,10 +173,10 @@ public class DatabaseSqlAgent {
                     .collect(Collectors.toList());
 
             if (activeEvents.isEmpty()) {
-                return new QueryResult("Currently, there are no active or upcoming events available for registration.", Collections.emptyList());
+                return new QueryResult("Currently, there are no active events available for registration.", Collections.emptyList());
             }
 
-            context.append("🟢 Active & Upcoming Events:\n");
+            context.append("🟢 Active Events:\n");
             for (Event e : activeEvents) {
                 sources.add(new SourceMetadata("EVENT", e.getId(), e.getName()));
                 appendEventDetails(context, e);
@@ -261,21 +305,70 @@ public class DatabaseSqlAgent {
         return new QueryResult(sb.toString(), sources);
     }
 
-    private QueryResult getWinnersContext(String query, String matchedEventName) {
+    private QueryResult getWinnersContext(String query, String matchedEventName, String targetDepartment) {
         StringBuilder sb = new StringBuilder();
         List<SourceMetadata> sources = new ArrayList<>();
         List<Event> allEvents = eventRepository.findAll();
 
-        Event matchedEvent = null;
-        for (Event e : allEvents) {
-            if ((matchedEventName != null && e.getName().equalsIgnoreCase(matchedEventName)) ||
-                    query.contains(e.getName().toLowerCase()) ||
-                    isKeywordMatch(query, e.getName().toLowerCase())) {
-                matchedEvent = e;
-                break;
+        Event matchedEvent = findBestMatchingEvent(allEvents, query, matchedEventName);
+
+        // 1. Department-Specific Winner Queries (e.g. "What has CS won?", "What did CS win in Hackathon2026?")
+        if (targetDepartment != null && !targetDepartment.isBlank()) {
+            String normDept = UsnDepartmentResolver.normalizeDepartmentCode(targetDepartment);
+            if (normDept == null) {
+                // If department is unrecognized or uncertain, never do semantic fallback or broad dump
+                return new QueryResult("No winner records are available for the specified department.", Collections.emptyList());
             }
+
+            // Case A: Event + Department (e.g. "What did CS win in Hackathon2026?")
+            if (matchedEvent != null) {
+                List<Winner> eventWinners = winnerRepository.findByEventId(matchedEvent.getId());
+                List<Winner> deptEventWinners = eventWinners.stream()
+                        .filter(w -> w.getUsername() != null && UsnDepartmentResolver.matchesDepartment(w.getUsername(), normDept))
+                        .collect(Collectors.toList());
+
+                sources.add(new SourceMetadata("EVENT", matchedEvent.getId(), matchedEvent.getName()));
+                if (deptEventWinners.isEmpty()) {
+                    return new QueryResult("No winner records found for the " + normDept + " department in " + matchedEvent.getName() + ".", sources);
+                }
+
+                sb.append("🏆 Winners from ").append(normDept).append(" Department for ").append(matchedEvent.getName()).append(":\n");
+                for (Winner w : deptEventWinners) {
+                    sources.add(new SourceMetadata("WINNER", w.getId(), matchedEvent.getName() + " - " + w.getPosition().getDisplayName()));
+                    sb.append("• ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
+                }
+                return new QueryResult(sb.toString(), sources);
+            }
+
+            // Case B: Department-Only Query (e.g. "What has CS won?", "What are the winnings of CS?")
+            List<Winner> allWinners = winnerRepository.findAll();
+            for (Winner w : allWinners) {
+                String resolvedDept = UsnDepartmentResolver.resolveDepartment(w.getUsername());
+                System.out.println("[Winner USN Resolution] " + w.getUsername() + " → " + resolvedDept + " (Target: " + normDept + ")");
+            }
+            List<Winner> deptWinners = allWinners.stream()
+                    .filter(w -> w.getUsername() != null && UsnDepartmentResolver.matchesDepartment(w.getUsername(), normDept))
+                    .collect(Collectors.toList());
+
+            if (deptWinners.isEmpty()) {
+                return new QueryResult("No winner records are available for the " + normDept + " department.", Collections.emptyList());
+            }
+
+            sb.append("🏆 Official Winners from ").append(normDept).append(" Department:\n");
+            Map<String, List<Winner>> winnersByEvent = deptWinners.stream().collect(Collectors.groupingBy(Winner::getEventId));
+            for (Map.Entry<String, List<Winner>> entry : winnersByEvent.entrySet()) {
+                Optional<Event> evOpt = eventRepository.findById(entry.getKey());
+                String eventName = evOpt.map(Event::getName).orElse("Event (" + entry.getKey() + ")");
+                sb.append("\n• Event: ").append(eventName).append("\n");
+                for (Winner w : entry.getValue()) {
+                    sources.add(new SourceMetadata("WINNER", w.getId(), eventName + " - " + w.getPosition().getDisplayName()));
+                    sb.append("  - ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
+                }
+            }
+            return new QueryResult(sb.toString(), sources);
         }
 
+        // 2. Event-Only Winner Queries (e.g. "Who won Hackathon2026?")
         if (matchedEvent != null) {
             List<Winner> winners = winnerRepository.findByEventId(matchedEvent.getId());
             sources.add(new SourceMetadata("EVENT", matchedEvent.getId(), matchedEvent.getName()));
@@ -291,24 +384,8 @@ public class DatabaseSqlAgent {
             return new QueryResult(sb.toString(), sources);
         }
 
-        List<Winner> allWinners = winnerRepository.findAll();
-        if (allWinners.isEmpty()) {
-            return new QueryResult("No event winners have been announced yet in EventOrbit.", Collections.emptyList());
-        }
-
-        sb.append("🏆 Official EventOrbit Winners Podium:\n");
-        Map<String, List<Winner>> winnersByEvent = allWinners.stream().collect(Collectors.groupingBy(Winner::getEventId));
-        for (Map.Entry<String, List<Winner>> entry : winnersByEvent.entrySet()) {
-            Optional<Event> evOpt = eventRepository.findById(entry.getKey());
-            String eventName = evOpt.map(Event::getName).orElse("Event (" + entry.getKey() + ")");
-            sb.append("\n• Event: ").append(eventName).append("\n");
-            for (Winner w : entry.getValue()) {
-                sources.add(new SourceMetadata("WINNER", w.getId(), eventName + " - " + w.getPosition().getDisplayName()));
-                sb.append("  - ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
-            }
-        }
-
-        return new QueryResult(sb.toString(), sources);
+        // 3. Ambiguous queries with neither Event nor Department are blocked from dumping all winners
+        return new QueryResult("", Collections.emptyList());
     }
 
     private void appendEventDetails(StringBuilder sb, Event e) {
@@ -332,16 +409,69 @@ public class DatabaseSqlAgent {
           .append("\n");
     }
 
-    private boolean isKeywordMatch(String query, String eventName) {
-        String[] queryWords = query.split("\\s+");
-        for (String w : queryWords) {
-            if (w.length() >= 4 && (eventName.contains(w) || (w.length() >= 6 && eventName.contains(w.substring(0, 5))))) {
-                return true;
-            }
-            if (w.startsWith("hack") && eventName.contains("hack")) {
-                return true;
+    private Event findBestMatchingEvent(List<Event> allEvents, String query, String matchedEventName) {
+        if (allEvents == null || allEvents.isEmpty()) return null;
+
+        // Priority 0: Explicit matchedEventName exact match
+        if (matchedEventName != null && !matchedEventName.isBlank()) {
+            for (Event e : allEvents) {
+                if (e.getName().equalsIgnoreCase(matchedEventName.trim())) {
+                    return e;
+                }
             }
         }
-        return false;
+
+        if (query == null || query.isBlank()) return null;
+        String normQuery = query.toLowerCase().replaceAll("[^a-zA-Z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+
+        // Sort descending by name length so specific full names (e.g. "IExample2026") take priority over substrings ("Examp")
+        List<Event> sorted = new ArrayList<>(allEvents);
+        sorted.sort((a, b) -> Integer.compare(b.getName().length(), a.getName().length()));
+
+        // Priority 1: Exact full-name match with word boundary
+        for (Event e : sorted) {
+            String normName = e.getName().toLowerCase().replaceAll("[^a-zA-Z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+            if (!normName.isEmpty()) {
+                if (normQuery.equals(normName) || normQuery.matches(".*\\b" + Pattern.quote(normName) + "\\b.*")) {
+                    return e;
+                }
+            }
+        }
+
+        // Priority 2: Full name substring match
+        for (Event e : sorted) {
+            String normName = e.getName().toLowerCase().replaceAll("[^a-zA-Z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+            if (!normName.isEmpty() && normQuery.contains(normName)) {
+                return e;
+            }
+        }
+
+        // Priority 3: Multi-word exact token match
+        for (Event e : sorted) {
+            String[] words = e.getName().toLowerCase().split("\\s+");
+            if (words.length > 1) {
+                boolean allFound = true;
+                for (String w : words) {
+                    String cleanW = w.replaceAll("[^a-zA-Z0-9]", "");
+                    if (cleanW.length() >= 4 && !normQuery.matches(".*\\b" + Pattern.quote(cleanW) + "\\b.*")) {
+                        allFound = false;
+                        break;
+                    }
+                }
+                if (allFound) {
+                    return e;
+                }
+            }
+        }
+
+        // Priority 4: Safe heuristic fallback
+        for (Event e : sorted) {
+            String normName = e.getName().toLowerCase();
+            if (normName.contains("hack") && normQuery.matches(".*\\b(hackathon2026|hackathon|hackthon)\\b.*")) {
+                return e;
+            }
+        }
+
+        return null;
     }
 }

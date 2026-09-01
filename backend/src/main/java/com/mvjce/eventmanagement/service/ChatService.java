@@ -85,6 +85,11 @@ public class ChatService {
             return new ChatResponse(PRIVACY_REFUSAL_MESSAGE, Collections.emptyList());
         }
 
+        // LEVEL 1: Ambiguous Query Clarification (Do not dump all data)
+        if (processed.isAmbiguous() && processed.getClarificationMessage() != null) {
+            return new ChatResponse(processed.getClarificationMessage(), Collections.emptyList());
+        }
+
         // LEVEL 1: Student Private Data (Strict Security & JPA DB Context Only)
         if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
             DatabaseSqlAgent.QueryResult dbResult = databaseSqlAgent.retrieveTargetedContext(
@@ -106,20 +111,42 @@ public class ChatService {
             return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
         }
 
+        // LEVEL 1: Compound Multi-Query (Independent SubQuery Execution to prevent context bleed)
+        if (processed.getSubQueries().size() > 1) {
+            return processCompoundQuery(processed, authenticatedUsername);
+        }
+
         // LEVEL 2 & 3: Database Entity & Live Application Data (Clubs, Winners, Events)
         boolean isDatabaseIntent = (intent == QueryProcessor.Intent.CLUB_EVENTS ||
                 intent == QueryProcessor.Intent.WINNERS ||
                 intent == QueryProcessor.Intent.CLUBS_LIST ||
                 intent == QueryProcessor.Intent.EVENT_DETAIL ||
+                intent == QueryProcessor.Intent.EVENTS_ONGOING ||
+                intent == QueryProcessor.Intent.EVENTS_UPCOMING ||
                 intent == QueryProcessor.Intent.EVENTS_ACTIVE ||
                 intent == QueryProcessor.Intent.EVENTS_ENDED);
 
-        if (isDatabaseIntent || processed.getTargetClubName() != null || processed.getTargetEventName() != null) {
-            DatabaseSqlAgent.QueryResult dbResult = databaseSqlAgent.retrieveTargetedContext(
-                    processed.getNormalizedQuery(), authenticatedUsername, intent,
-                    processed.getTargetClubName(), processed.getTargetEventName());
+        String targetDepartment = processed.getTargetDepartment();
+        if ("MY_DEPARTMENT".equalsIgnoreCase(targetDepartment)) {
+            if (authenticatedUsername == null || authenticatedUsername.isBlank() || authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
+                return new ChatResponse("Please log in with your student account to view your department's winnings.", Collections.emptyList());
+            }
+            targetDepartment = UsnDepartmentResolver.resolveDepartment(authenticatedUsername);
+            if (targetDepartment == null) {
+                return new ChatResponse("Unable to determine department from your student account (" + authenticatedUsername + ").", Collections.emptyList());
+            }
+        }
 
-            String context = dbResult.getContext();
+        if (isDatabaseIntent || (processed.getPrimarySource() == QueryProcessor.DataSource.DATABASE && (processed.getTargetClubName() != null || processed.getTargetEventName() != null || targetDepartment != null))) {
+            DatabaseSqlAgent.QueryResult dbResult = (targetDepartment != null)
+                    ? databaseSqlAgent.retrieveTargetedContext(
+                            processed.getNormalizedQuery(), authenticatedUsername, intent,
+                            processed.getTargetClubName(), processed.getTargetEventName(), targetDepartment)
+                    : databaseSqlAgent.retrieveTargetedContext(
+                            processed.getNormalizedQuery(), authenticatedUsername, intent,
+                            processed.getTargetClubName(), processed.getTargetEventName());
+
+            String context = (dbResult != null) ? dbResult.getContext() : null;
             if (context != null && !context.isBlank()) {
                 List<SourceMetadata> sources = deduplicateSources(dbResult.getSources());
                 if (hasValidApiKey()) {
@@ -164,15 +191,24 @@ public class ChatService {
         }
         long semanticLatencyMs = System.currentTimeMillis() - semanticStart;
 
-        // Hybrid Reranking with Intent Matching
+        // Dynamic Context Sizing based on Query Specificity
+        int maxResults = 2;
+        if (intent == QueryProcessor.Intent.KNOWLEDGE_DEPARTMENT_LOCATION && processed.getExtractedEntities().size() == 1) {
+            maxResults = 1; // Specific single-entity factual query -> strictly 1 precise chunk
+        } else if (processed.getExtractedEntities().size() >= 2) {
+            maxResults = Math.min(4, processed.getExtractedEntities().size()); // Multi-entity query -> allow all requested entities
+        }
+
+        // Hybrid Reranking with Entity/Attribute-Aware Filtering
         long rankingStart = System.currentTimeMillis();
         List<HybridReranker.ScoredChunk> rankedChunks = hybridReranker.rerank(
                 lexicalMatches,
                 semanticScores,
                 knowledgeChunker.getAllChunks(),
                 intent,
+                processed.getRequestedAttribute(),
                 processed.getExtractedEntities(),
-                2
+                maxResults
         );
         long rankingLatencyMs = System.currentTimeMillis() - rankingStart;
 
@@ -194,24 +230,67 @@ public class ChatService {
             if (hasValidApiKey()) {
                 logSafeLlmRequest(intent, rankedChunks.size(), context.length());
                 String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "KNOWLEDGE");
+                
                 if (llmAnswer != null && !llmAnswer.isBlank()) {
+                    // Post-Generation Validation: Check for cross-entity contamination
+                    if (isResponseContaminated(llmAnswer, processed.getExtractedEntities())) {
+                        System.out.println("⚠️ [Grounding Validator] LLM response contained unrequested entities. Using deterministic grounded answer.");
+                        String cleanAnswer = extractCleanContent(rankedChunks);
+                        logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
+                        return new ChatResponse(cleanAnswer, uniqueSources);
+                    }
+
                     logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
                     return new ChatResponse(llmAnswer, uniqueSources);
                 }
             }
 
-            // Deterministic Fallback: Format top knowledge chunks cleanly
-            StringBuilder fallbackSb = new StringBuilder();
-            for (HybridReranker.ScoredChunk sc : rankedChunks) {
-                fallbackSb.append(sc.getChunk().getContent()).append("\n\n");
-            }
+            // Deterministic Grounded Answer: Format top knowledge chunks cleanly
+            String fallbackAnswer = extractCleanContent(rankedChunks);
             logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
-            return new ChatResponse(fallbackSb.toString().trim(), uniqueSources);
+            return new ChatResponse(fallbackAnswer, uniqueSources);
         }
 
         // LEVEL 5: Grounded Fallback (No context found, do not invoke LLM)
         logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
         return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
+    }
+
+    private String extractCleanContent(List<HybridReranker.ScoredChunk> rankedChunks) {
+        StringBuilder sb = new StringBuilder();
+        for (HybridReranker.ScoredChunk sc : rankedChunks) {
+            String content = sc.getChunk().getContent();
+            if (content.contains("A:")) {
+                sb.append(content.substring(content.indexOf("A:") + 2).trim()).append("\n\n");
+            } else {
+                sb.append(content.trim()).append("\n\n");
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    private static final List<String> TRACKED_ENTITIES = List.of(
+            "CG", "CS", "ISE", "ECE", "AIML", "Placement Cell", "Library", "Sports Complex", "College Auditorium", "Principal Office"
+    );
+
+    private boolean isResponseContaminated(String llmAnswer, List<String> requestedEntities) {
+        if (requestedEntities == null || requestedEntities.isEmpty() || llmAnswer == null) {
+            return false;
+        }
+
+        String answerLower = llmAnswer.toLowerCase();
+        for (String tracked : TRACKED_ENTITIES) {
+            boolean isRequested = requestedEntities.stream().anyMatch(r -> r.equalsIgnoreCase(tracked));
+            if (!isRequested) {
+                // If unrequested entity appears in the answer, flag as contaminated
+                if (tracked.equals("CG") && answerLower.matches(".*\\b(cg|computer graphics)\\b.*")) return true;
+                if (tracked.equals("CS") && answerLower.matches(".*\\b(cs|cse|computer science)\\b.*")) return true;
+                if (tracked.equals("ISE") && answerLower.matches(".*\\b(ise|information science)\\b.*")) return true;
+                if (tracked.equals("ECE") && answerLower.matches(".*\\b(ece|electronics and communication)\\b.*")) return true;
+                if (tracked.equals("AIML") && answerLower.matches(".*\\b(aiml|ai ml|artificial intelligence)\\b.*")) return true;
+            }
+        }
+        return false;
     }
 
     private boolean hasValidApiKey() {
@@ -259,15 +338,20 @@ public class ChatService {
 
             String systemPrompt = 
                 "You are EventOrbit AI Assistant, a college event management assistant.\n" +
-                "STRICT GROUNDING INSTRUCTIONS:\n" +
-                "1. Answer ONLY using the facts provided in the Context below.\n" +
+                "STRICT GROUNDING & PRECISION INSTRUCTIONS:\n" +
+                "1. Answer ONLY the exact question asked using ONLY facts explicitly provided in the Context below.\n" +
                 "2. Context Type: " + contextType + ".\n" +
-                "3. If answering registration procedure questions, provide a clear, concise numbered step-by-step guide.\n" +
-                "4. If answering event or club queries, present the events clearly with dates, venue, and status.\n" +
-                "5. Never expose student USNs in public responses or results.\n" +
-                "6. If the answer cannot be directly derived from the Context, respond EXACTLY with:\n" +
+                "3. If the user asks about a specific entity, department, or office, answer ONLY about that entity.\n" +
+                "4. Do NOT mention other entities, departments, or locations unless the user explicitly requested them.\n" +
+                "5. Do NOT add related, extra, or 'helpful' information that was not requested.\n" +
+                "6. Do NOT infer, speculate, or borrow information from similar entities.\n" +
+                "7. Keep simple factual answers concise and direct.\n" +
+                "8. If answering registration procedure questions, provide a clear, concise numbered step-by-step guide.\n" +
+                "9. If answering event or club queries, present the events clearly with dates, venue, and status.\n" +
+                "10. Never expose student USNs in public responses or results.\n" +
+                "11. If the answer cannot be directly derived from the Context, respond EXACTLY with:\n" +
                 "\"" + GROUNDED_UNAVAILABLE_MESSAGE + "\"\n" +
-                "7. Do NOT invent, speculate, or infer information outside the Context.\n\n" +
+                "12. Do NOT invent, speculate, or infer information outside the Context.\n\n" +
                 "Context:\n" + context + "\n\n" +
                 "Question: " + query;
 
@@ -356,6 +440,59 @@ public class ChatService {
             System.err.println("LLM Exception: " + e.getMessage());
         }
         return null;
+    }
+
+    private ChatResponse processCompoundQuery(QueryProcessor.ProcessedQuery processed, String authenticatedUsername) {
+        StringBuilder combinedReply = new StringBuilder();
+        List<SourceMetadata> combinedSources = new ArrayList<>();
+
+        for (QueryProcessor.SubQuery sq : processed.getSubQueries()) {
+            if (sq.getSource() == QueryProcessor.DataSource.DATABASE) {
+                String dept = sq.getEntity();
+                if ("MY_DEPARTMENT".equalsIgnoreCase(dept)) {
+                    if (authenticatedUsername != null && !authenticatedUsername.isBlank() && !authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
+                        dept = UsnDepartmentResolver.resolveDepartment(authenticatedUsername);
+                    } else {
+                        dept = null;
+                    }
+                }
+                DatabaseSqlAgent.QueryResult dbRes = (dept != null)
+                        ? databaseSqlAgent.retrieveTargetedContext(
+                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, null, dept)
+                        : databaseSqlAgent.retrieveTargetedContext(
+                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, null);
+                if (dbRes != null && !dbRes.getContext().isBlank()) {
+                    combinedSources.addAll(dbRes.getSources());
+                    combinedReply.append(dbRes.getContext().trim()).append("\n\n");
+                }
+            } else if (sq.getSource() == QueryProcessor.DataSource.KNOWLEDGE_BASE) {
+                List<KnowledgeChunker.MatchResult> matches = knowledgeChunker.search(sq.getText(), 3);
+                List<KnowledgeChunker.KnowledgeChunk> allChunks = knowledgeChunker.getAllChunks();
+                List<String> entities = (sq.getEntity() != null) ? List.of(sq.getEntity()) : Collections.emptyList();
+                List<HybridReranker.ScoredChunk> ranked = hybridReranker.rerank(
+                        matches, Collections.emptyMap(), allChunks,
+                        QueryProcessor.Intent.KNOWLEDGE_DEPARTMENT_LOCATION,
+                        sq.getAttribute(), entities, 1);
+                if (!ranked.isEmpty()) {
+                    combinedSources.add(ranked.get(0).getChunk().getMetadata());
+                    combinedReply.append(extractCleanContent(ranked)).append("\n\n");
+                }
+            }
+        }
+
+        if (combinedReply.length() > 0) {
+            List<SourceMetadata> uniqueSources = deduplicateSources(combinedSources);
+            String fullContext = combinedReply.toString().trim();
+            if (hasValidApiKey()) {
+                String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), fullContext, "COMPOUND_DATA");
+                if (llmAnswer != null && !llmAnswer.isBlank()) {
+                    return new ChatResponse(llmAnswer, uniqueSources);
+                }
+            }
+            return new ChatResponse(fullContext, uniqueSources);
+        }
+
+        return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
     }
 
     private List<SourceMetadata> deduplicateSources(List<SourceMetadata> rawSources) {

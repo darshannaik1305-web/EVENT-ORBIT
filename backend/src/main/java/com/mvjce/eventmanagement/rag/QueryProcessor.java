@@ -21,6 +21,8 @@ public class QueryProcessor {
         CLUB_EVENTS,
         WINNERS,
         CLUBS_LIST,
+        EVENTS_ONGOING,
+        EVENTS_UPCOMING,
         EVENTS_ACTIVE,
         EVENTS_ENDED,
         EVENT_DETAIL,
@@ -28,38 +30,169 @@ public class QueryProcessor {
         KNOWLEDGE_ELIGIBILITY,
         KNOWLEDGE_SCHOLARSHIP,
         KNOWLEDGE_RULES,
+        KNOWLEDGE_DEPARTMENT_LOCATION,
         KNOWLEDGE_GUIDANCE,
+        AMBIGUOUS_QUERY,
         GENERAL
+    }
+
+    public enum EntityScope {
+        DEPARTMENT,
+        EVENT,
+        CLUB,
+        STUDENT,
+        CAMPUS_FACILITY,
+        SCHOLARSHIP,
+        GLOBAL
+    }
+
+    public enum DataSource {
+        DATABASE,
+        KNOWLEDGE_BASE,
+        SYSTEM
+    }
+
+    public enum RequestedAttribute {
+        LOCATION,
+        DATE_TIME,
+        WINNER,
+        ELIGIBILITY,
+        REGISTRATION_PROCEDURE,
+        SCHOLARSHIP,
+        RULES,
+        EVENT_LIST,
+        CLUB_LIST,
+        PARTICIPATION_STATUS,
+        GENERAL
+    }
+
+    public static class SubQuery {
+        private final String text;
+        private final String entity;
+        private final EntityScope scope;
+        private final RequestedAttribute attribute;
+        private final DataSource source;
+        private final boolean ambiguous;
+        private final String clarificationPrompt;
+
+        public SubQuery(String text, String entity, EntityScope scope,
+                        RequestedAttribute attribute, DataSource source,
+                        boolean ambiguous, String clarificationPrompt) {
+            this.text = text != null ? text : "";
+            this.entity = entity;
+            this.scope = scope != null ? scope : EntityScope.GLOBAL;
+            this.attribute = attribute != null ? attribute : RequestedAttribute.GENERAL;
+            this.source = source != null ? source : DataSource.KNOWLEDGE_BASE;
+            this.ambiguous = ambiguous;
+            this.clarificationPrompt = clarificationPrompt;
+        }
+
+        public SubQuery(String text, String entity, EntityScope scope,
+                        RequestedAttribute attribute, DataSource source) {
+            this(text, entity, scope, attribute, source, false, null);
+        }
+
+        public String getText() { return text; }
+        public String getEntity() { return entity; }
+        public EntityScope getScope() { return scope; }
+        public RequestedAttribute getAttribute() { return attribute; }
+        public DataSource getSource() { return source; }
+        public boolean isAmbiguous() { return ambiguous; }
+        public String getClarificationPrompt() { return clarificationPrompt; }
+
+        @Override
+        public String toString() {
+            return "SubQuery{entity='" + entity + '\'' +
+                    ", scope=" + scope +
+                    ", attribute=" + attribute +
+                    ", source=" + source +
+                    ", ambiguous=" + ambiguous + '}';
+        }
     }
 
     public static class ProcessedQuery {
         private final String originalQuery;
         private final String normalizedQuery;
         private final Intent intent;
+        private final RequestedAttribute requestedAttribute;
         private final List<String> extractedEntities;
         private final List<String> retrievalVariants;
         private final String targetClubName;
         private final String targetEventName;
+        private final String targetDepartment;
+        private final List<SubQuery> subQueries;
+        private final boolean ambiguous;
+        private final String clarificationMessage;
+        private final EntityScope primaryScope;
+        private final DataSource primarySource;
 
         public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
+                              RequestedAttribute requestedAttribute,
                               List<String> extractedEntities, List<String> retrievalVariants,
-                              String targetClubName, String targetEventName) {
+                              String targetClubName, String targetEventName,
+                              String targetDepartment,
+                              List<SubQuery> subQueries, boolean ambiguous,
+                              String clarificationMessage, EntityScope primaryScope,
+                              DataSource primarySource) {
             this.originalQuery = originalQuery;
             this.normalizedQuery = normalizedQuery;
             this.intent = intent;
+            this.requestedAttribute = requestedAttribute != null ? requestedAttribute : RequestedAttribute.GENERAL;
             this.extractedEntities = extractedEntities != null ? extractedEntities : Collections.emptyList();
             this.retrievalVariants = retrievalVariants != null ? retrievalVariants : Collections.emptyList();
             this.targetClubName = targetClubName;
             this.targetEventName = targetEventName;
+            this.targetDepartment = targetDepartment;
+            this.subQueries = subQueries != null ? subQueries : Collections.emptyList();
+            this.ambiguous = ambiguous;
+            this.clarificationMessage = clarificationMessage;
+            this.primaryScope = primaryScope != null ? primaryScope : EntityScope.GLOBAL;
+            this.primarySource = primarySource != null ? primarySource : DataSource.KNOWLEDGE_BASE;
+        }
+
+        public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
+                              RequestedAttribute requestedAttribute,
+                              List<String> extractedEntities, List<String> retrievalVariants,
+                              String targetClubName, String targetEventName,
+                              List<SubQuery> subQueries, boolean ambiguous,
+                              String clarificationMessage, EntityScope primaryScope,
+                              DataSource primarySource) {
+            this(originalQuery, normalizedQuery, intent, requestedAttribute, extractedEntities,
+                    retrievalVariants, targetClubName, targetEventName,
+                    (primaryScope == EntityScope.DEPARTMENT && !extractedEntities.isEmpty()) ? extractedEntities.get(0) : null,
+                    subQueries, ambiguous, clarificationMessage, primaryScope, primarySource);
+        }
+
+        public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
+                              RequestedAttribute requestedAttribute,
+                              List<String> extractedEntities, List<String> retrievalVariants,
+                              String targetClubName, String targetEventName) {
+            this(originalQuery, normalizedQuery, intent, requestedAttribute, extractedEntities,
+                    retrievalVariants, targetClubName, targetEventName, null, Collections.emptyList(),
+                    false, null, EntityScope.GLOBAL, DataSource.KNOWLEDGE_BASE);
+        }
+
+        public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
+                              List<String> extractedEntities, List<String> retrievalVariants,
+                              String targetClubName, String targetEventName) {
+            this(originalQuery, normalizedQuery, intent, RequestedAttribute.GENERAL, extractedEntities,
+                    retrievalVariants, targetClubName, targetEventName);
         }
 
         public String getOriginalQuery() { return originalQuery; }
         public String getNormalizedQuery() { return normalizedQuery; }
         public Intent getIntent() { return intent; }
+        public RequestedAttribute getRequestedAttribute() { return requestedAttribute; }
         public List<String> getExtractedEntities() { return extractedEntities; }
         public List<String> getRetrievalVariants() { return retrievalVariants; }
         public String getTargetClubName() { return targetClubName; }
         public String getTargetEventName() { return targetEventName; }
+        public String getTargetDepartment() { return targetDepartment; }
+        public List<SubQuery> getSubQueries() { return subQueries; }
+        public boolean isAmbiguous() { return ambiguous; }
+        public String getClarificationMessage() { return clarificationMessage; }
+        public EntityScope getPrimaryScope() { return primaryScope; }
+        public DataSource getPrimarySource() { return primarySource; }
     }
 
     @Autowired(required = false)
@@ -75,9 +208,73 @@ public class QueryProcessor {
             "cancellation", "participation"
     );
 
+    // Natural Paraphrases Patterns for Attributes
+    private static final Pattern WINNER_PATTERN = Pattern.compile(
+            "\\b(winner|winners|win|wins|won|winnings?|victory|victories|achievement|achievements|winning\\s+records?|podium|results?|ranks?|first\\s+place|2nd\\s+place|3rd\\s+place|who\\s+won|who\\s+came\\s+first)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern LOCATION_PATTERN = Pattern.compile(
+            "\\b(where|location|located|which\\s+floor|which\\s+block|which\\s+building|floor|building|block|place|situated|address|room)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern DATE_TIME_PATTERN = Pattern.compile(
+            "\\b(when|date|time|timing|schedule|deadline)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern REGISTRATION_PATTERN = Pattern.compile(
+            "\\b(how\\s+(do|can)\\s+i\\s+register|how\\s+to\\s+register|registration\\s+process|how\\s+(to|can\\s+i)\\s+apply|apply\\s+for\\s+events?|procedure|steps\\s+to|process\\s+to|process\\s+of|sign\\s+up|how\\s+to\\s+join|how\\s+can\\s+i\\s+join)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern ELIGIBILITY_PATTERN = Pattern.compile(
+            "\\b(who\\s+can\\s+participate|who\\s+is\\s+eligible|eligibility|can\\s+anyone\\s+participate|who\\s+is\\s+allowed|allowed\\s+to\\s+participate)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern SCHOLARSHIP_PATTERN = Pattern.compile(
+            "\\b(scholarship|ssp|nsp|state\\s+scholarship|national\\s+scholarship)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern RULES_PATTERN = Pattern.compile(
+            "\\b(rule|rules|conduct|code\\s+of\\s+conduct|id\\s+card|dress\\s+code|discipline|ragging)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern MY_DEPARTMENT_PATTERN = Pattern.compile(
+            "\\b(my\\s+department|our\\s+department)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    // Canonical Campus & Department Entities with strict word-boundary patterns
+    private static final Map<String, Pattern> ACADEMIC_DEPARTMENTS = new LinkedHashMap<>();
+    static {
+        ACADEMIC_DEPARTMENTS.put("CG", Pattern.compile("\\b(cg|computer graphics|computer graphics and engineering|computer graphics & engineering)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("CS", Pattern.compile("\\b(cs|cse|computer science|computer science and engineering|computer science & engineering)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("ISE", Pattern.compile("\\b(ise|information science|information science and engineering|information science & engineering)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("ECE", Pattern.compile("\\b(ece|electronics and communication|electronics & communication)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("AIML", Pattern.compile("\\b(aiml|ai ml|ai and ml|ai & ml|artificial intelligence)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("CD", Pattern.compile("\\b(cd department|computer science and design|data science)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("ME", Pattern.compile("\\b(mechanical|mech|mechanical engineering|me department)\\b", Pattern.CASE_INSENSITIVE));
+    }
+
+    private static final Map<String, Pattern> CAMPUS_FACILITIES = new LinkedHashMap<>();
+    static {
+        CAMPUS_FACILITIES.put("Placement Cell", Pattern.compile("\\b(placement cell|training and placement cell|training & placement cell|placement)\\b", Pattern.CASE_INSENSITIVE));
+        CAMPUS_FACILITIES.put("Library", Pattern.compile("\\b(library|central library)\\b", Pattern.CASE_INSENSITIVE));
+        CAMPUS_FACILITIES.put("Sports Complex", Pattern.compile("\\b(sports complex|gymnasium|indoor badminton|badminton courts)\\b", Pattern.CASE_INSENSITIVE));
+        CAMPUS_FACILITIES.put("College Auditorium", Pattern.compile("\\b(auditorium|college auditorium|dr m v jayaraman auditorium|jayaraman auditorium)\\b", Pattern.CASE_INSENSITIVE));
+        CAMPUS_FACILITIES.put("Principal Office", Pattern.compile("\\b(principal office|principal s office|principal office|principal)\\b", Pattern.CASE_INSENSITIVE));
+        CAMPUS_FACILITIES.put("Administration Office", Pattern.compile("\\b(admin office|administration office|college administration office|administrative block)\\b", Pattern.CASE_INSENSITIVE));
+    }
+
     public ProcessedQuery process(String rawQuery) {
         if (rawQuery == null || rawQuery.isBlank()) {
-            return new ProcessedQuery("", "", Intent.GENERAL, Collections.emptyList(), Collections.emptyList(), null, null);
+            return new ProcessedQuery("", "", Intent.GENERAL, RequestedAttribute.GENERAL,
+                    Collections.emptyList(), Collections.emptyList(), null, null);
         }
 
         String original = rawQuery.trim();
@@ -85,31 +282,185 @@ public class QueryProcessor {
 
         // 1. Check Privacy / Injection Attack
         if (isPrivacyAttack(normalized)) {
-            return new ProcessedQuery(original, normalized, Intent.PRIVACY_ATTACK, Collections.emptyList(), Collections.emptyList(), null, null);
+            SubQuery sq = new SubQuery(original, null, EntityScope.GLOBAL, RequestedAttribute.GENERAL, DataSource.SYSTEM);
+            return new ProcessedQuery(original, normalized, Intent.PRIVACY_ATTACK, RequestedAttribute.GENERAL,
+                    Collections.emptyList(), Collections.emptyList(), null, null, null,
+                    List.of(sq), false, null, EntityScope.GLOBAL, DataSource.SYSTEM);
         }
 
         // 2. Check Greeting
         if (normalized.matches("^(hi|hello|hey|hola|greetings|good morning|good afternoon|good evening|help|sup)$")) {
-            return new ProcessedQuery(original, normalized, Intent.GREETING, Collections.emptyList(), Collections.emptyList(), null, null);
+            SubQuery sq = new SubQuery(original, null, EntityScope.GLOBAL, RequestedAttribute.GENERAL, DataSource.SYSTEM);
+            return new ProcessedQuery(original, normalized, Intent.GREETING, RequestedAttribute.GENERAL,
+                    Collections.emptyList(), Collections.emptyList(), null, null, null,
+                    List.of(sq), false, null, EntityScope.GLOBAL, DataSource.SYSTEM);
         }
 
-        // 3. Check Private Student Queries (LEVEL 1 Priority - Only for personal status checks)
-        if (isUserPrivateQuery(normalized)) {
-            return new ProcessedQuery(original, normalized, Intent.PRIVATE_STUDENT_DATA, List.of("private_student_data"), Collections.emptyList(), null, null);
-        }
+        // 3. Multi-Query / Compound Query Decomposition (e.g. "location of CG and what has CS won")
+        List<SubQuery> subQueries = decomposeSubQueries(original, normalized);
 
-        // 4. Resolve Database Entities (Clubs & Events)
+        // 4. Primary Attribute & Entity Resolution
+        RequestedAttribute primaryAttribute = detectRequestedAttribute(normalized);
         String matchedClub = findMatchedClub(normalized);
         String matchedEvent = findMatchedEvent(normalized);
+        List<String> campusEntities = extractCampusEntities(normalized);
 
-        // 5. Detect Intent
-        Intent intent = detectIntent(normalized, matchedClub, matchedEvent);
+        // 5. Determine Primary Entity & Scope & Target Department
+        String primaryEntity = null;
+        EntityScope primaryScope = EntityScope.GLOBAL;
+        String targetDepartment = null;
 
-        // 6. Extract Entities & Generate Retrieval Variants
-        List<String> entities = extractEntities(normalized, matchedClub, matchedEvent);
-        List<String> variants = generateRetrievalVariants(normalized, intent);
+        if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) {
+            primaryEntity = "MY_DEPARTMENT";
+            primaryScope = EntityScope.DEPARTMENT;
+            if (primaryAttribute == RequestedAttribute.WINNER) {
+                targetDepartment = "MY_DEPARTMENT";
+            }
+        } else {
+            String winnerDept = extractDepartmentFromWinnerQuery(normalized);
+            if (winnerDept != null) {
+                primaryEntity = winnerDept;
+                primaryScope = EntityScope.DEPARTMENT;
+                targetDepartment = winnerDept;
+            } else if (!campusEntities.isEmpty()) {
+                primaryEntity = campusEntities.get(0);
+                primaryScope = isAcademicDepartment(primaryEntity) ? EntityScope.DEPARTMENT : EntityScope.CAMPUS_FACILITY;
+                if (primaryScope == EntityScope.DEPARTMENT && primaryAttribute == RequestedAttribute.WINNER) {
+                    targetDepartment = primaryEntity;
+                }
+            } else if (matchedEvent != null) {
+                primaryEntity = matchedEvent;
+                primaryScope = EntityScope.EVENT;
+            } else if (matchedClub != null) {
+                primaryEntity = matchedClub;
+                primaryScope = EntityScope.CLUB;
+            }
+        }
 
-        return new ProcessedQuery(original, normalized, intent, entities, variants, matchedClub, matchedEvent);
+        // 6. Check Ambiguity (e.g. "Who won?", "Which department won?", "Tell me the winners" without any target event, club, or department)
+        boolean isAmbiguous = false;
+        String clarificationMessage = null;
+        if (primaryAttribute == RequestedAttribute.WINNER && primaryEntity == null && targetDepartment == null && matchedEvent == null &&
+                !isUserPrivateQuery(normalized)) {
+            boolean isFaq = normalized.contains("how are") || normalized.contains("how do they announce") ||
+                            normalized.contains("when are winners") || normalized.contains("where are winners published");
+            if (!isFaq) {
+                isAmbiguous = true;
+                clarificationMessage = "Please specify the event or department you would like to see the winners for (e.g., 'Who won Hackathon?' or 'What has the CS department won?').";
+            }
+        }
+
+        // 7. Determine Primary Intent & Data Source
+        Intent intent = detectIntent(normalized, matchedClub, matchedEvent, primaryAttribute, campusEntities, primaryScope, primaryEntity, isAmbiguous);
+        DataSource primarySource = determineDataSource(intent, primaryAttribute, primaryScope);
+
+        // 8. Extract all entities and retrieval variants for RAG
+        List<String> entities = extractEntities(normalized, matchedClub, matchedEvent, campusEntities, primaryEntity);
+        List<String> variants = generateRetrievalVariants(normalized, intent, entities, primaryAttribute);
+
+        return new ProcessedQuery(
+                original, normalized, intent, primaryAttribute, entities, variants,
+                matchedClub, matchedEvent, targetDepartment, subQueries, isAmbiguous, clarificationMessage,
+                primaryScope, primarySource
+        );
+    }
+
+    private String extractDepartmentFromWinnerQuery(String normalized) {
+        Pattern p1 = Pattern.compile("\\b(?:what\\s+has|winnings?\\s+of|achievements?\\s+of|victories\\s+of|did|has|for|from|tell\\s+me)\\s+(?:the\\s+)?([a-zA-Z]{2,4})(?:\\s+department|\\s+dept)?\\s*(?:won|win|winners?|winnings?|records?|achievements?|podium|in|$)");
+        Matcher m1 = p1.matcher(normalized);
+        if (m1.find()) {
+            String token = m1.group(1).toUpperCase();
+            if (UsnDepartmentResolver.isKnownDepartment(token)) {
+                return UsnDepartmentResolver.normalizeDepartmentCode(token);
+            }
+        }
+
+        Pattern p2 = Pattern.compile("\\b([a-zA-Z]{2,4})\\s+(?:department\\s+)?(?:won|winnings?|achievements?|winning\\s+records?|podium)\\b");
+        Matcher m2 = p2.matcher(normalized);
+        if (m2.find()) {
+            String token = m2.group(1).toUpperCase();
+            if (UsnDepartmentResolver.isKnownDepartment(token)) {
+                return UsnDepartmentResolver.normalizeDepartmentCode(token);
+            }
+        }
+
+        return null;
+    }
+
+    private List<SubQuery> decomposeSubQueries(String original, String normalized) {
+        List<SubQuery> list = new ArrayList<>();
+        // Split on common coordinating conjunctions separating independent clauses
+        String[] parts = original.split("(?i)\\s+(and|as well as|&)\\s+");
+
+        if (parts.length > 1) {
+            for (String part : parts) {
+                String normPart = normalize(part);
+                if (normPart.isBlank()) continue;
+
+                RequestedAttribute attr = detectRequestedAttribute(normPart);
+                String club = findMatchedClub(normPart);
+                String event = findMatchedEvent(normPart);
+                List<String> campusEnts = extractCampusEntities(normPart);
+
+                String entity = null;
+                EntityScope scope = EntityScope.GLOBAL;
+
+                if (MY_DEPARTMENT_PATTERN.matcher(normPart).find()) {
+                    entity = "MY_DEPARTMENT";
+                    scope = EntityScope.DEPARTMENT;
+                } else {
+                    String winnerDept = extractDepartmentFromWinnerQuery(normPart);
+                    if (winnerDept != null) {
+                        entity = winnerDept;
+                        scope = EntityScope.DEPARTMENT;
+                    } else if (!campusEnts.isEmpty()) {
+                        entity = campusEnts.get(0);
+                        scope = isAcademicDepartment(entity) ? EntityScope.DEPARTMENT : EntityScope.CAMPUS_FACILITY;
+                    } else if (event != null) {
+                        entity = event;
+                        scope = EntityScope.EVENT;
+                    } else if (club != null) {
+                        entity = club;
+                        scope = EntityScope.CLUB;
+                    }
+                }
+
+                DataSource source = (attr == RequestedAttribute.WINNER) ? DataSource.DATABASE :
+                        (attr == RequestedAttribute.LOCATION) ? DataSource.KNOWLEDGE_BASE : DataSource.KNOWLEDGE_BASE;
+
+                list.add(new SubQuery(part.trim(), entity, scope, attr, source));
+            }
+        }
+
+        if (list.isEmpty()) {
+            RequestedAttribute attr = detectRequestedAttribute(normalized);
+            String club = findMatchedClub(normalized);
+            String event = findMatchedEvent(normalized);
+            List<String> campusEnts = extractCampusEntities(normalized);
+
+            String entity = null;
+            EntityScope scope = EntityScope.GLOBAL;
+            if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) {
+                entity = "MY_DEPARTMENT";
+                scope = EntityScope.DEPARTMENT;
+            } else if (!campusEnts.isEmpty()) {
+                entity = campusEnts.get(0);
+                scope = isAcademicDepartment(entity) ? EntityScope.DEPARTMENT : EntityScope.CAMPUS_FACILITY;
+            } else if (event != null) {
+                entity = event;
+                scope = EntityScope.EVENT;
+            } else if (club != null) {
+                entity = club;
+                scope = EntityScope.CLUB;
+            }
+
+            DataSource source = (attr == RequestedAttribute.WINNER || club != null || event != null) ?
+                    DataSource.DATABASE : DataSource.KNOWLEDGE_BASE;
+
+            list.add(new SubQuery(original, entity, scope, attr, source));
+        }
+
+        return list;
     }
 
     public String normalize(String text) {
@@ -154,7 +505,6 @@ public class QueryProcessor {
     }
 
     private String findMatchedClub(String normalized) {
-        // 1. Try resolving from ClubRepository
         if (clubRepository != null) {
             try {
                 List<Club> clubs = clubRepository.findAll();
@@ -171,7 +521,6 @@ public class QueryProcessor {
             } catch (Exception ignored) {}
         }
 
-        // 2. Pattern-based club extraction (e.g. "coding club", "robotics club", "music club")
         Pattern pattern = Pattern.compile("\\b([a-zA-Z]{3,20})\\s+club\\b");
         Matcher matcher = pattern.matcher(normalized);
         if (matcher.find()) {
@@ -181,7 +530,7 @@ public class QueryProcessor {
             }
         }
 
-        if (normalized.contains("coding")) {
+        if (normalized.contains("coding club") || (normalized.contains("coding") && normalized.contains("club"))) {
             return "Coding Club";
         }
 
@@ -189,18 +538,49 @@ public class QueryProcessor {
     }
 
     private String findMatchedEvent(String normalized) {
+        if (normalized == null || normalized.isBlank()) return null;
+
         if (eventRepository != null) {
             try {
                 List<Event> events = eventRepository.findAll();
-                for (Event event : events) {
-                    String eName = event.getName().toLowerCase();
-                    if (normalized.contains(eName)) {
-                        return event.getName();
+                if (events != null && !events.isEmpty()) {
+                    List<Event> sorted = new ArrayList<>(events);
+                    // Sort descending by name length so specific full names (e.g. "IExample2026") precede substrings ("Examp")
+                    sorted.sort((a, b) -> Integer.compare(b.getName().length(), a.getName().length()));
+
+                    // Priority 1: Exact full-name match with word boundary
+                    for (Event event : sorted) {
+                        String normName = event.getName().toLowerCase().replaceAll("[^a-zA-Z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+                        if (!normName.isEmpty()) {
+                            if (normalized.equals(normName) || normalized.matches(".*\\b" + Pattern.quote(normName) + "\\b.*")) {
+                                return event.getName();
+                            }
+                        }
                     }
-                    String[] words = eName.split("\\s+");
-                    for (String w : words) {
-                        if (w.length() >= 4 && (normalized.contains(w) || (w.length() >= 6 && normalized.contains(w.substring(0, 5))))) {
+
+                    // Priority 2: Full name substring match
+                    for (Event event : sorted) {
+                        String normName = event.getName().toLowerCase().replaceAll("[^a-zA-Z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
+                        if (!normName.isEmpty() && normalized.contains(normName)) {
                             return event.getName();
+                        }
+                    }
+
+                    // Priority 3: Multi-word exact token match
+                    for (Event event : sorted) {
+                        String[] words = event.getName().toLowerCase().split("\\s+");
+                        if (words.length > 1) {
+                            boolean allFound = true;
+                            for (String w : words) {
+                                String cleanW = w.replaceAll("[^a-zA-Z0-9]", "");
+                                if (cleanW.length() >= 4 && !normalized.matches(".*\\b" + Pattern.quote(cleanW) + "\\b.*")) {
+                                    allFound = false;
+                                    break;
+                                }
+                            }
+                            if (allFound) {
+                                return event.getName();
+                            }
                         }
                     }
                 }
@@ -208,34 +588,96 @@ public class QueryProcessor {
         }
 
         // Heuristic fallback for common event names
-        if (normalized.contains("hack") || normalized.contains("hackthon") || normalized.contains("hackathon")) {
+        if (normalized.matches(".*\\b(hackathon2026|hackathon|hackthon)\\b.*")) {
             return "Hackathon";
         }
-        if (normalized.contains("algorithm") || normalized.contains("arena")) {
+        if (normalized.matches(".*\\b(algorithm\\s+arena|arena)\\b.*")) {
             return "Algorithm Arena";
         }
-        if (normalized.contains("robo") || normalized.contains("robotics")) {
+        if (normalized.matches(".*\\b(robowars|robotics)\\b.*")) {
             return "RoboWars";
         }
 
         return null;
     }
 
-    private Intent detectIntent(String normalized, String matchedClub, String matchedEvent) {
-        // Winners & Event Results (LEVEL 2/3)
-        if (normalized.contains("winner") || normalized.contains("who won") || normalized.contains("who came first") ||
-                normalized.contains("results") || normalized.contains("result")) {
+    private RequestedAttribute detectRequestedAttribute(String normalized) {
+        if (SCHOLARSHIP_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.SCHOLARSHIP;
+        }
+        if (WINNER_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.WINNER;
+        }
+        if (LOCATION_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.LOCATION;
+        }
+        if (DATE_TIME_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.DATE_TIME;
+        }
+        if (ELIGIBILITY_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.ELIGIBILITY;
+        }
+        if (REGISTRATION_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.REGISTRATION_PROCEDURE;
+        }
+        if (RULES_PATTERN.matcher(normalized).find()) {
+            return RequestedAttribute.RULES;
+        }
+        return RequestedAttribute.GENERAL;
+    }
+
+    private List<String> extractCampusEntities(String normalized) {
+        List<String> found = new ArrayList<>();
+        for (Map.Entry<String, Pattern> entry : ACADEMIC_DEPARTMENTS.entrySet()) {
+            if (entry.getValue().matcher(normalized).find()) {
+                found.add(entry.getKey());
+            }
+        }
+        for (Map.Entry<String, Pattern> entry : CAMPUS_FACILITIES.entrySet()) {
+            if (entry.getValue().matcher(normalized).find()) {
+                found.add(entry.getKey());
+            }
+        }
+        return found;
+    }
+
+    private boolean isAcademicDepartment(String entityName) {
+        return entityName != null && (ACADEMIC_DEPARTMENTS.containsKey(entityName) || entityName.equals("MY_DEPARTMENT"));
+    }
+
+    private Intent detectIntent(String normalized, String matchedClub, String matchedEvent,
+                                 RequestedAttribute requestedAttribute, List<String> campusEntities,
+                                 EntityScope primaryScope, String primaryEntity, boolean isAmbiguous) {
+        // 1. Private Student Data Queries (LEVEL 1)
+        if (isUserPrivateQuery(normalized)) {
+            return Intent.PRIVATE_STUDENT_DATA;
+        }
+
+        // 2. Winners & Achievements Queries (LEVEL 2/3 Database Intent)
+        // Works for: Events ("who won hackathon"), Departments ("what has CS won", "winnings of CS", "what has my department won"), or Ambiguous queries
+        if (requestedAttribute == RequestedAttribute.WINNER) {
             return Intent.WINNERS;
         }
 
-        // Event-specific participant query (e.g. "who all participated in hackathon")
-        if ((normalized.contains("who") || normalized.contains("list") || normalized.contains("tell")) &&
-                (normalized.contains("participat") || normalized.contains("joined") || normalized.contains("registered")) &&
-                (matchedEvent != null || normalized.contains("in the") || normalized.contains("in "))) {
-            return matchedEvent != null ? Intent.WINNERS : Intent.EVENT_DETAIL;
+        // 3. Scholarships (SSP / NSP) - MUST CHECK BEFORE GENERAL EVENT REGISTRATION
+        if (requestedAttribute == RequestedAttribute.SCHOLARSHIP) {
+            return Intent.KNOWLEDGE_SCHOLARSHIP;
         }
 
-        // Club-Specific Events (LEVEL 2)
+        // 4. Campus Department / Location Questions (LEVEL 4 Knowledge Intent)
+        // Only routes to department location knowledge chunks when attribute is LOCATION or about campus information (not winnings/events!)
+        if (requestedAttribute == RequestedAttribute.LOCATION || !campusEntities.isEmpty() ||
+                normalized.contains("department") || normalized.contains("placement cell") ||
+                normalized.contains("library") || normalized.contains("sports complex") ||
+                normalized.contains("auditorium") || normalized.contains("principal office")) {
+            if (requestedAttribute == RequestedAttribute.LOCATION || !campusEntities.isEmpty() ||
+                    normalized.contains("where is") || normalized.contains("where are") ||
+                    normalized.contains("location") || normalized.contains("tell me about")) {
+                return Intent.KNOWLEDGE_DEPARTMENT_LOCATION;
+            }
+        }
+
+        // 5. Club-Specific Events (LEVEL 2)
         if (matchedClub != null && (normalized.contains("event") || normalized.contains("host") ||
                 normalized.contains("organize") || normalized.contains("conduct") || normalized.contains("show") ||
                 normalized.contains("what") || normalized.contains("which") || normalized.contains("hosted by") ||
@@ -243,82 +685,141 @@ public class QueryProcessor {
             return Intent.CLUB_EVENTS;
         }
 
-        // Available Clubs List
-        if (normalized.contains("list clubs") || normalized.contains("available clubs") ||
-                normalized.contains("which clubs") || normalized.contains("all clubs") || normalized.contains("clubs available")) {
+        // 6. Available Clubs List
+        if (normalized.contains("all club") || normalized.contains("all clubs") ||
+                normalized.contains("club name") || normalized.contains("club names") ||
+                normalized.contains("list club") || normalized.contains("list clubs") ||
+                normalized.contains("list of club") || normalized.contains("list of clubs") ||
+                normalized.contains("available club") || normalized.contains("available clubs") ||
+                normalized.contains("which club") || normalized.contains("which clubs") ||
+                normalized.contains("what club") || normalized.contains("what clubs") ||
+                normalized.contains("show club") || normalized.contains("show clubs") ||
+                normalized.contains("tell club") || normalized.contains("tell me club") ||
+                normalized.contains("give club") || normalized.contains("give all club") ||
+                normalized.contains("names of club") || normalized.contains("names of clubs") ||
+                normalized.equals("clubs") || normalized.equals("clubs list") || normalized.equals("club list") ||
+                normalized.matches(".*\\b(list|all|show|give|what|which|tell|available|names?|get)\\b.*\\b(clubs?|societies|groups?)\\b.*")) {
             return Intent.CLUBS_LIST;
         }
 
-        // Specific Event Information
-        if (matchedEvent != null && !normalized.contains("register") && !normalized.contains("how to") && !normalized.contains("procedure")) {
-            return Intent.EVENT_DETAIL;
-        }
-
-        // Active/Upcoming Events
-        if (normalized.contains("upcoming") || normalized.contains("active") || normalized.contains("ongoing") ||
-                normalized.contains("events this week") || normalized.contains("happening this week") ||
-                normalized.contains("available events") || normalized.contains("list events") ||
-                normalized.equals("events") || normalized.equals("show events")) {
-            return Intent.EVENTS_ACTIVE;
-        }
-
-        // Ended Events
-        if (normalized.contains("ended events") || normalized.contains("past events") ||
-                normalized.contains("completed events") || normalized.contains("expired events")) {
+        // 7. Ended / Past Events (MUST BE BEFORE ACTIVE/ONGOING/UPCOMING)
+        if (normalized.contains("ended") || normalized.contains("past event") || normalized.contains("past events") ||
+                normalized.contains("completed event") || normalized.contains("completed events") ||
+                normalized.contains("expired event") || normalized.contains("expired events") ||
+                normalized.contains("closed event") || normalized.contains("closed events") ||
+                normalized.contains("previous event") || normalized.contains("previous events") ||
+                normalized.contains("concluded")) {
             return Intent.EVENTS_ENDED;
         }
 
-        // Eligibility vs Procedure
-        if (normalized.contains("who can participate") || normalized.contains("who is eligible") ||
-                normalized.contains("eligibility") || normalized.contains("can anyone participate") ||
-                normalized.contains("who is allowed")) {
-            return Intent.KNOWLEDGE_ELIGIBILITY;
+        // 8. Ongoing Events (Events with registration currently active / live right now)
+        if (normalized.contains("ongoing") || normalized.contains("happening now") ||
+                normalized.contains("current event") || normalized.contains("current events") ||
+                normalized.contains("live event") || normalized.contains("live events")) {
+            return Intent.EVENTS_ONGOING;
         }
 
-        // Registration Process / Procedure (Semantic Paraphrases)
-        if (normalized.contains("register") || normalized.contains("participat") || normalized.contains("take part") ||
-                normalized.contains("sign up") || normalized.contains("join") || normalized.contains("enroll") ||
+        // 9. Upcoming Events (Events in the future / scheduled soon)
+        if (normalized.contains("upcoming") || normalized.contains("future event") || normalized.contains("future events") ||
+                normalized.contains("coming event") || normalized.contains("coming events") ||
+                normalized.contains("coming up") || normalized.contains("next week") || normalized.contains("next month")) {
+            return Intent.EVENTS_UPCOMING;
+        }
+
+        // 10. Registration Process / Procedure (Semantic Paraphrases)
+        if (requestedAttribute == RequestedAttribute.REGISTRATION_PROCEDURE || normalized.contains("register") ||
+                normalized.contains("apply") || normalized.contains("applying") ||
+                normalized.contains("take part") || normalized.contains("sign up") ||
                 normalized.contains("procedure") || normalized.contains("steps to") || normalized.contains("process to") ||
                 normalized.contains("process of") || normalized.contains("how do i") || normalized.contains("how can i") ||
                 normalized.contains("how to") || normalized.contains("what should i do")) {
             return Intent.KNOWLEDGE_REGISTRATION;
         }
 
-        // Scholarships
-        if (normalized.contains("scholarship") || normalized.contains("ssp") || normalized.contains("nsp")) {
-            return Intent.KNOWLEDGE_SCHOLARSHIP;
+        // 11. Specific Event Information
+        if (matchedEvent != null && !normalized.contains("register") && !normalized.contains("apply") && !normalized.contains("how to") && !normalized.contains("procedure")) {
+            return Intent.EVENT_DETAIL;
         }
 
-        // Rules & Regulations
-        if (normalized.contains("rule") || normalized.contains("conduct") || normalized.contains("id card") || normalized.contains("dress code")) {
+        // 12. Active / All Events
+        if (normalized.contains("active") || normalized.contains("available events") ||
+                normalized.contains("list events") || normalized.contains("what events") ||
+                normalized.contains("which events") || normalized.contains("all events") ||
+                normalized.contains("show events") || normalized.contains("tell me events") ||
+                normalized.contains("any events") || normalized.contains("events available") ||
+                normalized.contains("events scheduled") ||
+                normalized.equals("events") || normalized.equals("show events") ||
+                normalized.matches(".*\\b(what|which|show|list|tell|any|are\\s+there)\\s+.*(events?|competitions?|fests?|workshops?).*")) {
+            return Intent.EVENTS_ACTIVE;
+        }
+
+        // 13. Eligibility vs Procedure
+        if (requestedAttribute == RequestedAttribute.ELIGIBILITY || normalized.contains("who can participate") ||
+                normalized.contains("who is eligible") || normalized.contains("eligibility") ||
+                normalized.contains("can anyone participate") || normalized.contains("who is allowed")) {
+            return Intent.KNOWLEDGE_ELIGIBILITY;
+        }
+
+        // 14. Rules & Regulations
+        if (requestedAttribute == RequestedAttribute.RULES || normalized.contains("rule") ||
+                normalized.contains("conduct") || normalized.contains("id card") || normalized.contains("dress code")) {
             return Intent.KNOWLEDGE_RULES;
         }
 
         return Intent.GENERAL;
     }
 
-    private List<String> extractEntities(String normalized, String matchedClub, String matchedEvent) {
+    private DataSource determineDataSource(Intent intent, RequestedAttribute attribute, EntityScope scope) {
+        if (intent == Intent.PRIVACY_ATTACK || intent == Intent.GREETING || intent == Intent.AMBIGUOUS_QUERY) {
+            return DataSource.SYSTEM;
+        }
+        if (intent == Intent.WINNERS || intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST ||
+                intent == Intent.EVENTS_ONGOING || intent == Intent.EVENTS_UPCOMING ||
+                intent == Intent.EVENTS_ACTIVE || intent == Intent.EVENTS_ENDED ||
+                intent == Intent.EVENT_DETAIL || intent == Intent.PRIVATE_STUDENT_DATA) {
+            return DataSource.DATABASE;
+        }
+        if (attribute == RequestedAttribute.WINNER) {
+            return DataSource.DATABASE;
+        }
+        return DataSource.KNOWLEDGE_BASE;
+    }
+
+    private List<String> extractEntities(String normalized, String matchedClub, String matchedEvent,
+                                        List<String> campusEntities, String primaryEntity) {
         List<String> entities = new ArrayList<>();
         if (matchedClub != null) entities.add(matchedClub);
         if (matchedEvent != null) entities.add(matchedEvent);
+        if (campusEntities != null) {
+            entities.addAll(campusEntities);
+        }
+        if (primaryEntity != null && !entities.contains(primaryEntity)) {
+            entities.add(primaryEntity);
+        }
 
         for (String entity : KNOWN_STATIC_ENTITIES) {
-            if (normalized.contains(entity)) {
+            if (normalized.contains(entity) && !entities.contains(entity)) {
                 entities.add(entity);
             }
         }
         return entities;
     }
 
-    private List<String> generateRetrievalVariants(String normalized, Intent intent) {
+    private List<String> generateRetrievalVariants(String normalized, Intent intent, List<String> entities, RequestedAttribute attribute) {
         Set<String> variants = new LinkedHashSet<>();
         variants.add(normalized);
 
-        if (intent == Intent.KNOWLEDGE_REGISTRATION) {
+        if (intent == Intent.KNOWLEDGE_DEPARTMENT_LOCATION) {
+            for (String entity : entities) {
+                variants.add("Where is " + entity + " department");
+                variants.add(entity + " department location");
+                variants.add(entity + " building floor");
+            }
+        } else if (intent == Intent.KNOWLEDGE_REGISTRATION) {
             variants.add("registration process");
-            variants.add("how to register for event");
+            variants.add("how can i register for an event");
+            variants.add("how to apply for events");
             variants.add("steps to participate in college events");
-            variants.add("how can i see my registered events");
         } else if (intent == Intent.KNOWLEDGE_ELIGIBILITY) {
             variants.add("who can participate in events");
             variants.add("eligibility for college events");

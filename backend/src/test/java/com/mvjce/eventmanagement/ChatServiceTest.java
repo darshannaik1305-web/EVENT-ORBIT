@@ -65,6 +65,8 @@ public class ChatServiceTest {
 
         List<String> paraphrases = List.of(
                 "How do I register for an event?",
+                "how to apply for events",
+                "how can i apply for events",
                 "What is the procedure to participate in an event?",
                 "How can I join a campus event?",
                 "I want to take part in a fest, what should I do?",
@@ -139,6 +141,34 @@ public class ChatServiceTest {
     }
 
     @Test
+    @DisplayName("C2. Available clubs queries retrieve club list for all variations including 'give all club names'")
+    void testAvailableClubsQueries() {
+        List<SourceMetadata> clubSources = List.of(
+                new SourceMetadata("CLUB", "C-1", "Coding Club"),
+                new SourceMetadata("CLUB", "C-2", "Robotics Club"),
+                new SourceMetadata("CLUB", "C-3", "Cultural Club")
+        );
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.CLUBS_LIST), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📋 Available Clubs in EventOrbit:\n• Coding Club\n• Robotics Club\n• Cultural Club\n", clubSources));
+
+        List<String> clubListQueries = List.of(
+                "give all club names",
+                "all club names",
+                "list clubs",
+                "which clubs are available",
+                "show all clubs"
+        );
+
+        for (String q : clubListQueries) {
+            ChatResponse response = chatService.processQuery(q, "anonymousUser");
+            assertNotNull(response);
+            assertTrue(response.getReply().contains("Coding Club"), "Query [" + q + "] failed to return clubs");
+            assertTrue(response.getReply().contains("Robotics Club"), "Query [" + q + "] failed to return clubs");
+            assertTrue(response.getSources().stream().anyMatch(s -> s.getType().equals("CLUB")));
+        }
+    }
+
+    @Test
     @DisplayName("D. Winner queries retrieve database results without exposing student USNs")
     void testWinnerQueriesDoNotExposeUsn() {
         List<SourceMetadata> winnerSources = List.of(
@@ -179,12 +209,454 @@ public class ChatServiceTest {
     }
 
     @Test
-    @DisplayName("G. Greeting returns instant friendly welcome without DB/LLM calls")
-    void testGreetingResponse() {
-        ChatResponse response = chatService.processQuery("Good morning", "anonymousUser");
-        assertNotNull(response);
-        assertTrue(response.getReply().toLowerCase().contains("eventorbit"));
-        assertTrue(response.getSources().isEmpty());
-        verifyNoInteractions(databaseSqlAgent);
+    @DisplayName("H. Single entity department location query returns ONLY requested entity (no cross-entity bleed)")
+    void testSingleEntityDepartmentLocationPrecision() {
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), any(), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("", Collections.emptyList()));
+
+        // 1. Where is CG department?
+        ChatResponse cgResponse = chatService.processQuery("Where is CG department?", "anonymousUser");
+        assertNotNull(cgResponse);
+        String cgReply = cgResponse.getReply();
+        assertTrue(cgReply.contains("New Building") || cgReply.contains("2nd Floor"), "CG reply must contain CG location: " + cgReply);
+        assertFalse(cgReply.contains("3rd and 4th Floors"), "CG reply must NOT contain CS department location!");
+        assertFalse(cgReply.contains("Main Academic Block"), "CG reply must NOT contain CS/ISE department location!");
+
+        // 2. Where is CS department?
+        ChatResponse csResponse = chatService.processQuery("Where is CS department?", "anonymousUser");
+        assertNotNull(csResponse);
+        String csReply = csResponse.getReply();
+        assertTrue(csReply.contains("Main Academic Block") || csReply.contains("3rd and 4th Floors"), "CS reply must contain CS location: " + csReply);
+        assertFalse(csReply.contains("New Building on the 2nd Floor"), "CS reply must NOT contain CG location!");
+
+        // 3. Where is ISE department?
+        ChatResponse iseResponse = chatService.processQuery("Where is ISE department?", "anonymousUser");
+        assertNotNull(iseResponse);
+        String iseReply = iseResponse.getReply();
+        assertTrue(iseReply.contains("2nd Floor of the Main Academic Block"), "ISE reply must contain ISE location: " + iseReply);
+        assertFalse(iseReply.contains("Circuit Branch Block"), "ISE reply must NOT contain ECE location!");
+
+        // 4. Where is ECE department?
+        ChatResponse eceResponse = chatService.processQuery("Where is ECE department?", "anonymousUser");
+        assertNotNull(eceResponse);
+        String eceReply = eceResponse.getReply();
+        assertTrue(eceReply.contains("Circuit Branch Block"), "ECE reply must contain ECE location: " + eceReply);
+
+        // 5. Where is AIML department?
+        ChatResponse aimlResponse = chatService.processQuery("Where is AIML department?", "anonymousUser");
+        assertNotNull(aimlResponse);
+        String aimlReply = aimlResponse.getReply();
+        assertTrue(aimlReply.contains("Tech Innovation Wing"), "AIML reply must contain AIML location: " + aimlReply);
+
+        // 6. Where is the Placement Cell?
+        ChatResponse placeResponse = chatService.processQuery("Where is the Placement Cell?", "anonymousUser");
+        assertNotNull(placeResponse);
+        String placeReply = placeResponse.getReply();
+        assertTrue(placeReply.contains("Placement") && placeReply.contains("Administrative Block"), "Placement Cell reply must contain location: " + placeReply);
+
+        // 7. Where is the Library?
+        ChatResponse libResponse = chatService.processQuery("Where is the Library?", "anonymousUser");
+        assertNotNull(libResponse);
+        String libReply = libResponse.getReply();
+        assertTrue(libReply.contains("Library Block") || libReply.contains("Central Library"), "Library reply must contain Library location: " + libReply);
+
+        // 8. Where is CG department located?
+        ChatResponse cgLocResponse = chatService.processQuery("Where is CG department located?", "anonymousUser");
+        assertNotNull(cgLocResponse);
+        assertTrue(cgLocResponse.getReply().contains("New Building") || cgLocResponse.getReply().contains("2nd Floor"));
+
+        // 9. Tell me about CG department.
+        ChatResponse cgAboutResponse = chatService.processQuery("Tell me about CG department.", "anonymousUser");
+        assertNotNull(cgAboutResponse);
+        assertTrue(cgAboutResponse.getReply().contains("CG") || cgAboutResponse.getReply().contains("Computer Graphics"));
+        assertFalse(cgAboutResponse.getReply().contains("3rd and 4th Floors"));
+    }
+
+    @Test
+    @DisplayName("I. Multi-entity query returns information for ALL explicitly requested entities")
+    void testMultiEntityDepartmentQuery() {
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), any(), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("", Collections.emptyList()));
+
+        // 10. Where is the CG department and where is the CS department?
+        ChatResponse multiResponse = chatService.processQuery("Where is the CG department and where is the CS department?", "anonymousUser");
+        assertNotNull(multiResponse);
+        String multiReply = multiResponse.getReply();
+        assertTrue(multiReply.contains("New Building") || multiReply.contains("2nd Floor"), "Must contain CG location: " + multiReply);
+        assertTrue(multiReply.contains("Main Academic Block") || multiReply.contains("3rd and 4th"), "Must contain CS location: " + multiReply);
+    }
+
+    @Test
+    @DisplayName("J. Standard knowledge FAQs (Registration, Eligibility, Scholarship, Rules, Deadlines) work seamlessly")
+    void testStandardKnowledgeFaqs() {
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), any(), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("", Collections.emptyList()));
+
+        // 11. How can I register for an event?
+        ChatResponse regResponse = chatService.processQuery("How can I register for an event?", "anonymousUser");
+        assertNotNull(regResponse);
+        assertTrue(regResponse.getReply().toLowerCase().contains("login") || regResponse.getReply().toLowerCase().contains("register"));
+
+        // 12. Who can participate in events?
+        ChatResponse eligResponse = chatService.processQuery("Who can participate in events?", "anonymousUser");
+        assertNotNull(eligResponse);
+        assertTrue(eligResponse.getReply().toLowerCase().contains("eligible") || eligResponse.getReply().toLowerCase().contains("enrolled") || eligResponse.getReply().toLowerCase().contains("id card"));
+
+        // 13. What are the scholarship documents required?
+        ChatResponse docResponse = chatService.processQuery("What are the scholarship documents required?", "anonymousUser");
+        assertNotNull(docResponse);
+        assertTrue(docResponse.getReply().toLowerCase().contains("aadhaar") || docResponse.getReply().toLowerCase().contains("income"));
+
+        // 13b. How to apply for SSP scholarship?
+        ChatResponse sspResponse = chatService.processQuery("how to apply for ssp", "anonymousUser");
+        assertNotNull(sspResponse);
+        assertTrue(sspResponse.getReply().toLowerCase().contains("ssp") || sspResponse.getReply().toLowerCase().contains("scholarship"), "SSP query must return SSP scholarship info: " + sspResponse.getReply());
+        assertFalse(sspResponse.getReply().toLowerCase().contains("register for an event"), "SSP query must NOT return event registration info!");
+
+        // 14. What are the college rules?
+        ChatResponse rulesResponse = chatService.processQuery("What are the college rules?", "anonymousUser");
+        assertNotNull(rulesResponse);
+        assertTrue(rulesResponse.getReply().toLowerCase().contains("id card") || rulesResponse.getReply().toLowerCase().contains("discipline") || rulesResponse.getReply().toLowerCase().contains("rules"));
+
+        // 15. What happens if I miss the registration deadline?
+        ChatResponse deadResponse = chatService.processQuery("What happens if I miss the registration deadline?", "anonymousUser");
+        assertNotNull(deadResponse);
+        assertTrue(deadResponse.getReply().toLowerCase().contains("close") || deadResponse.getReply().toLowerCase().contains("late") || deadResponse.getReply().toLowerCase().contains("not accepted"));
+    }
+
+    @Test
+    @DisplayName("K. Ended, ongoing, and upcoming event queries route to respective temporal categories")
+    void testTemporalEventQueries() {
+        List<SourceMetadata> endedSources = List.of(new SourceMetadata("EVENT", "E-PAST", "Past Fest 2025"));
+        List<SourceMetadata> ongoingSources = List.of(new SourceMetadata("EVENT", "E-LIVE", "HAckthon2027"));
+        List<SourceMetadata> upcomingSources = List.of(new SourceMetadata("EVENT", "E-FUTURE", "Examp"));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_ENDED), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🔴 Ended / Past Events:\n• Past Fest 2025", endedSources));
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_ONGOING), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🟢 Ongoing Events (Registration Currently Open):\n• HAckthon2027", ongoingSources));
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_UPCOMING), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📅 Upcoming Events:\n• Examp", upcomingSources));
+
+        ChatResponse endedRes = chatService.processQuery("what are ended events", "anonymousUser");
+        assertNotNull(endedRes);
+        assertTrue(endedRes.getReply().contains("Past Fest 2025"));
+
+        ChatResponse ongoingRes = chatService.processQuery("what are ongoing events", "anonymousUser");
+        assertNotNull(ongoingRes);
+        assertTrue(ongoingRes.getReply().contains("HAckthon2027"));
+
+        ChatResponse upcomingRes = chatService.processQuery("what are upcoming events", "anonymousUser");
+        assertNotNull(upcomingRes);
+        assertTrue(upcomingRes.getReply().contains("Examp"));
+    }
+
+    @Test
+    @DisplayName("L. Phase 1 Semantic Query Understanding & Decoupled Representation Tests")
+    void testPhase1QueryUnderstanding() {
+        // 1. "What are the winnings of the CS department?"
+        QueryProcessor.ProcessedQuery q1 = queryProcessor.process("What are the winnings of the CS department?");
+        assertEquals("CS", q1.getExtractedEntities().get(0));
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q1.getRequestedAttribute());
+        assertEquals(QueryProcessor.EntityScope.DEPARTMENT, q1.getPrimaryScope());
+        assertEquals(QueryProcessor.DataSource.DATABASE, q1.getPrimarySource());
+        assertEquals(QueryProcessor.Intent.WINNERS, q1.getIntent());
+
+        // 2. "What has CG won?"
+        QueryProcessor.ProcessedQuery q2 = queryProcessor.process("What has CG won?");
+        assertEquals("CG", q2.getExtractedEntities().get(0));
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q2.getRequestedAttribute());
+        assertEquals(QueryProcessor.EntityScope.DEPARTMENT, q2.getPrimaryScope());
+        assertEquals(QueryProcessor.DataSource.DATABASE, q2.getPrimarySource());
+        assertEquals(QueryProcessor.Intent.WINNERS, q2.getIntent());
+
+        // 3. "What has my department won?"
+        QueryProcessor.ProcessedQuery q3 = queryProcessor.process("What has my department won?");
+        assertEquals("MY_DEPARTMENT", q3.getExtractedEntities().get(0));
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q3.getRequestedAttribute());
+        assertEquals(QueryProcessor.EntityScope.DEPARTMENT, q3.getPrimaryScope());
+        assertEquals(QueryProcessor.DataSource.DATABASE, q3.getPrimarySource());
+        assertEquals(QueryProcessor.Intent.WINNERS, q3.getIntent());
+
+        // 4. "Who won?" (Ambiguous query -> must NOT retrieve all winners, requires clarification)
+        QueryProcessor.ProcessedQuery q4 = queryProcessor.process("Who won?");
+        assertTrue(q4.isAmbiguous());
+        assertNotNull(q4.getClarificationMessage());
+        ChatResponse res4 = chatService.processQuery("Who won?", "anonymousUser");
+        assertNotNull(res4);
+        assertTrue(res4.getReply().contains("specify the event or department"));
+        verify(databaseSqlAgent, never()).retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), any());
+
+        // 4b. "Which department won?" (Ambiguous query -> NOT department-location query)
+        QueryProcessor.ProcessedQuery q4b = queryProcessor.process("Which department won?");
+        assertTrue(q4b.isAmbiguous());
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q4b.getRequestedAttribute());
+        assertNotEquals(QueryProcessor.Intent.KNOWLEDGE_DEPARTMENT_LOCATION, q4b.getIntent());
+        ChatResponse res4b = chatService.processQuery("Which department won?", "anonymousUser");
+        assertNotNull(res4b);
+        assertTrue(res4b.getReply().contains("specify the event or department"));
+        assertFalse(res4b.getReply().contains("Floor"), "Which department won? must NOT return department location!");
+
+        // 4c. "Tell me the winners" (Ambiguous query -> NOT FAQ chunk)
+        QueryProcessor.ProcessedQuery q4c = queryProcessor.process("Tell me the winners");
+        assertTrue(q4c.isAmbiguous());
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q4c.getRequestedAttribute());
+        ChatResponse res4c = chatService.processQuery("Tell me the winners", "anonymousUser");
+        assertNotNull(res4c);
+        assertTrue(res4c.getReply().contains("specify the event or department"));
+        assertFalse(res4c.getReply().contains("Winners will be announced on the Event Details page"), "Must NOT return how winners announced FAQ!");
+
+        // 4d. "How are winners announced?" (Valid FAQ query)
+        QueryProcessor.ProcessedQuery q4d = queryProcessor.process("How are winners announced?");
+        assertFalse(q4d.isAmbiguous());
+
+        // 5. "What is the location of CG and what has CS won?" (Multi-intent compound query)
+        QueryProcessor.ProcessedQuery q5 = queryProcessor.process("What is the location of CG and what has CS won?");
+        assertEquals(2, q5.getSubQueries().size());
+        QueryProcessor.SubQuery sq1 = q5.getSubQueries().get(0);
+        QueryProcessor.SubQuery sq2 = q5.getSubQueries().get(1);
+
+        assertEquals("CG", sq1.getEntity());
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, sq1.getAttribute());
+        assertEquals(QueryProcessor.EntityScope.DEPARTMENT, sq1.getScope());
+        assertEquals(QueryProcessor.DataSource.KNOWLEDGE_BASE, sq1.getSource());
+
+        assertEquals("CS", sq2.getEntity());
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, sq2.getAttribute());
+        assertEquals(QueryProcessor.EntityScope.DEPARTMENT, sq2.getScope());
+        assertEquals(QueryProcessor.DataSource.DATABASE, sq2.getSource());
+    }
+
+    @Test
+    @DisplayName("M. Phase 2A: 12 Rigorous End-to-End Department-Aware Winner Tests")
+    void testPhase2ADepartmentWinnerIsolation() {
+        List<SourceMetadata> csSources = List.of(new SourceMetadata("WINNER", "W-CS", "Hackathon - 1st Place"));
+        List<SourceMetadata> cgSources = List.of(new SourceMetadata("WINNER", "W-CG", "Hackathon - 2nd Place"));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), any(), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CS Department:\n• Event: Hackathon2026\n  - 1st Place: Darshan CS", csSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), any(), eq("CG")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CG Department:\n• Event: Hackathon2026\n  - 2nd Place: Priya CG", cgSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), eq("Hackathon2026"), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Winners from CS Department for Hackathon2026:\n• 1st Place: Darshan CS", csSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), any(), eq("ME")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("No winner records are available for the ME department.", Collections.emptyList()));
+
+        // TEST 1: "What has CS won?" -> Only CS winners, zero CG winners
+        ChatResponse res1 = chatService.processQuery("What has CS won?", "anonymousUser");
+        assertNotNull(res1);
+        assertTrue(res1.getReply().contains("Darshan CS"));
+        assertFalse(res1.getReply().contains("Priya CG"), "Contamination: CS query contained CG winner!");
+
+        // TEST 2: "What has CG won?" -> Only CG winners, zero CS winners
+        ChatResponse res2 = chatService.processQuery("What has CG won?", "anonymousUser");
+        assertNotNull(res2);
+        assertTrue(res2.getReply().contains("Priya CG"));
+        assertFalse(res2.getReply().contains("Darshan CS"), "Contamination: CG query contained CS winner!");
+
+        // TEST 3: "What are the winnings of the CS department?" -> Only CS winners
+        ChatResponse res3 = chatService.processQuery("What are the winnings of the CS department?", "anonymousUser");
+        assertNotNull(res3);
+        assertTrue(res3.getReply().contains("Darshan CS"));
+        assertFalse(res3.getReply().contains("Priya CG"));
+
+        // TEST 4: "What has my department won?" (Auth: 1MJ23CS200 -> CS)
+        ChatResponse res4 = chatService.processQuery("What has my department won?", "1MJ23CS200");
+        assertNotNull(res4);
+        assertTrue(res4.getReply().contains("Darshan CS"), "Auth 1MJ23CS200 must resolve to CS winners: " + res4.getReply());
+        assertFalse(res4.getReply().contains("Priya CG"), "Contamination in my department query!");
+        assertFalse(res4.getReply().contains("1MJ23CS200"), "Must NOT expose user USN!");
+
+        // TEST 5: "What has my department won?" (Auth: 1MJ23CG011 -> CG)
+        ChatResponse res5 = chatService.processQuery("What has my department won?", "1MJ23CG011");
+        assertNotNull(res5);
+        assertTrue(res5.getReply().contains("Priya CG"), "Auth 1MJ23CG011 must resolve to CG winners: " + res5.getReply());
+        assertFalse(res5.getReply().contains("Darshan CS"), "Contamination in my department query!");
+
+        // TEST 6: "Who won?" -> Clarification message, no DB dump
+        ChatResponse res6 = chatService.processQuery("Who won?", "anonymousUser");
+        assertNotNull(res6);
+        assertTrue(res6.getReply().contains("specify the event or department"));
+
+        // TEST 7: "What is the location of CG and what has CS won?" -> Compound Query with Zero Contamination
+        ChatResponse res7 = chatService.processQuery("What is the location of CG and what has CS won?", "anonymousUser");
+        assertNotNull(res7);
+        assertTrue(res7.getReply().contains("New Building") || res7.getReply().contains("2nd Floor"), "Must contain CG location: " + res7.getReply());
+        assertTrue(res7.getReply().contains("Darshan CS"), "Must contain CS winners: " + res7.getReply());
+        assertFalse(res7.getReply().contains("Priya CG"), "CG winners must NOT bleed into CS winners!");
+
+        // TEST 8: "What has CS won in Hackathon2026?" -> Both event and department filtered
+        ChatResponse res8 = chatService.processQuery("What has CS won in Hackathon2026?", "anonymousUser");
+        assertNotNull(res8);
+        assertTrue(res8.getReply().contains("Darshan CS"));
+        assertFalse(res8.getReply().contains("Priya CG"));
+
+        // TEST 9: Department with no winners -> Grounded unavailable, zero fallback
+        ChatResponse res9 = chatService.processQuery("What has ME won?", "anonymousUser");
+        assertNotNull(res9);
+        assertTrue(res9.getReply().contains("No winner records are available for the ME department."));
+        assertFalse(res9.getReply().contains("Darshan CS"));
+        assertFalse(res9.getReply().contains("Priya CG"));
+
+        // TEST 10: Existing CS location query intact
+        ChatResponse res10 = chatService.processQuery("Where is CS department?", "anonymousUser");
+        assertNotNull(res10);
+        assertTrue(res10.getReply().contains("Main Academic Block") || res10.getReply().contains("3rd and 4th"));
+
+        // TEST 11: Existing CG location query intact
+        ChatResponse res11 = chatService.processQuery("Where is CG department?", "anonymousUser");
+        assertNotNull(res11);
+        assertTrue(res11.getReply().contains("New Building") || res11.getReply().contains("2nd Floor"));
+
+        // TEST 12: Existing Registration FAQ intact
+        ChatResponse res12 = chatService.processQuery("How can I register for an event?", "anonymousUser");
+        assertNotNull(res12);
+        assertTrue(res12.getReply().toLowerCase().contains("login") || res12.getReply().toLowerCase().contains("register"));
+    }
+
+    @Test
+    @DisplayName("N. Phase 2A Final: Exact Event Matching Priority Over Substring Collision (IExample2026 vs Examp)")
+    void testEventCollisionPriorityIExampleVsExamp() {
+        com.mvjce.eventmanagement.model.Event examp = new com.mvjce.eventmanagement.model.Event();
+        examp.setId("EV-EXAMP");
+        examp.setName("Examp");
+
+        com.mvjce.eventmanagement.model.Event iexample = new com.mvjce.eventmanagement.model.Event();
+        iexample.setId("EV-IEXAMPLE");
+        iexample.setName("IExample2026");
+
+        com.mvjce.eventmanagement.repository.EventRepository mockEventRepo = mock(com.mvjce.eventmanagement.repository.EventRepository.class);
+        when(mockEventRepo.findAll()).thenReturn(List.of(examp, iexample));
+        ReflectionTestUtils.setField(queryProcessor, "eventRepository", mockEventRepo);
+
+        // 1. "What has CS won in IExample2026?" MUST resolve targetEvent = IExample2026 (NOT Examp)
+        QueryProcessor.ProcessedQuery q = queryProcessor.process("What has CS won in IExample2026?");
+        assertEquals("CS", q.getTargetDepartment());
+        assertEquals("IExample2026", q.getTargetEventName(), "Must match full event name IExample2026, not substring Examp!");
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q.getRequestedAttribute());
+
+        // 2. "What has CS won in Examp?" MUST resolve targetEvent = Examp
+        QueryProcessor.ProcessedQuery q2 = queryProcessor.process("What has CS won in Examp?");
+        assertEquals("CS", q2.getTargetDepartment());
+        assertEquals("Examp", q2.getTargetEventName());
+    }
+
+    @Test
+    @DisplayName("O. Regression Suite: 15 Rigorous Tests for Location vs Winner Routing & Compound Isolation")
+    void testLocationVsWinnerRoutingRegression() {
+        List<SourceMetadata> csSources = List.of(new SourceMetadata("WINNER", "W-CS", "Hackathon - 1st Place"));
+        List<SourceMetadata> cgSources = List.of(new SourceMetadata("WINNER", "W-CG", "Hackathon - 2nd Place"));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), any(), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CS Department:\n• Event: Hackathon2026\n  - 1st Place: Darshan CS", csSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), any(), any(), eq("CG")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CG Department:\n• Event: Hackathon2026\n  - 2nd Place: Priya CG", cgSources));
+
+        // 1. "where is cg" -> LOCATION (NOT WINNER!)
+        QueryProcessor.ProcessedQuery q1 = queryProcessor.process("where is cg");
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, q1.getRequestedAttribute());
+        assertEquals(QueryProcessor.Intent.KNOWLEDGE_DEPARTMENT_LOCATION, q1.getIntent());
+        assertEquals(QueryProcessor.DataSource.KNOWLEDGE_BASE, q1.getPrimarySource());
+        ChatResponse res1 = chatService.processQuery("where is cg", "anonymousUser");
+        assertNotNull(res1);
+        assertTrue(res1.getReply().contains("New Building") || res1.getReply().contains("2nd Floor"), "Where is CG must return CG location: " + res1.getReply());
+        assertFalse(res1.getReply().contains("Official Winners"), "Where is CG must NEVER return winner records!");
+
+        // 2. "where is CS" -> LOCATION
+        QueryProcessor.ProcessedQuery q2 = queryProcessor.process("where is CS");
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, q2.getRequestedAttribute());
+        assertEquals(QueryProcessor.Intent.KNOWLEDGE_DEPARTMENT_LOCATION, q2.getIntent());
+        ChatResponse res2 = chatService.processQuery("where is CS", "anonymousUser");
+        assertNotNull(res2);
+        assertTrue(res2.getReply().contains("Main Academic Block") || res2.getReply().contains("3rd and 4th"));
+        assertFalse(res2.getReply().contains("Official Winners"));
+
+        // 3. "where is ECE" -> LOCATION
+        QueryProcessor.ProcessedQuery q3 = queryProcessor.process("where is ECE");
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, q3.getRequestedAttribute());
+        ChatResponse res3 = chatService.processQuery("where is ECE", "anonymousUser");
+        assertNotNull(res3);
+        assertTrue(res3.getReply().contains("Circuit Branch Block") || res3.getReply().contains("3rd Floor"), "ECE location response: " + res3.getReply());
+
+        // 4. "where is AIML" -> LOCATION
+        QueryProcessor.ProcessedQuery q4 = queryProcessor.process("where is AIML");
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, q4.getRequestedAttribute());
+        ChatResponse res4 = chatService.processQuery("where is AIML", "anonymousUser");
+        assertNotNull(res4);
+        assertTrue(res4.getReply().contains("Tech Innovation Wing") || res4.getReply().contains("3rd Floor"), "AIML location response: " + res4.getReply());
+
+        // 5. "where is the CG department" -> LOCATION
+        QueryProcessor.ProcessedQuery q5 = queryProcessor.process("where is the CG department");
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, q5.getRequestedAttribute());
+        ChatResponse res5 = chatService.processQuery("where is the CG department", "anonymousUser");
+        assertNotNull(res5);
+        assertTrue(res5.getReply().contains("New Building") || res5.getReply().contains("2nd Floor"));
+
+        // 6. "location of CG" -> LOCATION
+        QueryProcessor.ProcessedQuery q6 = queryProcessor.process("location of CG");
+        assertEquals(QueryProcessor.RequestedAttribute.LOCATION, q6.getRequestedAttribute());
+        ChatResponse res6 = chatService.processQuery("location of CG", "anonymousUser");
+        assertNotNull(res6);
+        assertTrue(res6.getReply().contains("New Building") || res6.getReply().contains("2nd Floor"));
+
+        // 7. "what has CG won?" -> WINNER
+        QueryProcessor.ProcessedQuery q7 = queryProcessor.process("what has CG won?");
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q7.getRequestedAttribute());
+        assertEquals(QueryProcessor.Intent.WINNERS, q7.getIntent());
+        ChatResponse res7 = chatService.processQuery("what has CG won?", "anonymousUser");
+        assertNotNull(res7);
+        assertTrue(res7.getReply().contains("Priya CG"));
+        assertFalse(res7.getReply().contains("New Building"));
+
+        // 8. "what has CS won?" -> WINNER
+        QueryProcessor.ProcessedQuery q8 = queryProcessor.process("what has CS won?");
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q8.getRequestedAttribute());
+        ChatResponse res8 = chatService.processQuery("what has CS won?", "anonymousUser");
+        assertNotNull(res8);
+        assertTrue(res8.getReply().contains("Darshan CS"));
+
+        // 9. "what are the winnings of CS?" -> WINNER
+        QueryProcessor.ProcessedQuery q9 = queryProcessor.process("what are the winnings of CS?");
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q9.getRequestedAttribute());
+
+        // 10. "what are the achievements of CG?" -> WINNER
+        QueryProcessor.ProcessedQuery q10 = queryProcessor.process("what are the achievements of CG?");
+        assertEquals(QueryProcessor.RequestedAttribute.WINNER, q10.getRequestedAttribute());
+
+        // 11. "where is CG and what has CS won?" -> CG LOCATION + CS WINNER
+        ChatResponse res11 = chatService.processQuery("where is CG and what has CS won?", "anonymousUser");
+        assertNotNull(res11);
+        assertTrue(res11.getReply().contains("New Building") || res11.getReply().contains("2nd Floor"), "Must contain CG location: " + res11.getReply());
+        assertTrue(res11.getReply().contains("Darshan CS"), "Must contain CS winner: " + res11.getReply());
+        assertFalse(res11.getReply().contains("Priya CG"), "Must not contain CG winner!");
+
+        // 12. "what has CS won and where is CG?" -> CS WINNER + CG LOCATION
+        ChatResponse res12 = chatService.processQuery("what has CS won and where is CG?", "anonymousUser");
+        assertNotNull(res12);
+        assertTrue(res12.getReply().contains("Darshan CS"));
+        assertTrue(res12.getReply().contains("New Building") || res12.getReply().contains("2nd Floor"));
+        assertFalse(res12.getReply().contains("Priya CG"));
+
+        // 13. "what has CG won and where is CS?" -> CG WINNER + CS LOCATION
+        ChatResponse res13 = chatService.processQuery("what has CG won and where is CS?", "anonymousUser");
+        assertNotNull(res13);
+        assertTrue(res13.getReply().contains("Priya CG"), "Must contain CG winner: " + res13.getReply());
+        assertTrue(res13.getReply().contains("Main Academic Block") || res13.getReply().contains("3rd and 4th"), "Must contain CS location: " + res13.getReply());
+        assertFalse(res13.getReply().contains("Darshan CS"), "Must not contain CS winner!");
+
+        // 14. "who won?" -> Ambiguity Clarification
+        ChatResponse res14 = chatService.processQuery("who won?", "anonymousUser");
+        assertNotNull(res14);
+        assertTrue(res14.getReply().contains("specify the event or department"));
+
+        // 15. "what has CS won in Hackathon2026?" -> Event + Dept
+        ChatResponse res15 = chatService.processQuery("what has CS won in Hackathon2026?", "anonymousUser");
+        assertNotNull(res15);
+        assertTrue(res15.getReply().contains("Darshan CS"));
+        assertFalse(res15.getReply().contains("Priya CG"));
     }
 }
