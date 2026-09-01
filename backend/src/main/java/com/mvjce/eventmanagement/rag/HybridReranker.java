@@ -295,6 +295,10 @@ public class HybridReranker {
             return 0.0;
         }
 
+        if (intent == QueryProcessor.Intent.OUT_OF_DOMAIN) {
+            return -10.0;
+        }
+
         return 0.2;
     }
 }

@@ -64,12 +64,12 @@ public class DatabaseSqlAgent {
 
         // 2. Latest Event Winner Queries
         if (intent == QueryProcessor.Intent.LATEST_EVENT_WINNER) {
-            return getLatestEventWinnerContext();
+            return getLatestEventWinnerContext(targetDepartment);
         }
 
         // 3. Latest Winner Queries
         if (intent == QueryProcessor.Intent.LATEST_WINNER) {
-            return getLatestWinnerContext();
+            return getLatestWinnerContext(targetDepartment);
         }
 
         // 4. Winner Results & Event Participant Queries (LEVEL 2/3)
@@ -158,44 +158,77 @@ public class DatabaseSqlAgent {
         return new QueryResult("", Collections.emptyList());
     }
 
-    private QueryResult getLatestEventWinnerContext() {
+    private QueryResult getLatestEventWinnerContext(String targetDepartment) {
         List<Event> allEvents = eventRepository.findAll();
-        if (allEvents.isEmpty()) {
-            return new QueryResult("No declared winner is available yet.", Collections.emptyList());
+        List<Winner> allWinners = winnerRepository.findAll();
+        if (allEvents.isEmpty() || allWinners.isEmpty()) {
+            return new QueryResult("No declared winners are available for any completed event yet.", Collections.emptyList());
         }
 
-        // Sort events descending by eventDate / regEnd / createdAt to find latest event
-        List<Event> sortedEvents = new ArrayList<>(allEvents);
-        sortedEvents.sort((a, b) -> {
-            LocalDateTime da = a.getEventDate() != null ? a.getEventDate() : (a.getRegEnd() != null ? a.getRegEnd() : (a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN));
-            LocalDateTime db = b.getEventDate() != null ? b.getEventDate() : (b.getRegEnd() != null ? b.getRegEnd() : (b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN));
-            return db.compareTo(da);
-        });
+        Map<String, List<Winner>> winnersByEvent = allWinners.stream()
+                .collect(Collectors.groupingBy(Winner::getEventId));
 
-        // Find the most recent event
-        Event latestEvent = sortedEvents.get(0);
-        List<Winner> winners = winnerRepository.findByEventId(latestEvent.getId());
+        // Identify events that actually have declared winner records
+        List<Event> eventsWithWinners = allEvents.stream()
+                .filter(e -> winnersByEvent.containsKey(e.getId()) && !winnersByEvent.get(e.getId()).isEmpty())
+                .sorted((a, b) -> {
+                    LocalDateTime da = a.getEventDate() != null ? a.getEventDate() : (a.getRegEnd() != null ? a.getRegEnd() : (a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN));
+                    LocalDateTime db = b.getEventDate() != null ? b.getEventDate() : (b.getRegEnd() != null ? b.getRegEnd() : (b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN));
+                    return db.compareTo(da); // Newest eventDate first
+                })
+                .collect(Collectors.toList());
+
+        if (eventsWithWinners.isEmpty()) {
+            return new QueryResult("No declared winners are available for any completed event yet.", Collections.emptyList());
+        }
+
+        Event latestEventWithWinners = eventsWithWinners.get(0);
+        List<Winner> eventWinners = winnersByEvent.get(latestEventWithWinners.getId());
+
+        // Department-aware filtering if specified
+        if (targetDepartment != null && !targetDepartment.isBlank()) {
+            String normDept = UsnDepartmentResolver.normalizeDepartmentCode(targetDepartment);
+            eventWinners = eventWinners.stream()
+                    .filter(w -> {
+                        String dept = UsnDepartmentResolver.resolveDepartment(w.getUsername());
+                        return dept != null && dept.equalsIgnoreCase(normDept);
+                    })
+                    .collect(Collectors.toList());
+            if (eventWinners.isEmpty()) {
+                return new QueryResult("No winner records found for the " + normDept + " department in " + latestEventWithWinners.getName() + ".", Collections.emptyList());
+            }
+        }
+
         List<SourceMetadata> sources = new ArrayList<>();
-        sources.add(new SourceMetadata("EVENT", latestEvent.getId(), latestEvent.getName()));
-
-        if (winners.isEmpty()) {
-            return new QueryResult("The latest event does not have a declared winner yet.", sources);
-        }
+        sources.add(new SourceMetadata("EVENT", latestEventWithWinners.getId(), latestEventWithWinners.getName()));
 
         StringBuilder sb = new StringBuilder();
-        sb.append("🏆 Winners for the Latest Event (").append(latestEvent.getName()).append("):\n");
-        for (Winner w : winners) {
-            sources.add(new SourceMetadata("WINNER", w.getId(), latestEvent.getName() + " - " + w.getPosition().getDisplayName()));
+        sb.append("🏆 Winners for the Latest Event (").append(latestEventWithWinners.getName()).append("):\n");
+        for (Winner w : eventWinners) {
+            sources.add(new SourceMetadata("WINNER", w.getId(), latestEventWithWinners.getName() + " - " + w.getPosition().getDisplayName()));
             sb.append("• ").append(w.getPosition().getDisplayName()).append(": ").append(w.getFullName()).append("\n");
         }
 
         return new QueryResult(sb.toString(), sources);
     }
 
-    private QueryResult getLatestWinnerContext() {
+    private QueryResult getLatestWinnerContext(String targetDepartment) {
         List<Winner> allWinners = winnerRepository.findAll();
         if (allWinners.isEmpty()) {
             return new QueryResult("No declared winner is available yet.", Collections.emptyList());
+        }
+
+        if (targetDepartment != null && !targetDepartment.isBlank()) {
+            String normDept = UsnDepartmentResolver.normalizeDepartmentCode(targetDepartment);
+            allWinners = allWinners.stream()
+                    .filter(w -> {
+                        String dept = UsnDepartmentResolver.resolveDepartment(w.getUsername());
+                        return dept != null && dept.equalsIgnoreCase(normDept);
+                    })
+                    .collect(Collectors.toList());
+            if (allWinners.isEmpty()) {
+                return new QueryResult("No declared winner records are available for the " + normDept + " department.", Collections.emptyList());
+            }
         }
 
         // Sort winners descending by createdAt timestamp

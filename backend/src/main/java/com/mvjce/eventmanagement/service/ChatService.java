@@ -51,7 +51,7 @@ public class ChatService {
     @Value("${openai.api.url:https://generativelanguage.googleapis.com/v1beta}")
     private String apiUrl;
 
-    @Value("${openai.model:gemini-2.0-flash}")
+    @Value("${openai.model:models/gemini-3.6-flash}")
     private String model;
 
     @Value("${openai.connect.timeout.ms:10000}")
@@ -111,6 +111,9 @@ public class ChatService {
         }
     }
 
+    public static final String OUT_OF_DOMAIN_MESSAGE =
+            "I'm sorry, but I can only answer questions related to EventOrbit events, clubs, registrations, winners, participation, departments, scholarships, and campus information.";
+
     public ChatResponse processQuery(String rawQuery, String authenticatedUsername) {
         long totalStartTime = System.currentTimeMillis();
 
@@ -133,6 +136,11 @@ public class ChatService {
         // LEVEL 1: Privacy / Prompt Injection Protection
         if (intent == QueryProcessor.Intent.PRIVACY_ATTACK) {
             return new ChatResponse(PRIVACY_REFUSAL_MESSAGE, Collections.emptyList());
+        }
+
+        // LEVEL 1: Out-of-Domain Guard
+        if (intent == QueryProcessor.Intent.OUT_OF_DOMAIN || processed.getDomainStatus() == QueryProcessor.DomainStatus.OUT_OF_DOMAIN) {
+            return new ChatResponse(OUT_OF_DOMAIN_MESSAGE, Collections.emptyList());
         }
 
         // Contextual Reference / Pronoun Resolution
@@ -215,8 +223,10 @@ public class ChatService {
             return new ChatResponse(processed.getClarificationMessage(), Collections.emptyList());
         }
 
-        // Update / record conversation context for authenticated users
-        recordConversationContext(authenticatedUsername, processed);
+        // Update / record conversation context for authenticated users (only for in-domain queries)
+        if (processed.getDomainStatus() == QueryProcessor.DomainStatus.IN_DOMAIN && intent != QueryProcessor.Intent.OUT_OF_DOMAIN) {
+            recordConversationContext(authenticatedUsername, processed);
+        }
 
         // LEVEL 1: Student Private Data (Strict Security & JPA DB Context Only)
         if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
@@ -536,7 +546,7 @@ public class ChatService {
 
             if (isGeminiApi()) {
                 // Google Gemini Native GenerateContent API Format
-                String mod = model != null && !model.isBlank() ? model.replace("models/", "") : "gemini-2.0-flash";
+                String mod = model != null && !model.isBlank() ? model.replace("models/", "") : "gemini-3.6-flash";
                 String geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + mod + ":generateContent?key=" + apiKey;
 
                 String geminiBody = objectMapper.createObjectNode()
@@ -661,6 +671,8 @@ public class ChatService {
                     combinedSources.add(ranked.get(0).getChunk().getMetadata());
                     combinedReply.append(extractCleanContent(ranked)).append("\n\n");
                 }
+            } else if (sq.getSource() == QueryProcessor.DataSource.SYSTEM || sq.getDomainStatus() == QueryProcessor.DomainStatus.OUT_OF_DOMAIN) {
+                combinedReply.append(OUT_OF_DOMAIN_MESSAGE).append("\n\n");
             }
         }
 

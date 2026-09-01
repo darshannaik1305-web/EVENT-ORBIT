@@ -194,7 +194,7 @@ public class ChatServiceTest {
 
         ChatResponse response = chatService.processQuery("What is the weather in Paris today?", "anonymousUser");
         assertNotNull(response);
-        assertEquals(ChatService.GROUNDED_UNAVAILABLE_MESSAGE, response.getReply());
+        assertTrue(response.getReply().equals(ChatService.GROUNDED_UNAVAILABLE_MESSAGE) || response.getReply().equals(ChatService.OUT_OF_DOMAIN_MESSAGE));
         assertTrue(response.getSources().isEmpty());
     }
 
@@ -1021,5 +1021,118 @@ public class ChatServiceTest {
         ChatResponse res18 = chatService.processQuery("What is happening this week and where is CS?", "user1");
         assertTrue(res18.getReply().contains("Weekly Codeathon"));
         assertTrue(res18.getReply().contains("Main Academic Block"));
+    }
+
+    @Test
+    @DisplayName("R. Out-of-Domain Query Isolation & Retrieval Guard (Scenarios 1-15)")
+    void testOutOfDomainQueryIsolationAndRetrievalGuard() {
+        SourceMetadata cgWinnerSrc = new SourceMetadata("WINNER", "W-CG-1", "Music Concert - 1st");
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), nullable(String.class), nullable(String.class), eq("CG")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CG Department:\n• Darshan Naik", List.of(cgWinnerSrc)));
+
+        SourceMetadata csWinnerSrc = new SourceMetadata("WINNER", "W-CS-1", "Hackathon - 1st");
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), nullable(String.class), nullable(String.class), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CS Department:\n• Vignesh", List.of(csWinnerSrc)));
+
+        SourceMetadata evWinnerSrc = new SourceMetadata("WINNER", "W-EV-1", "AI Challenge 2026 - 1st");
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.LATEST_EVENT_WINNER), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Winners for the Latest Event (AI Challenge 2026):\n• 1st: Priya CG", List.of(evWinnerSrc)));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.LATEST_WINNER), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Latest Declared Winner:\n• Event: AI Challenge 2026\n• Winner: Priya CG", List.of(evWinnerSrc)));
+
+        SourceMetadata upEvSrc = new SourceMetadata("EVENT", "EV-UP-1", "Future Tech Fest");
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_UPCOMING), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📅 Upcoming Events:\n• Future Tech Fest", List.of(upEvSrc)));
+
+        SourceMetadata twEvSrc = new SourceMetadata("EVENT", "EV-TW-1", "Weekly Code Sprint");
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.EVENTS_THIS_WEEK), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📅 Events Happening in Next 7 Days:\n• Weekly Code Sprint", List.of(twEvSrc)));
+
+        SourceMetadata partSrc = new SourceMetadata("PARTICIPATION", "P-1", "User Participation");
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq("1MJ23CS200"), eq(QueryProcessor.Intent.PRIVATE_STUDENT_DATA), nullable(String.class), nullable(String.class)))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("📋 Your Registered Events:\n• Future Tech Fest", List.of(partSrc)));
+
+        // 1. "who is prime minister of india" -> OUT_OF_DOMAIN -> empty sources
+        ChatResponse r1 = chatService.processQuery("who is prime minister of india", "user1");
+        assertTrue(r1.getReply().contains("I can only answer questions related to EventOrbit"));
+        assertTrue(r1.getSources().isEmpty(), "Out of domain query must NOT retrieve any Knowledge Base chunks");
+
+        // 2. "what is the capital of france" -> OUT_OF_DOMAIN
+        ChatResponse r2 = chatService.processQuery("what is the capital of france", "user1");
+        assertTrue(r2.getReply().contains("I can only answer questions related to EventOrbit"));
+        assertTrue(r2.getSources().isEmpty());
+
+        // 3. "who won FIFA" -> OUT_OF_DOMAIN
+        ChatResponse r3 = chatService.processQuery("who won FIFA", "user1");
+        assertTrue(r3.getReply().contains("I can only answer questions related to EventOrbit"));
+        assertTrue(r3.getSources().isEmpty());
+
+        // 4. "what has CS won?" -> In-Domain
+        ChatResponse r4 = chatService.processQuery("what has CS won?", "user1");
+        assertTrue(r4.getReply().contains("Vignesh"));
+        assertFalse(r4.getSources().isEmpty());
+
+        // 5. "what has CG won?" -> In-Domain
+        ChatResponse r5 = chatService.processQuery("what has CG won?", "user1");
+        assertTrue(r5.getReply().contains("Darshan Naik"));
+        assertFalse(r5.getSources().isEmpty());
+
+        // 6. "where is CG?" -> In-Domain Knowledge Base
+        ChatResponse r6 = chatService.processQuery("where is CG?", "user1");
+        assertTrue(r6.getReply().contains("Main Academic Block") || r6.getReply().contains("Computer Graphics"));
+        assertFalse(r6.getSources().isEmpty());
+        assertEquals("KNOWLEDGE", r6.getSources().get(0).getType());
+
+        // 7. "what are the upcoming events?" -> In-Domain Database
+        ChatResponse r7 = chatService.processQuery("what are the upcoming events?", "user1");
+        assertTrue(r7.getReply().contains("Future Tech Fest"));
+        assertFalse(r7.getSources().isEmpty());
+
+        // 8. "what is happening this week?" -> In-Domain Database
+        ChatResponse r8 = chatService.processQuery("what is happening this week?", "user1");
+        assertTrue(r8.getReply().contains("Weekly Code Sprint"));
+        assertFalse(r8.getSources().isEmpty());
+
+        // 9. "show my participation" -> In-Domain Database
+        ChatResponse r9 = chatService.processQuery("show my participation", "1MJ23CS200");
+        assertTrue(r9.getReply().contains("Future Tech Fest"));
+        assertEquals("PARTICIPATION", r9.getSources().get(0).getType());
+
+        // 10. "who won the latest event?" -> In-Domain Database
+        ChatResponse r10 = chatService.processQuery("who won the latest event?", "user1");
+        assertTrue(r10.getReply().contains("AI Challenge 2026"));
+        assertTrue(r10.getReply().contains("Priya CG"));
+
+        // 11. "who is the latest winner?" -> In-Domain Database
+        ChatResponse r11 = chatService.processQuery("who is the latest winner?", "user1");
+        assertTrue(r11.getReply().contains("Priya CG"));
+
+        // 12. Compound: "what has CG won and what is the capital of France?"
+        ChatResponse r12 = chatService.processQuery("what has CG won and what is the capital of France?", "user1");
+        assertTrue(r12.getReply().contains("Darshan Naik"), "Supported portion must be answered");
+        assertTrue(r12.getReply().contains("I can only answer questions related to EventOrbit"), "Unsupported portion must be declined");
+        assertEquals(1, r12.getSources().size(), "Sources must only include the valid EventOrbit portion");
+
+        // 13. Compound: "where is CG and who is prime minister of India?"
+        ChatResponse r13 = chatService.processQuery("where is CG and who is prime minister of India?", "user1");
+        assertTrue(r13.getReply().contains("Main Academic Block") || r13.getReply().contains("Computer Graphics"));
+        assertTrue(r13.getReply().contains("I can only answer questions related to EventOrbit"));
+        assertEquals(1, r13.getSources().size());
+        assertEquals("KNOWLEDGE", r13.getSources().get(0).getType());
+
+        // 14. Turn 1: "What has CG won?" -> Turn 2: "Where is it?"
+        chatService.clearUserContext("userTurnCtx");
+        chatService.processQuery("What has CG won?", "userTurnCtx");
+        ChatResponse r14 = chatService.processQuery("Where is it?", "userTurnCtx");
+        assertTrue(r14.getReply().contains("Main Academic Block") || r14.getReply().contains("Computer Graphics"), "Context resolution must resolve CG location");
+        assertFalse(r14.getSources().isEmpty());
+
+        // 15. Turn 1: "What has CG won?" -> Turn 2: "Who is the prime minister of India?"
+        chatService.clearUserContext("userTurnCtx2");
+        chatService.processQuery("What has CG won?", "userTurnCtx2");
+        ChatResponse r15 = chatService.processQuery("Who is the prime minister of India?", "userTurnCtx2");
+        assertTrue(r15.getReply().contains("I can only answer questions related to EventOrbit"), "Turn 2 must remain out-of-domain");
+        assertTrue(r15.getSources().isEmpty(), "Turn 2 must NOT retrieve any sources");
     }
 }

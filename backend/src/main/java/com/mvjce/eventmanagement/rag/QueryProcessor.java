@@ -39,7 +39,14 @@ public class QueryProcessor {
         KNOWLEDGE_DEPARTMENT_LOCATION,
         KNOWLEDGE_GUIDANCE,
         AMBIGUOUS_QUERY,
+        OUT_OF_DOMAIN,
         GENERAL
+    }
+
+    public enum DomainStatus {
+        IN_DOMAIN,
+        OUT_OF_DOMAIN,
+        AMBIGUOUS
     }
 
     public enum EntityScope {
@@ -83,11 +90,13 @@ public class QueryProcessor {
         private final EntityResolution resolvedEntity;
         private final String targetDepartment;
         private final String targetEvent;
+        private final DomainStatus domainStatus;
 
         public SubQuery(String text, String entity, EntityScope scope,
                         RequestedAttribute attribute, DataSource source,
                         boolean ambiguous, String clarificationPrompt,
-                        EntityResolution resolvedEntity, String targetDepartment, String targetEvent) {
+                        EntityResolution resolvedEntity, String targetDepartment, String targetEvent,
+                        DomainStatus domainStatus) {
             this.text = text != null ? text : "";
             this.entity = entity;
             this.scope = scope != null ? scope : EntityScope.GLOBAL;
@@ -98,6 +107,14 @@ public class QueryProcessor {
             this.resolvedEntity = resolvedEntity != null ? resolvedEntity : new EntityResolution(mapScopeToEntityType(this.scope), entity != null ? entity : "");
             this.targetDepartment = targetDepartment;
             this.targetEvent = targetEvent;
+            this.domainStatus = domainStatus != null ? domainStatus : DomainStatus.IN_DOMAIN;
+        }
+
+        public SubQuery(String text, String entity, EntityScope scope,
+                        RequestedAttribute attribute, DataSource source,
+                        boolean ambiguous, String clarificationPrompt,
+                        EntityResolution resolvedEntity, String targetDepartment, String targetEvent) {
+            this(text, entity, scope, attribute, source, ambiguous, clarificationPrompt, resolvedEntity, targetDepartment, targetEvent, DomainStatus.IN_DOMAIN);
         }
 
         public SubQuery(String text, String entity, EntityScope scope,
@@ -123,6 +140,7 @@ public class QueryProcessor {
         public EntityResolution.EntityType getEntityType() { return resolvedEntity != null ? resolvedEntity.getType() : mapScopeToEntityType(scope); }
         public String getTargetDepartment() { return targetDepartment; }
         public String getTargetEvent() { return targetEvent; }
+        public DomainStatus getDomainStatus() { return domainStatus; }
 
         @Override
         public String toString() {
@@ -131,6 +149,7 @@ public class QueryProcessor {
                     ", attribute=" + attribute +
                     ", source=" + source +
                     ", targetEvent='" + targetEvent + '\'' +
+                    ", domainStatus=" + domainStatus +
                     ", ambiguous=" + ambiguous + '}';
         }
     }
@@ -151,6 +170,7 @@ public class QueryProcessor {
         private final EntityScope primaryScope;
         private final DataSource primarySource;
         private final EntityResolution resolvedEntity;
+        private final DomainStatus domainStatus;
 
         public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
                               RequestedAttribute requestedAttribute,
@@ -159,7 +179,8 @@ public class QueryProcessor {
                               String targetDepartment,
                               List<SubQuery> subQueries, boolean ambiguous,
                               String clarificationMessage, EntityScope primaryScope,
-                              DataSource primarySource, EntityResolution resolvedEntity) {
+                              DataSource primarySource, EntityResolution resolvedEntity,
+                              DomainStatus domainStatus) {
             this.originalQuery = originalQuery;
             this.normalizedQuery = normalizedQuery;
             this.intent = intent;
@@ -174,12 +195,28 @@ public class QueryProcessor {
             this.clarificationMessage = clarificationMessage;
             this.primaryScope = primaryScope != null ? primaryScope : EntityScope.GLOBAL;
             this.primarySource = primarySource != null ? primarySource : DataSource.KNOWLEDGE_BASE;
+            this.domainStatus = domainStatus != null ? domainStatus : DomainStatus.IN_DOMAIN;
             this.resolvedEntity = resolvedEntity != null ? resolvedEntity :
                     new EntityResolution(mapScopeToEntityType(this.primaryScope),
                             (targetDepartment != null) ? targetDepartment :
                             (targetEventName != null) ? targetEventName :
                             (targetClubName != null) ? targetClubName :
                             (!this.extractedEntities.isEmpty()) ? this.extractedEntities.get(0) : "");
+        }
+
+        public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
+                              RequestedAttribute requestedAttribute,
+                              List<String> extractedEntities, List<String> retrievalVariants,
+                              String targetClubName, String targetEventName,
+                              String targetDepartment,
+                              List<SubQuery> subQueries, boolean ambiguous,
+                              String clarificationMessage, EntityScope primaryScope,
+                              DataSource primarySource, EntityResolution resolvedEntity) {
+            this(originalQuery, normalizedQuery, intent, requestedAttribute, extractedEntities,
+                    retrievalVariants, targetClubName, targetEventName, targetDepartment,
+                    subQueries, ambiguous, clarificationMessage, primaryScope, primarySource, resolvedEntity,
+                    (intent == Intent.OUT_OF_DOMAIN) ? DomainStatus.OUT_OF_DOMAIN :
+                    (ambiguous ? DomainStatus.AMBIGUOUS : DomainStatus.IN_DOMAIN));
         }
 
         public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
@@ -240,6 +277,7 @@ public class QueryProcessor {
         public DataSource getPrimarySource() { return primarySource; }
         public EntityResolution getResolvedEntity() { return resolvedEntity; }
         public EntityResolution.EntityType getEntityType() { return resolvedEntity != null ? resolvedEntity.getType() : mapScopeToEntityType(primaryScope); }
+        public DomainStatus getDomainStatus() { return domainStatus; }
     }
 
     public static EntityResolution.EntityType mapScopeToEntityType(EntityScope scope) {
@@ -316,7 +354,7 @@ public class QueryProcessor {
         ACADEMIC_DEPARTMENTS.put("CS", Pattern.compile("\\b(cs|cse|computer science|computer science and engineering|computer science & engineering)\\b", Pattern.CASE_INSENSITIVE));
         ACADEMIC_DEPARTMENTS.put("ISE", Pattern.compile("\\b(ise|information science|information science and engineering|information science & engineering)\\b", Pattern.CASE_INSENSITIVE));
         ACADEMIC_DEPARTMENTS.put("ECE", Pattern.compile("\\b(ece|electronics and communication|electronics & communication)\\b", Pattern.CASE_INSENSITIVE));
-        ACADEMIC_DEPARTMENTS.put("AIML", Pattern.compile("\\b(aiml|ai ml|ai and ml|ai & ml|artificial intelligence)\\b", Pattern.CASE_INSENSITIVE));
+        ACADEMIC_DEPARTMENTS.put("AIML", Pattern.compile("\\b(aiml|ai\\s*ml|ai\\s*and\\s*ml|ai\\s*&\\s*ml|artificial\\s+intelligence\\s+(?:department|dept|branch|course|block|floor|lab|office|hod))\\b", Pattern.CASE_INSENSITIVE));
         ACADEMIC_DEPARTMENTS.put("CD", Pattern.compile("\\b(cd department|computer science and design|data science)\\b", Pattern.CASE_INSENSITIVE));
         ACADEMIC_DEPARTMENTS.put("ME", Pattern.compile("\\b(mechanical|mech|mechanical engineering|me department)\\b", Pattern.CASE_INSENSITIVE));
     }
@@ -331,10 +369,89 @@ public class QueryProcessor {
         CAMPUS_FACILITIES.put("Administration Office", Pattern.compile("\\b(admin office|administration office|college administration office|administrative block)\\b", Pattern.CASE_INSENSITIVE));
     }
 
+    private static final Pattern EXTERNAL_COMPETITION_PATTERN = Pattern.compile(
+            "\\b(fifa|world\\s+cup|ipl|election|elections|super\\s+bowl|nba|oscar|oscars|grammy|grammys|olympic|olympics)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern OUT_OF_DOMAIN_TOPICS_PATTERN = Pattern.compile(
+            "\\b(prime\\s+minister|president\\s+of\\s+[a-zA-Z]+|capital\\s+of|stock\\s+price|stock\\s+market|write\\s+a\\s+java|write\\s+a\\s+python|elon\\s+musk|artificial\\s+intelligence|machine\\s+learning|weather\\s+today|cricket\\s+score)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern DOMAIN_KEYWORD_PATTERN = Pattern.compile(
+            "\\b(event|events|fest|fests|hackathon|hackathons|workshop|workshops|competition|competitions|symposium|seminar|seminars|webinar|webinars|ceremony|ceremonies|" +
+            "club|clubs|society|societies|coordinator|coordinators|president|lead|" +
+            "winner|winners|win|wins|won|winnings|victory|victories|achievement|achievements|podium|rank|ranks|first\\s+place|2nd\\s+place|3rd\\s+place|" +
+            "register|registration|registrations|apply|applying|application|participate|participating|participation|participant|participants|usn|" +
+            "scholarship|scholarships|ssp|nsp|hall\\s+ticket|admit\\s+card|id\\s+card|dress\\s+code|attendance|on\\s+duty|od|discipline|ragging|rule|rules|conduct|" +
+            "mvjce|eventorbit|department|departments|placement\\s+cell|library|auditorium|sports\\s+complex|principal\\s+office|admin\\s+office|" +
+            "schedule|timing|venue|floor|block|room|syllabus|guideline|guidelines|faq)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    public DomainStatus classifyDomain(String normalized, Intent intent, RequestedAttribute attribute,
+                                       String matchedClub, String matchedEvent, List<String> campusEntities,
+                                       String targetDepartment, boolean isAmbiguous) {
+        if (isAmbiguous) {
+            return DomainStatus.AMBIGUOUS;
+        }
+
+        // 1. Hard out-of-domain patterns (external competitions, worldly queries, coding questions)
+        if (EXTERNAL_COMPETITION_PATTERN.matcher(normalized).find() && matchedEvent == null && matchedClub == null) {
+            return DomainStatus.OUT_OF_DOMAIN;
+        }
+
+        if (OUT_OF_DOMAIN_TOPICS_PATTERN.matcher(normalized).find() && matchedEvent == null && matchedClub == null &&
+                (campusEntities == null || campusEntities.isEmpty()) && targetDepartment == null) {
+            return DomainStatus.OUT_OF_DOMAIN;
+        }
+
+        // 2. Recognized System Intents
+        if (intent == Intent.GREETING || intent == Intent.PRIVACY_ATTACK) {
+            return DomainStatus.IN_DOMAIN;
+        }
+
+        // 3. Recognized Database Intents
+        if (intent == Intent.WINNERS || intent == Intent.LATEST_WINNER || intent == Intent.LATEST_EVENT_WINNER ||
+                intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST || intent == Intent.EVENTS_ONGOING ||
+                intent == Intent.EVENTS_UPCOMING || intent == Intent.EVENTS_ACTIVE || intent == Intent.EVENTS_ENDED ||
+                intent == Intent.EVENTS_THIS_WEEK || intent == Intent.REGISTRATION_OPENING_THIS_WEEK ||
+                intent == Intent.REGISTRATION_CLOSING_THIS_WEEK || intent == Intent.RECOMMENDED_REGISTRATIONS_THIS_WEEK ||
+                intent == Intent.EVENT_DETAIL || intent == Intent.PRIVATE_STUDENT_DATA) {
+            return DomainStatus.IN_DOMAIN;
+        }
+
+        // 4. Recognized Knowledge Intents
+        if (intent == Intent.KNOWLEDGE_DEPARTMENT_LOCATION || intent == Intent.KNOWLEDGE_SCHOLARSHIP ||
+                intent == Intent.KNOWLEDGE_RULES || intent == Intent.KNOWLEDGE_ELIGIBILITY ||
+                intent == Intent.KNOWLEDGE_REGISTRATION || intent == Intent.KNOWLEDGE_GUIDANCE) {
+            return DomainStatus.IN_DOMAIN;
+        }
+
+        // 5. Recognized Domain Entities
+        if (matchedClub != null || matchedEvent != null || targetDepartment != null || (campusEntities != null && !campusEntities.isEmpty())) {
+            return DomainStatus.IN_DOMAIN;
+        }
+
+        // 6. Recognized Attribute
+        if (attribute != RequestedAttribute.GENERAL) {
+            return DomainStatus.IN_DOMAIN;
+        }
+
+        // 7. Domain Keyword Match
+        if (DOMAIN_KEYWORD_PATTERN.matcher(normalized).find()) {
+            return DomainStatus.IN_DOMAIN;
+        }
+
+        return DomainStatus.OUT_OF_DOMAIN;
+    }
+
     public ProcessedQuery process(String rawQuery) {
         if (rawQuery == null || rawQuery.isBlank()) {
-            return new ProcessedQuery("", "", Intent.GENERAL, RequestedAttribute.GENERAL,
-                    Collections.emptyList(), Collections.emptyList(), null, null);
+            return new ProcessedQuery("", "", Intent.OUT_OF_DOMAIN, RequestedAttribute.GENERAL,
+                    Collections.emptyList(), Collections.emptyList(), null, null, null,
+                    Collections.emptyList(), false, null, EntityScope.GLOBAL, DataSource.SYSTEM, null, DomainStatus.OUT_OF_DOMAIN);
         }
 
         String original = rawQuery.trim();
@@ -342,18 +459,18 @@ public class QueryProcessor {
 
         // 1. Check Privacy / Injection Attack
         if (isPrivacyAttack(normalized)) {
-            SubQuery sq = new SubQuery(original, null, EntityScope.GLOBAL, RequestedAttribute.GENERAL, DataSource.SYSTEM);
+            SubQuery sq = new SubQuery(original, null, EntityScope.GLOBAL, RequestedAttribute.GENERAL, DataSource.SYSTEM, false, null, null, null, null, DomainStatus.IN_DOMAIN);
             return new ProcessedQuery(original, normalized, Intent.PRIVACY_ATTACK, RequestedAttribute.GENERAL,
                     Collections.emptyList(), Collections.emptyList(), null, null, null,
-                    List.of(sq), false, null, EntityScope.GLOBAL, DataSource.SYSTEM);
+                    List.of(sq), false, null, EntityScope.GLOBAL, DataSource.SYSTEM, null, DomainStatus.IN_DOMAIN);
         }
 
         // 2. Check Greeting
         if (normalized.matches("^(hi|hello|hey|hola|greetings|good morning|good afternoon|good evening|help|sup)$")) {
-            SubQuery sq = new SubQuery(original, null, EntityScope.GLOBAL, RequestedAttribute.GENERAL, DataSource.SYSTEM);
+            SubQuery sq = new SubQuery(original, null, EntityScope.GLOBAL, RequestedAttribute.GENERAL, DataSource.SYSTEM, false, null, null, null, null, DomainStatus.IN_DOMAIN);
             return new ProcessedQuery(original, normalized, Intent.GREETING, RequestedAttribute.GENERAL,
                     Collections.emptyList(), Collections.emptyList(), null, null, null,
-                    List.of(sq), false, null, EntityScope.GLOBAL, DataSource.SYSTEM);
+                    List.of(sq), false, null, EntityScope.GLOBAL, DataSource.SYSTEM, null, DomainStatus.IN_DOMAIN);
         }
 
         // 3. Multi-Query / Compound Query Decomposition (e.g. "location of CG and what has CS won")
@@ -403,20 +520,31 @@ public class QueryProcessor {
         boolean isLatestWinnerQuery = normalized.contains("latest winner") || normalized.contains("most recent winner") ||
                 normalized.contains("latest event") || normalized.contains("recent event") ||
                 normalized.contains("who won the latest") || normalized.contains("who won the most recent") ||
+                normalized.contains("who won most recently") || normalized.contains("won most recently") ||
+                normalized.contains("who won recently") ||
                 normalized.contains("last winner") || normalized.contains("latest winners");
 
         if (primaryAttribute == RequestedAttribute.WINNER && primaryEntity == null && targetDepartment == null && matchedEvent == null &&
                 !isUserPrivateQuery(normalized) && !isLatestWinnerQuery) {
-            boolean isFaq = normalized.contains("how are") || normalized.contains("how do they announce") ||
-                            normalized.contains("when are winners") || normalized.contains("where are winners published");
-            if (!isFaq) {
-                isAmbiguous = true;
-                clarificationMessage = "Please specify the event or department you would like to see the winners for (e.g., 'Who won Hackathon?' or 'What has the CS department won?').";
+            boolean isExternalComp = EXTERNAL_COMPETITION_PATTERN.matcher(normalized).find();
+            if (!isExternalComp) {
+                boolean isFaq = normalized.contains("how are") || normalized.contains("how do they announce") ||
+                                normalized.contains("when are winners") || normalized.contains("where are winners published");
+                if (!isFaq) {
+                    isAmbiguous = true;
+                    clarificationMessage = "Please specify the event or department you would like to see the winners for (e.g., 'Who won Hackathon?' or 'What has the CS department won?').";
+                }
             }
         }
 
-        // 7. Determine Primary Intent & Data Source
+        // 7. Determine Primary Intent & Domain Classification
         Intent intent = detectIntent(normalized, matchedClub, matchedEvent, primaryAttribute, campusEntities, primaryScope, primaryEntity, isAmbiguous);
+        DomainStatus domainStatus = classifyDomain(normalized, intent, primaryAttribute, matchedClub, matchedEvent, campusEntities, targetDepartment, isAmbiguous);
+        
+        if (domainStatus == DomainStatus.OUT_OF_DOMAIN) {
+            intent = Intent.OUT_OF_DOMAIN;
+        }
+
         DataSource primarySource = determineDataSource(intent, primaryAttribute, primaryScope);
 
         // 8. Extract all entities and retrieval variants for RAG
@@ -438,7 +566,7 @@ public class QueryProcessor {
         return new ProcessedQuery(
                 original, normalized, intent, primaryAttribute, entities, variants,
                 matchedClub, matchedEvent, targetDepartment, subQueries, isAmbiguous, clarificationMessage,
-                primaryScope, primarySource, primaryResolvedEntity
+                primaryScope, primarySource, primaryResolvedEntity, domainStatus
         );
     }
 
@@ -528,13 +656,17 @@ public class QueryProcessor {
                 }
 
                 Intent subIntent = detectIntent(normPart, club, event, attr, campusEnts, scope, entity, false);
-                DataSource source = determineDataSource(subIntent, attr, scope);
-
                 String targetDept = (attr == RequestedAttribute.WINNER && scope == EntityScope.DEPARTMENT) ? entity : null;
                 String targetEvt = event;
+                DomainStatus subStatus = classifyDomain(normPart, subIntent, attr, club, event, campusEnts, targetDept, false);
+                if (subStatus == DomainStatus.OUT_OF_DOMAIN) {
+                    subIntent = Intent.OUT_OF_DOMAIN;
+                }
+                DataSource source = determineDataSource(subIntent, attr, scope);
+
                 EntityResolution resEnt = new EntityResolution(mapScopeToEntityType(scope), entity != null ? entity : "", null, true, 1.0);
 
-                list.add(new SubQuery(part.trim(), entity, scope, attr, source, false, null, resEnt, targetDept, targetEvt));
+                list.add(new SubQuery(part.trim(), entity, scope, attr, source, false, null, resEnt, targetDept, targetEvt, subStatus));
             }
         }
 
@@ -560,14 +692,18 @@ public class QueryProcessor {
                 scope = EntityScope.CLUB;
             }
 
-            DataSource source = (attr == RequestedAttribute.WINNER || club != null || event != null) ?
-                    DataSource.DATABASE : DataSource.KNOWLEDGE_BASE;
-
             String targetDept = (attr == RequestedAttribute.WINNER && scope == EntityScope.DEPARTMENT) ? entity : null;
             String targetEvt = event;
+            Intent subIntent = detectIntent(normalized, club, event, attr, campusEnts, scope, entity, false);
+            DomainStatus status = classifyDomain(normalized, subIntent, attr, club, event, campusEnts, targetDept, false);
+            if (status == DomainStatus.OUT_OF_DOMAIN) {
+                subIntent = Intent.OUT_OF_DOMAIN;
+            }
+            DataSource source = determineDataSource(subIntent, attr, scope);
+
             EntityResolution resEnt = new EntityResolution(mapScopeToEntityType(scope), entity != null ? entity : "", null, true, 1.0);
 
-            list.add(new SubQuery(original, entity, scope, attr, source, false, null, resEnt, targetDept, targetEvt));
+            list.add(new SubQuery(original, entity, scope, attr, source, false, null, resEnt, targetDept, targetEvt, status));
         }
 
         return list;
@@ -737,7 +873,7 @@ public class QueryProcessor {
             return "RoboWars";
         }
 
-        Pattern eventInPattern = Pattern.compile("\\b(?:in|for|at|during|about|of|event)\\s+([a-zA-Z0-9_-]{4,30})\\b");
+        Pattern eventInPattern = Pattern.compile("\\b(?:in|for|at|during|about|event)\\s+([a-zA-Z0-9_-]{4,30})\\b");
         Matcher em = eventInPattern.matcher(normalized);
         if (em.find()) {
             String candidate = em.group(1);
@@ -824,7 +960,8 @@ public class QueryProcessor {
 
         if (normalized.contains("latest winner") || normalized.contains("latest winners") ||
                 normalized.contains("who won latest") || normalized.contains("who is the latest winner") ||
-                normalized.contains("who won most recently") || normalized.contains("most recent winner") ||
+                normalized.contains("who won most recently") || normalized.contains("won most recently") ||
+                normalized.contains("who won recently") || normalized.contains("most recent winner") ||
                 normalized.contains("recent winner")) {
             return Intent.LATEST_WINNER;
         }
@@ -979,7 +1116,7 @@ public class QueryProcessor {
     }
 
     private DataSource determineDataSource(Intent intent, RequestedAttribute attribute, EntityScope scope) {
-        if (intent == Intent.PRIVACY_ATTACK || intent == Intent.GREETING || intent == Intent.AMBIGUOUS_QUERY) {
+        if (intent == Intent.PRIVACY_ATTACK || intent == Intent.GREETING || intent == Intent.AMBIGUOUS_QUERY || intent == Intent.OUT_OF_DOMAIN) {
             return DataSource.SYSTEM;
         }
         if (intent == Intent.WINNERS || intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST ||

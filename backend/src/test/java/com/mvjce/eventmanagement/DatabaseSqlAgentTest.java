@@ -374,41 +374,74 @@ public class DatabaseSqlAgentTest {
     }
 
     @Test
-    @DisplayName("10. Latest Winner and Latest Event Winner retrieval")
+    @DisplayName("10. Latest Winner (by Winner.createdAt) vs Latest Event Winner (most recent event with declared winners)")
     void testLatestWinnerRetrieval() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Event 1 (Oldest event: 3 months ago) -> Winner created recently (yesterday)
         Event pastEvent1 = new Event();
         pastEvent1.setId("EV-PAST-1");
         pastEvent1.setName("Hackathon 2025");
-        pastEvent1.setEventDate(LocalDateTime.now().minusMonths(2));
+        pastEvent1.setEventDate(now.minusMonths(3));
 
+        Winner winnerForEvent1 = new Winner("EV-PAST-1", "CLUB-1", "1MJ23CS200", "Darshan CS", "cs@mvjce.edu.in", "9999999991", Winner.Position.FIRST);
+        winnerForEvent1.setCreatedAt(now.minusDays(1)); // Most recent Winner record declaration
+
+        // Event 2 (More recent completed event: 10 days ago) -> Winner created earlier (10 days ago)
         Event pastEvent2 = new Event();
         pastEvent2.setId("EV-PAST-2");
         pastEvent2.setName("AI Challenge 2026");
-        pastEvent2.setEventDate(LocalDateTime.now().minusDays(2)); // More recent event
+        pastEvent2.setEventDate(now.minusDays(10));
 
-        Winner oldWinner = new Winner("EV-PAST-1", "CLUB-1", "1MJ23CS200", "Darshan CS", "cs@mvjce.edu.in", "9999999991", Winner.Position.FIRST);
-        oldWinner.setCreatedAt(LocalDateTime.now().minusMonths(2));
+        Winner winnerForEvent2 = new Winner("EV-PAST-2", "CLUB-2", "1MJ23CG011", "Priya CG", "cg@mvjce.edu.in", "9999999992", Winner.Position.FIRST);
+        winnerForEvent2.setCreatedAt(now.minusDays(10));
 
-        Winner recentWinner = new Winner("EV-PAST-2", "CLUB-2", "1MJ23CG011", "Priya CG", "cg@mvjce.edu.in", "9999999992", Winner.Position.FIRST);
-        recentWinner.setCreatedAt(LocalDateTime.now().minusDays(1)); // More recently created winner
+        // Event 3 (Newest event: yesterday, but has NO declared winners yet)
+        Event newestEventNoWinners = new Event();
+        newestEventNoWinners.setId("EV-NEWEST-NO-WINNERS");
+        newestEventNoWinners.setName("RoboClash 2026");
+        newestEventNoWinners.setEventDate(now.minusDays(1));
 
-        when(eventRepository.findAll()).thenReturn(List.of(pastEvent1, pastEvent2));
+        // Event 4 (Future event: 1 month in future, has NO declared winners)
+        Event futureEvent = new Event();
+        futureEvent.setId("EV-FUTURE");
+        futureEvent.setName("Mega Hackathon 2027");
+        futureEvent.setEventDate(now.plusMonths(1));
+
+        when(eventRepository.findAll()).thenReturn(List.of(futureEvent, newestEventNoWinners, pastEvent2, pastEvent1));
         when(eventRepository.findById("EV-PAST-1")).thenReturn(Optional.of(pastEvent1));
         when(eventRepository.findById("EV-PAST-2")).thenReturn(Optional.of(pastEvent2));
-        when(winnerRepository.findAll()).thenReturn(List.of(oldWinner, recentWinner));
-        when(winnerRepository.findByEventId("EV-PAST-2")).thenReturn(List.of(recentWinner));
+        when(eventRepository.findById("EV-NEWEST-NO-WINNERS")).thenReturn(Optional.of(newestEventNoWinners));
+        when(eventRepository.findById("EV-FUTURE")).thenReturn(Optional.of(futureEvent));
 
-        // 1. Latest Winner
-        DatabaseSqlAgent.QueryResult resLatestWinner = databaseSqlAgent.retrieveTargetedContext(
-                "Who is the latest winner?", "anonymousUser", QueryProcessor.Intent.LATEST_WINNER, null, null);
-        assertTrue(resLatestWinner.getContext().contains("Priya CG"));
-        assertTrue(resLatestWinner.getContext().contains("AI Challenge 2026"));
+        when(winnerRepository.findAll()).thenReturn(List.of(winnerForEvent1, winnerForEvent2));
+        when(winnerRepository.findByEventId("EV-PAST-1")).thenReturn(List.of(winnerForEvent1));
+        when(winnerRepository.findByEventId("EV-PAST-2")).thenReturn(List.of(winnerForEvent2));
+        when(winnerRepository.findByEventId("EV-NEWEST-NO-WINNERS")).thenReturn(Collections.emptyList());
+        when(winnerRepository.findByEventId("EV-FUTURE")).thenReturn(Collections.emptyList());
 
-        // 2. Latest Event Winner
+        // 1. "Who won the latest event?" -> Must pick Event 2 (AI Challenge 2026) because it's the most recent event WITH declared winners (skipping Event 3 and Event 4)
         DatabaseSqlAgent.QueryResult resLatestEvWinner = databaseSqlAgent.retrieveTargetedContext(
                 "Who won the latest event?", "anonymousUser", QueryProcessor.Intent.LATEST_EVENT_WINNER, null, null);
-        assertTrue(resLatestEvWinner.getContext().contains("AI Challenge 2026"));
-        assertTrue(resLatestEvWinner.getContext().contains("Priya CG"));
+        String evWinnerCtx = resLatestEvWinner.getContext();
+        assertTrue(evWinnerCtx.contains("AI Challenge 2026"), "Latest event with declared winners must be AI Challenge 2026");
+        assertTrue(evWinnerCtx.contains("Priya CG"));
+        assertFalse(evWinnerCtx.contains("Darshan CS"), "Must not contaminate with winners from other events");
+        assertFalse(evWinnerCtx.contains("1MJ23CG011"), "Must not expose student USN in winner context");
+
+        // 2. "Who is the latest winner?" -> Must pick winnerForEvent1 (Darshan CS) because Winner.createdAt is the most recent (yesterday)
+        DatabaseSqlAgent.QueryResult resLatestWinner = databaseSqlAgent.retrieveTargetedContext(
+                "Who is the latest winner?", "anonymousUser", QueryProcessor.Intent.LATEST_WINNER, null, null);
+        String winnerCtx = resLatestWinner.getContext();
+        assertTrue(winnerCtx.contains("Darshan CS"), "Latest winner by creation timestamp must be Darshan CS");
+        assertTrue(winnerCtx.contains("Hackathon 2025"));
+        assertFalse(winnerCtx.contains("1MJ23CS200"), "Must not expose student USN in winner context");
+
+        // 3. When NO events have declared winners:
+        when(winnerRepository.findAll()).thenReturn(Collections.emptyList());
+        DatabaseSqlAgent.QueryResult noWinnersEvRes = databaseSqlAgent.retrieveTargetedContext(
+                "Who won the latest event?", "anonymousUser", QueryProcessor.Intent.LATEST_EVENT_WINNER, null, null);
+        assertTrue(noWinnersEvRes.getContext().contains("No declared winners are available for any completed event yet."));
     }
 
     @Test
