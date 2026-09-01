@@ -18,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,6 +62,55 @@ public class ChatService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    public static class ConversationContext {
+        private final List<EntityResolution> resolvedEntities;
+        private final String previousEvent;
+        private final String previousDepartment;
+        private final String previousClub;
+        private final QueryProcessor.RequestedAttribute previousAttribute;
+        private final long timestamp;
+
+        public ConversationContext(List<EntityResolution> resolvedEntities, String previousEvent,
+                                   String previousDepartment, String previousClub,
+                                   QueryProcessor.RequestedAttribute previousAttribute) {
+            this.resolvedEntities = (resolvedEntities != null) ? new ArrayList<>(resolvedEntities) : Collections.emptyList();
+            this.previousEvent = previousEvent;
+            this.previousDepartment = previousDepartment;
+            this.previousClub = previousClub;
+            this.previousAttribute = previousAttribute;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        public List<EntityResolution> getResolvedEntities() { return resolvedEntities; }
+        public String getPreviousEvent() { return previousEvent; }
+        public String getPreviousDepartment() { return previousDepartment; }
+        public String getPreviousClub() { return previousClub; }
+        public QueryProcessor.RequestedAttribute getPreviousAttribute() { return previousAttribute; }
+        public long getTimestamp() { return timestamp; }
+    }
+
+    private final Map<String, ConversationContext> userContexts = new ConcurrentHashMap<>();
+
+    public void clearUserContext(String username) {
+        if (username != null) {
+            userContexts.remove(username.toLowerCase());
+        }
+    }
+
+    public void clearAllContexts() {
+        userContexts.clear();
+    }
+
+    public ConversationContext getUserContext(String username) {
+        return (username != null) ? userContexts.get(username.toLowerCase()) : null;
+    }
+
+    private void saveUserContext(String username, ConversationContext context) {
+        if (username != null && !username.isBlank() && !username.equalsIgnoreCase("anonymousUser")) {
+            userContexts.put(username.toLowerCase(), context);
+        }
+    }
+
     public ChatResponse processQuery(String rawQuery, String authenticatedUsername) {
         long totalStartTime = System.currentTimeMillis();
 
@@ -85,10 +135,77 @@ public class ChatService {
             return new ChatResponse(PRIVACY_REFUSAL_MESSAGE, Collections.emptyList());
         }
 
+        // Contextual Reference / Pronoun Resolution
+        boolean isPronounOrReference = queryProcessor.isPronounQuery(processed.getNormalizedQuery()) ||
+                processed.getNormalizedQuery().startsWith("where is it") ||
+                processed.getNormalizedQuery().startsWith("who won it") ||
+                processed.getNormalizedQuery().startsWith("tell me about it");
+
+        boolean hasExplicitEntity = (!processed.getExtractedEntities().isEmpty() ||
+                processed.getTargetDepartment() != null ||
+                processed.getTargetEventName() != null ||
+                processed.getTargetClubName() != null);
+
+        if (isPronounOrReference && !hasExplicitEntity) {
+            ConversationContext userCtx = getUserContext(authenticatedUsername);
+            if (userCtx == null || userCtx.getResolvedEntities().isEmpty()) {
+                return new ChatResponse("I’m not sure what you’re referring to. Please specify the department, event, or facility.", Collections.emptyList());
+            }
+
+            if (userCtx.getResolvedEntities().size() > 1) {
+                String e1 = userCtx.getResolvedEntities().get(0).getCanonicalName();
+                String e2 = userCtx.getResolvedEntities().get(1).getCanonicalName();
+                return new ChatResponse("Please specify whether you mean " + e1 + " or " + e2 + ".", Collections.emptyList());
+            }
+
+            EntityResolution candidate = userCtx.getResolvedEntities().get(0);
+            QueryProcessor.RequestedAttribute reqAttr = processed.getRequestedAttribute();
+
+            if (reqAttr == QueryProcessor.RequestedAttribute.LOCATION) {
+                if (candidate.getType() == EntityResolution.EntityType.DEPARTMENT ||
+                    candidate.getType() == EntityResolution.EntityType.CAMPUS_FACILITY) {
+                    processed = queryProcessor.process("where is " + candidate.getCanonicalName());
+                    intent = processed.getIntent();
+                } else {
+                    return new ChatResponse("Please specify the department or facility you are looking for.", Collections.emptyList());
+                }
+            } else if (reqAttr == QueryProcessor.RequestedAttribute.WINNER) {
+                if (candidate.getType() == EntityResolution.EntityType.EVENT) {
+                    processed = queryProcessor.process("who won in " + candidate.getCanonicalName());
+                    intent = processed.getIntent();
+                } else if (candidate.getType() == EntityResolution.EntityType.DEPARTMENT) {
+                    if (processed.getNormalizedQuery().contains("what has it won") ||
+                        processed.getNormalizedQuery().contains("what did it win") ||
+                        processed.getNormalizedQuery().contains("winnings of it") ||
+                        processed.getNormalizedQuery().contains("achievements of it")) {
+                        processed = queryProcessor.process("what has " + candidate.getCanonicalName() + " won");
+                        intent = processed.getIntent();
+                    } else {
+                        return new ChatResponse("Please specify the event you are asking about.", Collections.emptyList());
+                    }
+                } else {
+                    return new ChatResponse("Please specify the event or department you are asking about.", Collections.emptyList());
+                }
+            } else {
+                if (candidate.getType() == EntityResolution.EntityType.EVENT) {
+                    processed = queryProcessor.process("tell me about event " + candidate.getCanonicalName());
+                    intent = processed.getIntent();
+                } else if (candidate.getType() == EntityResolution.EntityType.DEPARTMENT) {
+                    processed = queryProcessor.process("where is " + candidate.getCanonicalName());
+                    intent = processed.getIntent();
+                } else {
+                    return new ChatResponse("Please specify the department, event, or facility.", Collections.emptyList());
+                }
+            }
+        }
+
         // LEVEL 1: Ambiguous Query Clarification (Do not dump all data)
         if (processed.isAmbiguous() && processed.getClarificationMessage() != null) {
             return new ChatResponse(processed.getClarificationMessage(), Collections.emptyList());
         }
+
+        // Update / record conversation context for authenticated users
+        recordConversationContext(authenticatedUsername, processed);
 
         // LEVEL 1: Student Private Data (Strict Security & JPA DB Context Only)
         if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
@@ -254,6 +371,50 @@ public class ChatService {
         // LEVEL 5: Grounded Fallback (No context found, do not invoke LLM)
         logLatencyMetrics(lexicalLatencyMs, semanticLatencyMs, rankingLatencyMs, totalStartTime);
         return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
+    }
+
+    private void recordConversationContext(String username, QueryProcessor.ProcessedQuery processed) {
+        if (username == null || username.isBlank() || username.equalsIgnoreCase("anonymousUser")) {
+            return;
+        }
+
+        List<EntityResolution> entities = new ArrayList<>();
+        if (processed.getSubQueries().size() > 1) {
+            for (QueryProcessor.SubQuery sq : processed.getSubQueries()) {
+                if (sq.getEntity() != null && !sq.getEntity().isBlank()) {
+                    entities.add(new EntityResolution(
+                            sq.getEntityType(),
+                            sq.getEntity(),
+                            null,
+                            true,
+                            1.0
+                    ));
+                }
+            }
+        } else {
+            if (processed.getTargetDepartment() != null) {
+                entities.add(new EntityResolution(EntityResolution.EntityType.DEPARTMENT, processed.getTargetDepartment(), null, true, 1.0));
+            } else if (processed.getTargetEventName() != null) {
+                entities.add(new EntityResolution(EntityResolution.EntityType.EVENT, processed.getTargetEventName(), null, true, 1.0));
+            } else if (processed.getTargetClubName() != null) {
+                entities.add(new EntityResolution(EntityResolution.EntityType.CLUB, processed.getTargetClubName(), null, true, 1.0));
+            } else if (!processed.getExtractedEntities().isEmpty()) {
+                for (String ent : processed.getExtractedEntities()) {
+                    EntityResolution.EntityType type = QueryProcessor.mapScopeToEntityType(processed.getPrimaryScope());
+                    entities.add(new EntityResolution(type, ent, null, true, 1.0));
+                }
+            }
+        }
+
+        if (!entities.isEmpty()) {
+            saveUserContext(username, new ConversationContext(
+                    entities,
+                    processed.getTargetEventName(),
+                    processed.getTargetDepartment(),
+                    processed.getTargetClubName(),
+                    processed.getRequestedAttribute()
+            ));
+        }
     }
 
     private String extractCleanContent(List<HybridReranker.ScoredChunk> rankedChunks) {
@@ -448,7 +609,8 @@ public class ChatService {
 
         for (QueryProcessor.SubQuery sq : processed.getSubQueries()) {
             if (sq.getSource() == QueryProcessor.DataSource.DATABASE) {
-                String dept = sq.getEntity();
+                String dept = sq.getTargetDepartment() != null ? sq.getTargetDepartment() :
+                        (sq.getScope() == QueryProcessor.EntityScope.DEPARTMENT ? sq.getEntity() : null);
                 if ("MY_DEPARTMENT".equalsIgnoreCase(dept)) {
                     if (authenticatedUsername != null && !authenticatedUsername.isBlank() && !authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
                         dept = UsnDepartmentResolver.resolveDepartment(authenticatedUsername);
@@ -456,11 +618,12 @@ public class ChatService {
                         dept = null;
                     }
                 }
+                String evt = sq.getTargetEvent();
                 DatabaseSqlAgent.QueryResult dbRes = (dept != null)
                         ? databaseSqlAgent.retrieveTargetedContext(
-                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, null, dept)
+                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, evt, dept)
                         : databaseSqlAgent.retrieveTargetedContext(
-                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, null);
+                                sq.getText(), authenticatedUsername, QueryProcessor.Intent.WINNERS, null, evt);
                 if (dbRes != null && !dbRes.getContext().isBlank()) {
                     combinedSources.addAll(dbRes.getSources());
                     combinedReply.append(dbRes.getContext().trim()).append("\n\n");

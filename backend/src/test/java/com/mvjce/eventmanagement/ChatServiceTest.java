@@ -659,4 +659,225 @@ public class ChatServiceTest {
         assertTrue(res15.getReply().contains("Darshan CS"));
         assertFalse(res15.getReply().contains("Priya CG"));
     }
+
+    @Test
+    @DisplayName("P. Phase 2B: 32 Rigorous Tests for Context-Aware Entity Resolution & Isolation")
+    void testPhase2BContextAwareEntityResolution() {
+        chatService.clearAllContexts();
+
+        List<SourceMetadata> csSources = List.of(new SourceMetadata("WINNER", "W-CS", "Hackathon - 1st Place"));
+        List<SourceMetadata> cgSources = List.of(new SourceMetadata("WINNER", "W-CG", "Hackathon - 2nd Place"));
+        List<SourceMetadata> iexampleCsSources = List.of(new SourceMetadata("WINNER", "W-IECS", "IExample2026 - 1st Place"));
+        List<SourceMetadata> iexampleCgSources = List.of(new SourceMetadata("WINNER", "W-IECG", "IExample2026 - 2nd Place"));
+        List<SourceMetadata> musicCsSources = List.of(new SourceMetadata("WINNER", "W-MCS", "Music Concert - 1st Place"));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), isNull(), isNull(), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CS Department:\n• Event: Hackathon2026\n  - 1st Place: Darshan CS", csSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), isNull(), isNull(), eq("CG")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CG Department:\n• Event: Hackathon2026\n  - 2nd Place: Priya CG", cgSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), isNull(), eq("IExample2026"), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CS Department in IExample2026:\n• 1st Place: Darshan CS", iexampleCsSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), isNull(), eq("IExample2026"), eq("CG")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CG Department in IExample2026:\n• 2nd Place: Priya CG", iexampleCgSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), isNull(), eq("Music Concert"), eq("CS")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Official Winners from CS Department in Music Concert:\n• 1st Place: Darshan CS", musicCsSources));
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), eq(QueryProcessor.Intent.WINNERS), isNull(), eq("IExample2026")))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("🏆 Winners for IExample2026:\n• 1st Place: Darshan CS\n• 2nd Place: Priya CG", List.of(iexampleCsSources.get(0), iexampleCgSources.get(0))));
+
+        // 1. "What has CS won?" -> CS winners only
+        ChatResponse res1 = chatService.processQuery("What has CS won?", "user1");
+        assertNotNull(res1);
+        assertTrue(res1.getReply().contains("Darshan CS"));
+        assertFalse(res1.getReply().contains("Priya CG"));
+
+        // 2. "What has CSE won?" -> CS winners only
+        ChatResponse res2 = chatService.processQuery("What has CSE won?", "user1");
+        assertNotNull(res2);
+        assertTrue(res2.getReply().contains("Darshan CS"));
+        assertFalse(res2.getReply().contains("Priya CG"));
+
+        // 3. "What has CG won?" -> CG winners only
+        ChatResponse res3 = chatService.processQuery("What has CG won?", "user1");
+        assertNotNull(res3);
+        assertTrue(res3.getReply().contains("Priya CG"));
+        assertFalse(res3.getReply().contains("Darshan CS"));
+
+        // 4. "What has computer science won?" -> CS winners only
+        ChatResponse res4 = chatService.processQuery("What has computer science won?", "user1");
+        assertNotNull(res4);
+        assertTrue(res4.getReply().contains("Darshan CS"));
+        assertFalse(res4.getReply().contains("Priya CG"));
+
+        // 5. "What has computer graphics won?" -> CG winners only
+        ChatResponse res5 = chatService.processQuery("What has computer graphics won?", "user1");
+        assertNotNull(res5);
+        assertTrue(res5.getReply().contains("Priya CG"));
+        assertFalse(res5.getReply().contains("Darshan CS"));
+
+        // 6. "What has my department won?" -> Authenticated user 1MJ23CS200 -> CS winners
+        ChatResponse res6 = chatService.processQuery("What has my department won?", "1MJ23CS200");
+        assertNotNull(res6);
+        assertTrue(res6.getReply().contains("Darshan CS"));
+        assertFalse(res6.getReply().contains("Priya CG"));
+
+        // 7. "What has CS won in IExample2026?" -> IExample2026 + CS only
+        ChatResponse res7 = chatService.processQuery("What has CS won in IExample2026?", "user1");
+        assertNotNull(res7);
+        assertTrue(res7.getReply().contains("IExample2026"));
+        assertTrue(res7.getReply().contains("Darshan CS"));
+        assertFalse(res7.getReply().contains("Priya CG"));
+
+        // 8. "What has CG won in IExample2026?" -> IExample2026 + CG only
+        ChatResponse res8 = chatService.processQuery("What has CG won in IExample2026?", "user1");
+        assertNotNull(res8);
+        assertTrue(res8.getReply().contains("IExample2026"));
+        assertTrue(res8.getReply().contains("Priya CG"));
+        assertFalse(res8.getReply().contains("Darshan CS"));
+
+        // 9. "What has CS won in Music Concert?" -> Music Concert + CS only
+        ChatResponse res9 = chatService.processQuery("What has CS won in Music Concert?", "user1");
+        assertNotNull(res9);
+        assertTrue(res9.getReply().contains("Music Concert"));
+        assertTrue(res9.getReply().contains("Darshan CS"));
+
+        // 10. "What is the location of CS?" -> CS location from Knowledge Base
+        ChatResponse res10 = chatService.processQuery("What is the location of CS?", "user1");
+        assertNotNull(res10);
+        assertTrue(res10.getReply().contains("Main Academic Block") || res10.getReply().contains("3rd and 4th"));
+        assertFalse(res10.getReply().contains("Official Winners"));
+
+        // 11. "What is the location of CG?" -> CG location from Knowledge Base
+        ChatResponse res11 = chatService.processQuery("What is the location of CG?", "user1");
+        assertNotNull(res11);
+        assertTrue(res11.getReply().contains("New Building") || res11.getReply().contains("2nd Floor"));
+        assertFalse(res11.getReply().contains("Official Winners"));
+
+        // 12. "What has CS won and where is CG?" -> CS winners + CG location
+        ChatResponse res12 = chatService.processQuery("What has CS won and where is CG?", "user1");
+        assertNotNull(res12);
+        assertTrue(res12.getReply().contains("Darshan CS"));
+        assertTrue(res12.getReply().contains("New Building") || res12.getReply().contains("2nd Floor"));
+        assertFalse(res12.getReply().contains("Priya CG"));
+
+        // 13. "What has CG won and where is CS?" -> CG winners + CS location
+        ChatResponse res13 = chatService.processQuery("What has CG won and where is CS?", "user1");
+        assertNotNull(res13);
+        assertTrue(res13.getReply().contains("Priya CG"));
+        assertTrue(res13.getReply().contains("Main Academic Block") || res13.getReply().contains("3rd and 4th"));
+        assertFalse(res13.getReply().contains("Darshan CS"));
+
+        // 14. "What has CG won in IExample2026 and where is CS?" -> CG+IExample2026+WINNER + CS+LOCATION
+        ChatResponse res14 = chatService.processQuery("What has CG won in IExample2026 and where is CS?", "user1");
+        assertNotNull(res14);
+        assertTrue(res14.getReply().contains("Priya CG"));
+        assertTrue(res14.getReply().contains("IExample2026"));
+        assertTrue(res14.getReply().contains("Main Academic Block") || res14.getReply().contains("3rd and 4th"));
+        assertFalse(res14.getReply().contains("Darshan CS"));
+
+        // 15. "Who won?" -> clarification
+        ChatResponse res15_ = chatService.processQuery("Who won?", "user1");
+        assertNotNull(res15_);
+        assertTrue(res15_.getReply().contains("specify the event or department"));
+
+        // 16. Unknown event name -> grounded unavailable / clarification
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), anyString(), any(), any(), eq("UnknownEvent999"), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("", Collections.emptyList()));
+        ChatResponse res16 = chatService.processQuery("Who won UnknownEvent999?", "user1");
+        assertNotNull(res16);
+
+        // 17. Unknown department name -> clarification / unavailable response
+        ChatResponse res17 = chatService.processQuery("What has XYZ123 won?", "user1");
+        assertNotNull(res17);
+
+        // 18. Ambiguous department reference -> clarification
+        ChatResponse res18 = chatService.processQuery("Which department won?", "user1");
+        assertNotNull(res18);
+        assertTrue(res18.getReply().contains("specify the event or department"));
+
+        // 19. Unambiguous pronoun reference: Turn 1: "What has CG won?" -> Turn 2: "Where is it?" -> CG location
+        chatService.clearUserContext("userA");
+        ChatResponse turn1_19 = chatService.processQuery("What has CG won?", "userA");
+        assertTrue(turn1_19.getReply().contains("Priya CG"));
+        ChatResponse turn2_19 = chatService.processQuery("Where is it?", "userA");
+        assertTrue(turn2_19.getReply().contains("New Building") || turn2_19.getReply().contains("2nd Floor"), "Where is it must resolve to CG location: " + turn2_19.getReply());
+        assertFalse(turn2_19.getReply().contains("Main Academic Block"));
+
+        // 20. Ambiguous pronoun: Turn 1: "Tell me about CS and CG." -> Turn 2: "Where is it?" -> Clarification
+        chatService.clearUserContext("userB");
+        chatService.processQuery("Where is CS and where is CG?", "userB");
+        ChatResponse turn2_20 = chatService.processQuery("Where is it?", "userB");
+        assertTrue(turn2_20.getReply().contains("Please specify whether you mean") || turn2_20.getReply().contains("specify"), "Ambiguous pronoun response: " + turn2_20.getReply());
+
+        // 21. Verify no CS winner appears in CG response
+        ChatResponse res21 = chatService.processQuery("What has CG won?", "user1");
+        assertFalse(res21.getReply().contains("Darshan CS"));
+
+        // 22. Verify no CG winner appears in CS response
+        ChatResponse res22 = chatService.processQuery("What has CS won?", "user1");
+        assertFalse(res22.getReply().contains("Priya CG"));
+
+        // 23. Verify no winner from another event appears in event-specific response
+        ChatResponse res23 = chatService.processQuery("What has CS won in IExample2026?", "user1");
+        assertTrue(res23.getReply().contains("IExample2026"));
+        assertFalse(res23.getReply().contains("Music Concert"));
+
+        // 24. Verify source list contains only retrieved records
+        ChatResponse res24 = chatService.processQuery("What has CS won?", "user1");
+        assertFalse(res24.getSources().isEmpty());
+        assertTrue(res24.getSources().stream().allMatch(s -> s.getType().equals("WINNER") && s.getId().equals("W-CS")));
+
+        // 25. Verify no winner/event values are hardcoded in QueryProcessor / UsnDepartmentResolver
+        assertNull(UsnDepartmentResolver.resolveDepartment("RandomUsername"));
+        assertNull(UsnDepartmentResolver.normalizeDepartmentCode("INVALID_DEPT"));
+
+        // 26. Explicit entity overrides context: Previous: "What has CG won?" -> Current: "Where is CS?" -> CS location
+        chatService.clearUserContext("userC");
+        chatService.processQuery("What has CG won?", "userC");
+        ChatResponse res26 = chatService.processQuery("Where is CS?", "userC");
+        assertTrue(res26.getReply().contains("Main Academic Block") || res26.getReply().contains("3rd and 4th"));
+        assertFalse(res26.getReply().contains("New Building"));
+
+        // 27. Event pronoun compatibility: Previous: "Tell me about IExample2026." -> Current: "Who won it?" -> IExample2026 winners
+        chatService.clearUserContext("userD");
+        chatService.processQuery("tell me about IExample2026", "userD");
+        ChatResponse res27 = chatService.processQuery("Who won it?", "userD");
+        assertTrue(res27.getReply().contains("IExample2026") || res27.getReply().contains("Darshan CS") || res27.getReply().contains("Priya CG"));
+
+        // 28. Invalid pronoun compatibility: Previous: "Tell me about CG." -> Current: "Who won it?" -> Clarification
+        chatService.clearUserContext("userE");
+        chatService.processQuery("where is CG", "userE");
+        ChatResponse res28 = chatService.processQuery("Who won it?", "userE");
+        assertTrue(res28.getReply().contains("specify the event"), "Invalid pronoun response: " + res28.getReply());
+
+        // 29. Unresolvable pronoun with no context: "Where is it?" -> Clarification
+        chatService.clearUserContext("userF");
+        ChatResponse res29 = chatService.processQuery("Where is it?", "userF");
+        assertTrue(res29.getReply().contains("not sure what you’re referring to") || res29.getReply().contains("specify"));
+
+        // 30. Cross-user conversation isolation: User A: "What has CG won?", User B: "Where is it?" -> User B does NOT inherit CG
+        chatService.clearUserContext("userIsolatedA");
+        chatService.clearUserContext("userIsolatedB");
+        chatService.processQuery("What has CG won?", "userIsolatedA");
+        ChatResponse res30 = chatService.processQuery("Where is it?", "userIsolatedB");
+        assertTrue(res30.getReply().contains("not sure what you’re referring to") || res30.getReply().contains("specify"));
+
+        // 31. Context must not override explicit current entity: Previous: "What has CS won?", Current: "What has CG won?" -> CG winners only
+        chatService.clearUserContext("userG");
+        chatService.processQuery("What has CS won?", "userG");
+        ChatResponse res31 = chatService.processQuery("What has CG won?", "userG");
+        assertTrue(res31.getReply().contains("Priya CG"));
+        assertFalse(res31.getReply().contains("Darshan CS"));
+
+        // 32. Reference must never broaden retrieval scope
+        chatService.clearUserContext("userH");
+        ChatResponse res32 = chatService.processQuery("Where is it?", "userH");
+        assertFalse(res32.getReply().contains("Main Academic Block"));
+        assertFalse(res32.getReply().contains("New Building"));
+        assertFalse(res32.getReply().contains("Official Winners"));
+    }
 }

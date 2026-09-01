@@ -74,10 +74,14 @@ public class QueryProcessor {
         private final DataSource source;
         private final boolean ambiguous;
         private final String clarificationPrompt;
+        private final EntityResolution resolvedEntity;
+        private final String targetDepartment;
+        private final String targetEvent;
 
         public SubQuery(String text, String entity, EntityScope scope,
                         RequestedAttribute attribute, DataSource source,
-                        boolean ambiguous, String clarificationPrompt) {
+                        boolean ambiguous, String clarificationPrompt,
+                        EntityResolution resolvedEntity, String targetDepartment, String targetEvent) {
             this.text = text != null ? text : "";
             this.entity = entity;
             this.scope = scope != null ? scope : EntityScope.GLOBAL;
@@ -85,6 +89,16 @@ public class QueryProcessor {
             this.source = source != null ? source : DataSource.KNOWLEDGE_BASE;
             this.ambiguous = ambiguous;
             this.clarificationPrompt = clarificationPrompt;
+            this.resolvedEntity = resolvedEntity != null ? resolvedEntity : new EntityResolution(mapScopeToEntityType(this.scope), entity != null ? entity : "");
+            this.targetDepartment = targetDepartment;
+            this.targetEvent = targetEvent;
+        }
+
+        public SubQuery(String text, String entity, EntityScope scope,
+                        RequestedAttribute attribute, DataSource source,
+                        boolean ambiguous, String clarificationPrompt) {
+            this(text, entity, scope, attribute, source, ambiguous, clarificationPrompt, null,
+                    (attribute == RequestedAttribute.WINNER && scope == EntityScope.DEPARTMENT) ? entity : null, null);
         }
 
         public SubQuery(String text, String entity, EntityScope scope,
@@ -99,6 +113,10 @@ public class QueryProcessor {
         public DataSource getSource() { return source; }
         public boolean isAmbiguous() { return ambiguous; }
         public String getClarificationPrompt() { return clarificationPrompt; }
+        public EntityResolution getResolvedEntity() { return resolvedEntity; }
+        public EntityResolution.EntityType getEntityType() { return resolvedEntity != null ? resolvedEntity.getType() : mapScopeToEntityType(scope); }
+        public String getTargetDepartment() { return targetDepartment; }
+        public String getTargetEvent() { return targetEvent; }
 
         @Override
         public String toString() {
@@ -106,6 +124,7 @@ public class QueryProcessor {
                     ", scope=" + scope +
                     ", attribute=" + attribute +
                     ", source=" + source +
+                    ", targetEvent='" + targetEvent + '\'' +
                     ", ambiguous=" + ambiguous + '}';
         }
     }
@@ -125,6 +144,7 @@ public class QueryProcessor {
         private final String clarificationMessage;
         private final EntityScope primaryScope;
         private final DataSource primarySource;
+        private final EntityResolution resolvedEntity;
 
         public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
                               RequestedAttribute requestedAttribute,
@@ -133,7 +153,7 @@ public class QueryProcessor {
                               String targetDepartment,
                               List<SubQuery> subQueries, boolean ambiguous,
                               String clarificationMessage, EntityScope primaryScope,
-                              DataSource primarySource) {
+                              DataSource primarySource, EntityResolution resolvedEntity) {
             this.originalQuery = originalQuery;
             this.normalizedQuery = normalizedQuery;
             this.intent = intent;
@@ -148,6 +168,25 @@ public class QueryProcessor {
             this.clarificationMessage = clarificationMessage;
             this.primaryScope = primaryScope != null ? primaryScope : EntityScope.GLOBAL;
             this.primarySource = primarySource != null ? primarySource : DataSource.KNOWLEDGE_BASE;
+            this.resolvedEntity = resolvedEntity != null ? resolvedEntity :
+                    new EntityResolution(mapScopeToEntityType(this.primaryScope),
+                            (targetDepartment != null) ? targetDepartment :
+                            (targetEventName != null) ? targetEventName :
+                            (targetClubName != null) ? targetClubName :
+                            (!this.extractedEntities.isEmpty()) ? this.extractedEntities.get(0) : "");
+        }
+
+        public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
+                              RequestedAttribute requestedAttribute,
+                              List<String> extractedEntities, List<String> retrievalVariants,
+                              String targetClubName, String targetEventName,
+                              String targetDepartment,
+                              List<SubQuery> subQueries, boolean ambiguous,
+                              String clarificationMessage, EntityScope primaryScope,
+                              DataSource primarySource) {
+            this(originalQuery, normalizedQuery, intent, requestedAttribute, extractedEntities,
+                    retrievalVariants, targetClubName, targetEventName, targetDepartment,
+                    subQueries, ambiguous, clarificationMessage, primaryScope, primarySource, null);
         }
 
         public ProcessedQuery(String originalQuery, String normalizedQuery, Intent intent,
@@ -193,6 +232,21 @@ public class QueryProcessor {
         public String getClarificationMessage() { return clarificationMessage; }
         public EntityScope getPrimaryScope() { return primaryScope; }
         public DataSource getPrimarySource() { return primarySource; }
+        public EntityResolution getResolvedEntity() { return resolvedEntity; }
+        public EntityResolution.EntityType getEntityType() { return resolvedEntity != null ? resolvedEntity.getType() : mapScopeToEntityType(primaryScope); }
+    }
+
+    public static EntityResolution.EntityType mapScopeToEntityType(EntityScope scope) {
+        if (scope == null) return EntityResolution.EntityType.GLOBAL;
+        switch (scope) {
+            case DEPARTMENT: return EntityResolution.EntityType.DEPARTMENT;
+            case EVENT: return EntityResolution.EntityType.EVENT;
+            case CLUB: return EntityResolution.EntityType.CLUB;
+            case CAMPUS_FACILITY: return EntityResolution.EntityType.CAMPUS_FACILITY;
+            case SCHOLARSHIP: return EntityResolution.EntityType.SCHOLARSHIP;
+            case STUDENT: return EntityResolution.EntityType.STUDENT;
+            default: return EntityResolution.EntityType.GLOBAL;
+        }
     }
 
     @Autowired(required = false)
@@ -302,7 +356,7 @@ public class QueryProcessor {
         // 4. Primary Attribute & Entity Resolution
         RequestedAttribute primaryAttribute = detectRequestedAttribute(normalized);
         String matchedClub = findMatchedClub(normalized);
-        String matchedEvent = findMatchedEvent(normalized);
+        String matchedEvent = extractOriginalCasing(original, findMatchedEvent(normalized));
         List<String> campusEntities = extractCampusEntities(normalized);
 
         // 5. Determine Primary Entity & Scope & Target Department
@@ -358,11 +412,31 @@ public class QueryProcessor {
         List<String> entities = extractEntities(normalized, matchedClub, matchedEvent, campusEntities, primaryEntity);
         List<String> variants = generateRetrievalVariants(normalized, intent, entities, primaryAttribute);
 
+        EntityResolution.EntityType entityType = mapScopeToEntityType(primaryScope);
+        EntityResolution primaryResolvedEntity = new EntityResolution(
+                entityType,
+                (targetDepartment != null) ? targetDepartment :
+                (matchedEvent != null) ? matchedEvent :
+                (matchedClub != null) ? matchedClub :
+                (primaryEntity != null) ? primaryEntity : "",
+                null,
+                true,
+                1.0
+        );
+
         return new ProcessedQuery(
                 original, normalized, intent, primaryAttribute, entities, variants,
                 matchedClub, matchedEvent, targetDepartment, subQueries, isAmbiguous, clarificationMessage,
-                primaryScope, primarySource
+                primaryScope, primarySource, primaryResolvedEntity
         );
+    }
+
+    private static final Pattern PRONOUN_PATTERN = Pattern.compile(
+            "\\b(it|this|that|they|them)\\b", Pattern.CASE_INSENSITIVE
+    );
+
+    public boolean isPronounQuery(String normalized) {
+        return normalized != null && PRONOUN_PATTERN.matcher(normalized).find();
     }
 
     private String extractDepartmentFromWinnerQuery(String normalized) {
@@ -399,7 +473,7 @@ public class QueryProcessor {
 
                 RequestedAttribute attr = detectRequestedAttribute(normPart);
                 String club = findMatchedClub(normPart);
-                String event = findMatchedEvent(normPart);
+                String event = extractOriginalCasing(part, findMatchedEvent(normPart));
                 List<String> campusEnts = extractCampusEntities(normPart);
 
                 String entity = null;
@@ -428,14 +502,18 @@ public class QueryProcessor {
                 DataSource source = (attr == RequestedAttribute.WINNER) ? DataSource.DATABASE :
                         (attr == RequestedAttribute.LOCATION) ? DataSource.KNOWLEDGE_BASE : DataSource.KNOWLEDGE_BASE;
 
-                list.add(new SubQuery(part.trim(), entity, scope, attr, source));
+                String targetDept = (attr == RequestedAttribute.WINNER && scope == EntityScope.DEPARTMENT) ? entity : null;
+                String targetEvt = event;
+                EntityResolution resEnt = new EntityResolution(mapScopeToEntityType(scope), entity != null ? entity : "", null, true, 1.0);
+
+                list.add(new SubQuery(part.trim(), entity, scope, attr, source, false, null, resEnt, targetDept, targetEvt));
             }
         }
 
         if (list.isEmpty()) {
             RequestedAttribute attr = detectRequestedAttribute(normalized);
             String club = findMatchedClub(normalized);
-            String event = findMatchedEvent(normalized);
+            String event = extractOriginalCasing(original, findMatchedEvent(normalized));
             List<String> campusEnts = extractCampusEntities(normalized);
 
             String entity = null;
@@ -457,7 +535,11 @@ public class QueryProcessor {
             DataSource source = (attr == RequestedAttribute.WINNER || club != null || event != null) ?
                     DataSource.DATABASE : DataSource.KNOWLEDGE_BASE;
 
-            list.add(new SubQuery(original, entity, scope, attr, source));
+            String targetDept = (attr == RequestedAttribute.WINNER && scope == EntityScope.DEPARTMENT) ? entity : null;
+            String targetEvt = event;
+            EntityResolution resEnt = new EntityResolution(mapScopeToEntityType(scope), entity != null ? entity : "", null, true, 1.0);
+
+            list.add(new SubQuery(original, entity, scope, attr, source, false, null, resEnt, targetDept, targetEvt));
         }
 
         return list;
@@ -591,6 +673,9 @@ public class QueryProcessor {
         if (normalized.matches(".*\\b(hackathon2026|hackathon|hackthon)\\b.*")) {
             return "Hackathon";
         }
+        if (normalized.matches(".*\\b(music\\s+concert)\\b.*")) {
+            return "Music Concert";
+        }
         if (normalized.matches(".*\\b(algorithm\\s+arena|arena)\\b.*")) {
             return "Algorithm Arena";
         }
@@ -598,7 +683,29 @@ public class QueryProcessor {
             return "RoboWars";
         }
 
+        Pattern eventInPattern = Pattern.compile("\\b(?:in|for|at|during|about|of|event)\\s+([a-zA-Z0-9_-]{4,30})\\b");
+        Matcher em = eventInPattern.matcher(normalized);
+        if (em.find()) {
+            String candidate = em.group(1);
+            if (!candidate.equalsIgnoreCase("the") && !candidate.equalsIgnoreCase("this") &&
+                !candidate.equalsIgnoreCase("that") && !candidate.equalsIgnoreCase("department") &&
+                !candidate.equalsIgnoreCase("dept") && !candidate.equalsIgnoreCase("college") &&
+                !candidate.equalsIgnoreCase("campus") && !isAcademicDepartment(candidate)) {
+                return candidate;
+            }
+        }
+
         return null;
+    }
+
+    private String extractOriginalCasing(String raw, String matched) {
+        if (raw == null || matched == null) return matched;
+        Pattern p = Pattern.compile("\\b" + Pattern.quote(matched) + "\\b", Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(raw);
+        if (m.find()) {
+            return m.group();
+        }
+        return matched;
     }
 
     private RequestedAttribute detectRequestedAttribute(String normalized) {
