@@ -62,6 +62,8 @@ desktop.ini
 .env.local
 .env.*.local
 *.properties.secret
+application-local.properties
+*local.properties
 secrets.xml
 backups/
 **/backups/
