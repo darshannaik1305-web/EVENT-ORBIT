@@ -84,42 +84,45 @@ export default function StudentEvents() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-primary font-bold animate-pulse flex items-center gap-2">
-          <span>⚡</span> Loading Events Directory...
+        <div className="text-[#F28D1E] font-bold animate-pulse flex items-center gap-2">
+          <span>🏛️</span> Loading College Events Directory...
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 select-none">
-      {/* Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900/90 to-purple-950/40 border border-white/10 p-6 md:p-8 rounded-3xl space-y-2 shadow-2xl">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-1">
-          <span>🎪 College Events Catalog</span>
+    <div className="space-y-8 select-none max-w-7xl mx-auto pb-12">
+      {/* Institutional Banner with Primary Orange Header */}
+      <div className="bg-[#F28D1E] text-white p-6 sm:p-8 rounded-2xl shadow-sm relative overflow-hidden space-y-2">
+        <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full bg-[#7B1113]/20 pointer-events-none" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-white text-xs font-bold mb-1">
+          <span>🎪 Campus Events Directory</span>
+          <span>•</span>
+          <span>MVJCE</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-headings font-extrabold text-white tracking-tight">
           Explore & Register for Events
         </h1>
-        <p className="text-slate-400 text-xs md:text-sm max-w-xl">
-          Browse upcoming hackathons, technical symposia, cultural fests, and workshops. Click any event for complete details and registration!
+        <p className="text-white/90 text-xs sm:text-sm max-w-2xl leading-relaxed">
+          Browse upcoming hackathons, technical symposia, cultural festivals, and competitive coding contests. Click any card for detailed schedules, venue information, and team registrations.
         </p>
       </div>
 
       {/* Filter Controls Bar */}
-      <div className="bg-slate-900 border border-white/10 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="academic-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Club Filter */}
-          <div className="flex items-center gap-2 bg-slate-950 border border-white/10 px-3 py-1.5 rounded-xl">
-            <span className="text-xs text-slate-400 font-medium">Club:</span>
+          <div className="flex items-center gap-2 bg-[#F7F6F3] border border-[#E5E1DC] px-3.5 py-2 rounded-xl">
+            <span className="text-xs text-[#666666] font-semibold">Club:</span>
             <select
               value={selectedClubId}
               onChange={(e) => setSelectedClubId(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-200 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-bold text-[#202020] outline-none cursor-pointer"
             >
-              <option value="" className="bg-slate-900 text-white">All Clubs</option>
+              <option value="">All Clubs</option>
               {clubs.map((c) => (
-                <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
@@ -127,38 +130,42 @@ export default function StudentEvents() {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-2 bg-slate-950 border border-white/10 px-3 py-1.5 rounded-xl">
-            <span className="text-xs text-slate-400 font-medium">Status:</span>
+          <div className="flex items-center gap-2 bg-[#F7F6F3] border border-[#E5E1DC] px-3.5 py-2 rounded-xl">
+            <span className="text-xs text-[#666666] font-semibold">Status:</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-200 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-bold text-[#202020] outline-none cursor-pointer"
             >
-              <option value="ALL" className="bg-slate-900 text-white">All Statuses</option>
-              <option value="UPCOMING" className="bg-slate-900 text-white">Upcoming Only</option>
-              <option value="ACTIVE" className="bg-slate-900 text-white">Ongoing / Active</option>
-              <option value="EXPIRED" className="bg-slate-900 text-white">Completed / Ended</option>
+              <option value="ALL">All Statuses</option>
+              <option value="UPCOMING">Upcoming Only</option>
+              <option value="ACTIVE">Ongoing / Active</option>
+              <option value="EXPIRED">Concluded / Ended</option>
             </select>
           </div>
         </div>
 
         {/* Search Bar */}
-        <div className="w-full md:w-64">
-          <input
-            type="text"
-            placeholder="Search event name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-1.5 text-xs text-slate-200 outline-none focus:border-primary"
-          />
+        <div className="w-full md:w-72">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search event name or keywords..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-[#F7F6F3] border border-[#E5E1DC] rounded-xl pl-9 pr-4 py-2 text-xs text-[#202020] placeholder-[#888888] outline-none focus:border-[#F28D1E] focus:bg-white transition-all"
+            />
+            <span className="absolute left-3 top-2.5 text-xs text-[#888888]">🔍</span>
+          </div>
         </div>
       </div>
 
       {/* Events Directory Grid */}
       {filteredEvents.length === 0 ? (
-        <div className="bg-slate-900 border border-white/5 rounded-3xl p-12 text-center text-slate-500 text-sm space-y-2">
+        <div className="academic-card p-12 text-center text-[#888888] text-sm space-y-2">
           <div className="text-3xl">🔍</div>
-          <div>No events match your selected filters.</div>
+          <div className="font-semibold text-[#555555]">No events match your selected filters.</div>
+          <p className="text-xs text-[#888888]">Try resetting your search query or selecting "All Clubs".</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -168,81 +175,91 @@ export default function StudentEvents() {
             const status = getEventStatus(evt)
             const isRegistered = myRegistrations.some((r) => r.eventId === evt.id)
 
+            // Semantic badge style
+            let badgeStyle = 'bg-[#287A4B]/10 text-[#287A4B] border-[#287A4B]/30'
+            if (status.code === 'UPCOMING') {
+              badgeStyle = 'bg-[#F28D1E]/10 text-[#F28D1E] border-[#F28D1E]/30'
+            } else if (status.code === 'ENDED') {
+              badgeStyle = 'bg-[#888888]/10 text-[#888888] border-[#888888]/30'
+            }
+
             return (
               <div
                 key={evt.id}
                 onClick={() => setSelectedModalEvent(evt)}
-                className="bg-slate-900 border border-white/10 hover:border-primary/50 rounded-3xl p-6 transition-all shadow-xl flex flex-col justify-between space-y-5 cursor-pointer group"
+                className="academic-card p-6 flex flex-col justify-between space-y-5 cursor-pointer group hover:border-[#F28D1E]/40"
               >
                 <div className="space-y-3">
                   {/* Top Row Badges */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/25">
                       {clubName}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${status.style}`}>
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase border ${badgeStyle}`}>
                         {status.label}
                       </span>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        Cap: {evt.capacity || '∞'}
+                      <span className="text-[11px] text-[#888888] font-mono">
+                        Capacity: {evt.capacity || 'Unlimited'}
                       </span>
                     </div>
                   </div>
 
                   {/* Title & Description */}
                   <div>
-                    <h2 className="text-lg font-bold text-white group-hover:text-primary transition-colors leading-snug">{evt.name}</h2>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                    <h2 className="text-lg font-headings font-bold text-[#202020] group-hover:text-[#F28D1E] transition-colors leading-snug">
+                      {evt.name}
+                    </h2>
+                    <p className="text-xs text-[#666666] mt-1 line-clamp-2 leading-relaxed">
                       {evt.description || 'Join this exciting contest and showcase your skills!'}
                     </p>
                   </div>
 
                   {/* Registration Dates Information Box */}
-                  <div className="bg-purple-950/20 border border-purple-500/20 p-2.5 rounded-xl space-y-1 text-[11px]">
+                  <div className="bg-[#F7F6F3] border border-[#E5E1DC] p-3 rounded-xl space-y-1 text-xs">
                     {status.code === 'UPCOMING' ? (
                       <>
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">Reg Starts:</span>
-                          <span className="font-semibold text-blue-300">{formatDateString(evt.regStart) || 'TBA'}</span>
+                        <div className="flex items-center justify-between text-[#555555]">
+                          <span>Registration Opens:</span>
+                          <span className="font-semibold text-[#2563A6]">{formatDateString(evt.regStart) || 'TBA'}</span>
                         </div>
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">Reg Ends (Last Date):</span>
-                          <span className="font-semibold text-purple-300">{formatDateString(evt.regEnd) || 'TBA'}</span>
+                        <div className="flex items-center justify-between text-[#555555]">
+                          <span>Registration Closes:</span>
+                          <span className="font-semibold text-[#F28D1E]">{formatDateString(evt.regEnd) || 'TBA'}</span>
                         </div>
                       </>
                     ) : (
-                      <div className="flex items-center justify-between text-slate-300">
-                        <span className="text-slate-400">Last Date to Register:</span>
-                        <span className="font-bold text-amber-300">{formatDateString(evt.regEnd) || 'N/A'}</span>
+                      <div className="flex items-center justify-between text-[#555555]">
+                        <span>Last Date to Register:</span>
+                        <span className="font-bold text-[#B7791F]">{formatDateString(evt.regEnd) || 'N/A'}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Event Date & Venue Info */}
-                  <div className="bg-slate-950/70 border border-white/5 p-3.5 rounded-2xl space-y-2 text-xs">
+                  <div className="bg-white border border-[#E5E1DC] p-3 rounded-xl space-y-1.5 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1.5 font-medium">
-                        <span>📅</span> Event Date:
+                      <span className="text-[#666666] flex items-center gap-1.5 font-medium">
+                        <span>📅</span> Event Schedule:
                       </span>
                       {evt.eventDate ? (
-                        <span className="text-slate-200 font-semibold">{formatDateString(evt.eventDate)}</span>
+                        <span className="text-[#202020] font-semibold">{formatDateString(evt.eventDate)}</span>
                       ) : (
-                        <span className="text-amber-400/90 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-[11px]">
-                          Event date is not declared
+                        <span className="text-[#B7791F] font-bold bg-[#B7791F]/10 px-2 py-0.5 rounded text-[11px]">
+                          Date to be declared
                         </span>
                       )}
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1.5 font-medium">
+                      <span className="text-[#666666] flex items-center gap-1.5 font-medium">
                         <span>📍</span> Venue:
                       </span>
                       {evt.venue ? (
-                        <span className="text-slate-200 font-semibold">{evt.venue}</span>
+                        <span className="text-[#202020] font-semibold">{evt.venue}</span>
                       ) : (
-                        <span className="text-amber-400/90 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-[11px]">
-                          Venue is not declared
+                        <span className="text-[#888888] italic text-[11px]">
+                          Campus Hall / TBA
                         </span>
                       )}
                     </div>
@@ -250,9 +267,9 @@ export default function StudentEvents() {
                 </div>
 
                 {/* Bottom Action Row */}
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-xs text-primary font-semibold group-hover:underline">
-                    View Details →
+                <div className="pt-3 border-t border-[#E5E1DC] flex items-center justify-between">
+                  <span className="text-xs text-[#F28D1E] font-bold group-hover:underline">
+                    View Full Details →
                   </span>
 
                   <button
@@ -260,15 +277,14 @@ export default function StudentEvents() {
                       e.stopPropagation()
                       setSelectedModalEvent(evt)
                     }}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                      isRegistered
-                        ? 'bg-slate-800 text-emerald-400 cursor-not-allowed border border-emerald-500/20'
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${isRegistered
+                        ? 'bg-[#287A4B]/10 text-[#287A4B] border border-[#287A4B]/30 cursor-not-allowed'
                         : status.code === 'ENDED'
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
-                        : 'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/20'
-                    }`}
+                          ? 'bg-[#F1EFEB] text-[#888888] border border-[#E5E1DC] cursor-not-allowed'
+                          : 'bg-[#F28D1E] hover:bg-[#D97706] text-white shadow-sm shadow-[#F28D1E]/25'
+                      }`}
                   >
-                    {isRegistered ? '✓ Registered' : status.code === 'ENDED' ? 'Ended' : 'Register Now'}
+                    {isRegistered ? '✓ Registered' : status.code === 'ENDED' ? 'Concluded' : 'Register Now'}
                   </button>
                 </div>
               </div>

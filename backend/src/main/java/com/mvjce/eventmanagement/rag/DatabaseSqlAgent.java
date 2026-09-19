@@ -57,6 +57,11 @@ public class DatabaseSqlAgent {
         // Calculate rolling 7-day window (NOW to NOW + 7 DAYS)
         LocalDateTime sevenDaysLater = now.plusDays(7);
 
+        // 0. Personal Achievements / Winnings
+        if (intent == QueryProcessor.Intent.MY_ACHIEVEMENTS) {
+            return getStudentAchievementsContext(authenticatedUsername);
+        }
+
         // 1. Private Student Data / Participation Queries (LEVEL 1)
         if (intent == QueryProcessor.Intent.PRIVATE_STUDENT_DATA) {
             return getStudentParticipationContext(authenticatedUsername);
@@ -566,6 +571,48 @@ public class DatabaseSqlAgent {
         }
 
         return new QueryResult(sb.toString(), sources);
+    }
+
+    public QueryResult getStudentAchievementsContext(String authenticatedUsername) {
+        if (authenticatedUsername == null || authenticatedUsername.isBlank() || authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
+            return new QueryResult("Please log in with your student account to view your achievements.", Collections.emptyList());
+        }
+
+        String username = authenticatedUsername.trim();
+        List<Winner> myWinnings;
+        try {
+            myWinnings = winnerRepository.findByUsernameIgnoreCase(username);
+        } catch (Exception e) {
+            myWinnings = winnerRepository.findAll().stream()
+                    .filter(w -> w.getUsername() != null && w.getUsername().trim().equalsIgnoreCase(username))
+                    .collect(Collectors.toList());
+        }
+
+        if (myWinnings == null || myWinnings.isEmpty()) {
+            return new QueryResult("You have no recorded winning achievements yet.", Collections.emptyList());
+        }
+
+        myWinnings = new ArrayList<>(myWinnings);
+        myWinnings.sort((a, b) -> {
+            if (a.getPosition() != null && b.getPosition() != null) {
+                return a.getPosition().compareTo(b.getPosition());
+            }
+            return 0;
+        });
+
+        List<SourceMetadata> sources = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        sb.append("🏆 Your Achievements:\n\n");
+
+        for (Winner w : myWinnings) {
+            Optional<Event> evOpt = eventRepository.findById(w.getEventId());
+            String eventName = evOpt.map(Event::getName).orElse("Event");
+            String pos = (w.getPosition() != null) ? w.getPosition().getDisplayName() : "Winner";
+            sources.add(new SourceMetadata("WINNER", w.getId(), eventName + " Winner"));
+            sb.append("• ").append(eventName).append(" — ").append(pos).append("\n");
+        }
+
+        return new QueryResult(sb.toString().trim(), sources);
     }
 
     private QueryResult getStudentParticipationContext(String authenticatedUsername) {

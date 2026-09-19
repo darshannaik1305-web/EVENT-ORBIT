@@ -52,7 +52,7 @@ export default function LoginForm() {
   const footer = (
     <p>
       Don't have an account?{' '}
-      <Link to={ROUTES.REGISTER} className="text-primary hover:text-primary-hover font-semibold transition-colors">
+      <Link to={ROUTES.REGISTER} className="text-[#F28D1E] hover:text-[#D97706] font-bold transition-colors">
         Sign Up
       </Link>
     </p>
@@ -89,7 +89,7 @@ export default function LoginForm() {
             <RememberMe checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
             <Link 
               to={ROUTES.FORGOT_PASSWORD} 
-              className="text-xs text-primary hover:text-primary-hover font-semibold transition-colors"
+              className="text-xs text-[#F28D1E] hover:text-[#D97706] font-bold transition-colors"
             >
               Forgot Password?
             </Link>

@@ -18,7 +18,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Handle smooth scroll when navigating via hash (e.g. from /login to /#features)
   useEffect(() => {
     if (location.pathname === ROUTES.LANDING && location.hash) {
       const id = location.hash.replace('#', '')
@@ -52,16 +51,13 @@ export default function Navbar() {
   ]
 
   return (
-    <nav className="fixed top-4 inset-x-0 z-40 transition-all duration-300 px-6 select-none">
+    <nav className="fixed top-3 inset-x-0 z-40 transition-all duration-300 px-4 sm:px-6 select-none">
       <div
-        className={`max-w-5xl mx-auto px-6 py-3 flex items-center justify-between rounded-full border transition-all duration-300 ${
-          scrolled
-            ? 'bg-[#12182B]/90 border-white/10 backdrop-blur-md shadow-lg shadow-black/40'
-            : 'bg-[#12182B]/80 border-white/10 backdrop-blur-md shadow-lg shadow-black/40'
-        }`}
+        className={`max-w-5xl mx-auto px-6 py-2.5 flex items-center justify-between rounded-2xl transition-all duration-300 bg-[#F28D1E] text-white ${scrolled ? 'shadow-lg bg-[#F28D1E]/95 backdrop-blur-md' : 'shadow-md'
+          }`}
       >
         <Link to={ROUTES.LANDING} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <Logo size="sm" variant="primary" />
+          <Logo size="sm" variant="light" />
         </Link>
 
         {/* Desktop Links */}
@@ -71,9 +67,10 @@ export default function Navbar() {
               key={link.id}
               href={`/#${link.id}`}
               onClick={(e) => handleNavClick(e, link.id)}
-              className="text-sm font-semibold text-slate-300 hover:text-white transition-colors relative group cursor-pointer"
+              className="text-sm font-semibold text-white/90 hover:text-white transition-colors relative group cursor-pointer"
             >
               {link.label}
+              <span className="absolute bottom-[-2px] left-0 w-0 h-0.5 bg-white transition-all group-hover:w-full" />
             </a>
           ))}
         </div>
@@ -81,21 +78,22 @@ export default function Navbar() {
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
           <Link to={ROUTES.LOGIN}>
-            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white font-bold">
+            <button className="px-4 py-1.5 text-xs font-bold rounded-xl bg-white/15 text-white border border-white/30 hover:bg-white/25 transition-all cursor-pointer">
               Sign In
-            </Button>
+            </button>
           </Link>
           <Link to={ROUTES.REGISTER}>
-            <Button variant="primary" size="sm">
+            <button className="px-4 py-1.5 text-xs font-bold rounded-xl bg-[#7B1113] hover:bg-[#6F0F11] text-white shadow-sm transition-all cursor-pointer">
               Get Started
-            </Button>
+            </button>
           </Link>
         </div>
 
         {/* Mobile Toggle */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-slate-300 hover:text-white transition-colors p-2"
+          className="md:hidden text-white hover:text-white/80 transition-colors p-2 cursor-pointer"
+          aria-label="Toggle menu"
         >
           {isOpen ? (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -111,27 +109,27 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {isOpen && (
-        <div className="md:hidden absolute top-full inset-x-6 mt-2 bg-[#12182B]/95 border border-white/8 backdrop-blur-lg flex flex-col p-6 gap-4 rounded-3xl shadow-2xl animate-in fade-in slide-in-from-top-5 duration-200 text-white font-semibold text-sm">
+        <div className="md:hidden absolute top-full inset-x-4 sm:inset-x-6 mt-2 bg-[#F28D1E] border border-[#D97706] flex flex-col p-6 gap-4 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200 text-white font-semibold text-sm">
           {navLinks.map((link) => (
             <a
               key={link.id}
               href={`/#${link.id}`}
               onClick={(e) => handleNavClick(e, link.id)}
-              className="hover:text-primary transition-colors cursor-pointer"
+              className="text-white/90 hover:text-white transition-colors cursor-pointer py-1"
             >
               {link.label}
             </a>
           ))}
-          <div className="h-px bg-white/5 my-1" />
+          <div className="h-px bg-white/20 my-1" />
           <Link to={ROUTES.LOGIN} onClick={() => setIsOpen(false)}>
-            <Button variant="outline" className="w-full">
+            <button className="w-full py-2 text-xs font-bold rounded-xl bg-white/15 text-white border border-white/30 hover:bg-white/25 transition-all">
               Sign In
-            </Button>
+            </button>
           </Link>
           <Link to={ROUTES.REGISTER} onClick={() => setIsOpen(false)}>
-            <Button variant="primary" className="w-full">
+            <button className="w-full py-2 text-xs font-bold rounded-xl bg-[#7B1113] hover:bg-[#6F0F11] text-white shadow-sm transition-all">
               Get Started
-            </Button>
+            </button>
           </Link>
         </div>
       )}

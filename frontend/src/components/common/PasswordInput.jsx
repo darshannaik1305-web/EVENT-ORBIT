@@ -18,9 +18,9 @@ export default function PasswordInput({
       {label && (
         <label 
           htmlFor={id} 
-          className="text-xs font-bold text-slate-400 tracking-wider uppercase select-none"
+          className="text-xs font-semibold text-[#555555] tracking-wide select-none"
         >
-          {label} {required && <span className="text-danger">*</span>}
+          {label} {required && <span className="text-[#B42318]">*</span>}
         </label>
       )}
       <div className="relative">
@@ -33,10 +33,10 @@ export default function PasswordInput({
           required={required}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={`w-full pl-4 pr-11 py-3 bg-[#12182B]/60 border border-white/8 rounded-2xl text-white placeholder-slate-500 text-sm transition-all focus:outline-none focus:ring-2 focus:border-primary/50 ${
+          className={`w-full pl-4 pr-11 py-2.5 bg-white border rounded-xl text-[#202020] placeholder-[#888888] text-sm transition-all focus:outline-none focus:ring-2 shadow-sm ${
             error 
-              ? 'border-danger focus:ring-danger/30' 
-              : 'border-white/8 focus:ring-primary/30'
+              ? 'border-[#B42318] focus:ring-[#B42318]/20 focus:border-[#B42318]' 
+              : 'border-[#E5E1DC] focus:ring-[#F28D1E]/20 focus:border-[#F28D1E]'
           }`}
           {...props}
         />
@@ -44,7 +44,7 @@ export default function PasswordInput({
           type="button"
           tabIndex="-1"
           onClick={() => setShow(!show)}
-          className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none"
+          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888888] hover:text-[#202020] transition-colors cursor-pointer select-none"
         >
           {show ? (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

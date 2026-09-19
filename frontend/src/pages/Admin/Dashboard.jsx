@@ -26,72 +26,89 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 select-none">
       {/* Title & Banner */}
-      <div className="bg-slate-900 border border-purple-500/20 p-6 rounded-2xl">
+      <div className="academic-card p-6 sm:p-8 space-y-2 border-l-4 border-l-[#F28D1E]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-              <span>🛡️</span> Club Admin Panel
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F28D1E]/10 border border-[#F28D1E]/20 text-[#F28D1E] text-xs font-bold mb-1">
+              <span>⚡ Admin Console</span>
+              <span>•</span>
+              <span>MVJCE EventOrbit</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-headings font-extrabold text-[#202020] flex items-center gap-2">
+              <span>🛡️</span> Club Administration Hub
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Welcome back, <span className="text-purple-300 font-semibold">{user?.fullName || user?.username}</span>! Manage your club events, registrations, and declare event winners.
+            <p className="text-[#666666] text-xs sm:text-sm mt-1">
+              Welcome, <strong className="text-[#202020]">{user?.fullName || user?.username}</strong>! Manage your club activities, track participant entry passes, and declare official podium winners.
             </p>
           </div>
           <Link
             to={ROUTES.STUDENT.HOME}
-            className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs rounded-xl border border-blue-500/30 transition-all self-start sm:self-auto"
+            className="px-4 py-2 bg-[#7B1113]/10 hover:bg-[#7B1113]/20 text-[#7B1113] font-bold text-xs rounded-xl border border-[#7B1113]/25 transition-all self-start sm:self-auto shrink-0 shadow-sm"
           >
-            Switch to Student View
+            Switch to Student View →
           </Link>
         </div>
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900/80 border border-white/10 p-5 rounded-xl">
-          <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Events</div>
-          <div className="text-3xl font-extrabold text-white mt-2">{loading ? '...' : events.length}</div>
+        <div className="academic-card p-5">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Total Campus Events</div>
+          <div className="text-3xl font-headings font-extrabold text-[#202020] mt-1.5">{loading ? '...' : events.length}</div>
         </div>
 
-        <div className="bg-slate-900/80 border border-purple-500/20 p-5 rounded-xl">
-          <div className="text-purple-400 text-xs font-semibold uppercase tracking-wider">Active Registrations</div>
-          <div className="text-3xl font-extrabold text-purple-300 mt-2">{loading ? '...' : 'Available'}</div>
+        <div className="academic-card p-5 border-l-4 border-l-[#F28D1E]">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Registration Channels</div>
+          <div className="text-3xl font-headings font-extrabold text-[#F28D1E] mt-1.5">{loading ? '...' : 'Live & Active'}</div>
         </div>
 
-        <div className="bg-slate-900/80 border border-emerald-500/20 p-5 rounded-xl">
-          <div className="text-emerald-400 text-xs font-semibold uppercase tracking-wider">Published Results</div>
-          <div className="text-3xl font-extrabold text-emerald-300 mt-2">Ready</div>
+        <div className="academic-card p-5 border-l-4 border-l-[#7B1113]">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Winner Standings</div>
+          <div className="text-3xl font-headings font-extrabold text-[#7B1113] mt-1.5">Podium Ready</div>
         </div>
       </div>
 
       {/* Quick Action Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <Link
           to={ROUTES.ADMIN.EVENTS}
-          className="p-5 bg-slate-900 hover:bg-slate-800/80 border border-white/10 rounded-2xl transition-all space-y-2 group"
+          className="academic-card p-6 hover:border-[#F28D1E]/40 transition-all space-y-2 group"
         >
-          <div className="text-2xl">📅</div>
-          <div className="font-bold text-white group-hover:text-purple-400 transition-colors">Manage Events</div>
-          <p className="text-xs text-slate-400">Create, edit, or extend registration dates for club events.</p>
+          <div className="text-3xl">📅</div>
+          <div className="font-headings font-bold text-base text-[#202020] group-hover:text-[#F28D1E] transition-colors">
+            Manage Club Events
+          </div>
+          <p className="text-xs text-[#666666] leading-relaxed">
+            Create new contests, update venues and dates, extend registration schedules, or delete events.
+          </p>
         </Link>
 
         <Link
           to={ROUTES.ADMIN.PARTICIPANTS}
-          className="p-5 bg-slate-900 hover:bg-slate-800/80 border border-white/10 rounded-2xl transition-all space-y-2 group"
+          className="academic-card p-6 hover:border-[#F28D1E]/40 transition-all space-y-2 group"
         >
-          <div className="text-2xl">📋</div>
-          <div className="font-bold text-white group-hover:text-purple-400 transition-colors">View Participants</div>
-          <p className="text-xs text-slate-400">Check registrations and export participant lists.</p>
+          <div className="text-3xl">👥</div>
+          <div className="font-headings font-bold text-base text-[#202020] group-hover:text-[#F28D1E] transition-colors">
+            Review Participants
+          </div>
+          <p className="text-xs text-[#666666] leading-relaxed">
+            Verify student registrations, view group team rosters, and track confirmed entry passes.
+          </p>
         </Link>
 
         <Link
           to={ROUTES.ADMIN.RESULTS}
-          className="p-5 bg-slate-900 hover:bg-slate-800/80 border border-white/10 rounded-2xl transition-all space-y-2 group"
+          className="academic-card p-6 hover:border-[#F28D1E]/40 transition-all space-y-2 group"
         >
-          <div className="text-2xl">🏆</div>
-          <div className="font-bold text-white group-hover:text-purple-400 transition-colors">Publish Winners</div>
-          <p className="text-xs text-slate-400">Declare 1st, 2nd, and 3rd place winners for events.</p>
+          <div className="text-3xl">🏆</div>
+          <div className="font-headings font-bold text-base text-[#202020] group-hover:text-[#F28D1E] transition-colors">
+            Declare Winners
+          </div>
+          <p className="text-xs text-[#666666] leading-relaxed">
+            Assign 1st, 2nd, and 3rd place champions and publish verified victory certificates.
+          </p>
         </Link>
       </div>
     </div>

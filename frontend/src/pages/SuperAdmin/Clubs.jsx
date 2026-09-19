@@ -99,7 +99,8 @@ export default function Clubs() {
       setShowModal(false)
       fetchClubs()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error saving club')
+      console.error('Error saving club:', err)
+      toast.error(err.response?.data?.message || 'Failed to save club')
     }
   }
 
@@ -107,38 +108,43 @@ export default function Clubs() {
 
   return (
     <div className="space-y-6 select-none">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-white/10 p-6 rounded-2xl">
+      {/* Top Banner */}
+      <div className="academic-card p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-l-[#F28D1E]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <span>🏫</span> College Club Directory Manager
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F28D1E]/10 border border-[#F28D1E]/20 text-[#F28D1E] text-xs font-bold mb-1">
+            <span>🏛️ Club Directory</span>
+            <span>•</span>
+            <span>Super Admin</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-headings font-extrabold text-[#202020] flex items-center gap-2">
+            <span>🏛️</span> Manage Campus Clubs
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Add new campus clubs, update descriptions and visual cover images, or remove existing clubs.
+          <p className="text-[#666666] text-xs sm:text-sm mt-1">
+            Register new technical societies, cultural clubs, upload branding banners, and manage existing entities.
           </p>
         </div>
 
         <button
           onClick={handleOpenAdd}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2 self-start md:self-auto"
+          className="px-5 py-2.5 bg-[#F28D1E] hover:bg-[#D97706] text-white text-xs font-bold rounded-xl shadow-sm shadow-[#F28D1E]/25 transition-all flex items-center gap-2 cursor-pointer shrink-0"
         >
-          <span>➕</span> Add New Club
+          <span>✨</span> Add New Club
         </button>
       </div>
 
       {/* Clubs Grid */}
       {loading ? (
-        <div className="p-12 text-center text-slate-400 animate-pulse">Loading clubs...</div>
+        <div className="p-12 text-center text-[#F28D1E] font-bold animate-pulse">Loading clubs...</div>
       ) : clubs.length === 0 ? (
-        <div className="p-12 text-center text-slate-500 bg-slate-900 border border-white/5 rounded-2xl">
+        <div className="academic-card p-12 text-center text-[#888888]">
           No clubs registered yet. Click "Add New Club" to create your first club!
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {clubs.map((c) => (
-            <div key={c.id} className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-xl flex flex-col justify-between">
-              {/* Cover Image with Fallback & OnError (Mandatory Fix 3) */}
-              <div className="h-40 w-full bg-slate-950 relative">
+            <div key={c.id} className="academic-card overflow-hidden flex flex-col justify-between hover:border-[#F28D1E]/40 transition-all">
+              {/* Cover Image with Fallback */}
+              <div className="h-40 w-full bg-[#F1EFEB] relative overflow-hidden">
                 <img
                   src={c.imageUrl || fallbackImage}
                   onError={(e) => {
@@ -148,7 +154,7 @@ export default function Clubs() {
                   alt={c.name}
                   className="w-full h-full object-cover"
                 />
-                <span className="absolute top-3 right-3 bg-slate-950/80 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 uppercase border border-white/10">
+                <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-[10px] font-bold text-[#F28D1E] uppercase border border-[#E5E1DC] shadow-sm">
                   {c.category || 'TECH'}
                 </span>
               </div>
@@ -156,22 +162,22 @@ export default function Clubs() {
               {/* Body */}
               <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">{c.name}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 mt-1">
+                  <h3 className="text-base font-headings font-bold text-[#202020]">{c.name}</h3>
+                  <p className="text-xs text-[#666666] line-clamp-2 mt-1 leading-relaxed">
                     {c.description || 'College club for student workshops and competitions.'}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-white/5 flex items-center justify-end gap-2">
+                <div className="pt-3 border-t border-[#E5E1DC] flex items-center justify-end gap-2">
                   <button
                     onClick={() => handleOpenEdit(c)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors"
+                    className="px-3 py-1.5 bg-white hover:bg-[#F1EFEB] text-[#202020] text-xs font-bold rounded-lg border border-[#E5E1DC] transition-colors cursor-pointer"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(c)}
-                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border border-red-500/20 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-[#B42318]/10 hover:bg-[#B42318]/20 text-[#B42318] text-xs font-bold rounded-lg border border-[#B42318]/20 transition-colors cursor-pointer"
                   >
                     Delete
                   </button>
@@ -184,36 +190,36 @@ export default function Clubs() {
 
       {/* Modal Form: Add / Edit Club */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white border border-[#E5E1DC] rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-[#E5E1DC] pb-3">
+              <h3 className="text-lg font-headings font-bold text-[#202020] flex items-center gap-2">
                 <span>🏫</span> {editingClub ? 'Edit Club' : 'Add New Club'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setShowModal(false)} className="text-[#888888] hover:text-[#202020] cursor-pointer">
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Name *</label>
+                <label className="block text-xs font-bold text-[#555555] mb-1">Club Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Coding Club"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-white border border-[#E5E1DC] rounded-xl text-xs text-[#202020] focus:outline-none focus:border-[#F28D1E]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Category (Optional)</label>
+                <label className="block text-xs font-bold text-[#555555] mb-1">Category (Optional)</label>
                 <select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 bg-white border border-[#E5E1DC] rounded-xl text-xs text-[#202020] focus:outline-none focus:border-[#F28D1E] cursor-pointer"
                 >
                   <option value="">-- None / Optional --</option>
                   <option value="TECH">TECH</option>
@@ -226,26 +232,26 @@ export default function Clubs() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+                <label className="block text-xs font-bold text-[#555555] mb-1">Description</label>
                 <textarea
                   placeholder="Brief overview of club activities..."
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 h-20"
+                  className="w-full px-3 py-2 bg-white border border-[#E5E1DC] rounded-xl text-xs text-[#202020] focus:outline-none focus:border-[#F28D1E] h-20 resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Cover Image (URL or Browse File)</label>
+                <label className="block text-xs font-bold text-[#555555] mb-1">Club Cover Image (URL or Browse File)</label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="text"
                     placeholder="Paste image URL or browse local file..."
                     value={form.imageUrl}
                     onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="flex-1 px-3 py-2 bg-white border border-[#E5E1DC] rounded-xl text-xs text-[#202020] focus:outline-none focus:border-[#F28D1E]"
                   />
-                  <label className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                  <label className="px-3 py-2 bg-[#F28D1E]/10 hover:bg-[#F28D1E]/20 text-[#F28D1E] border border-[#F28D1E]/30 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
                     <span>📁</span> Browse...
                     <input
                       type="file"
@@ -267,7 +273,7 @@ export default function Clubs() {
                     <img
                       src={form.imageUrl}
                       alt="Cover Preview"
-                      className="h-16 w-24 object-cover rounded-lg border border-white/20 shadow-md"
+                      className="h-16 w-24 object-cover rounded-lg border border-[#E5E1DC] shadow-md"
                     />
                     <button
                       type="button"
@@ -282,16 +288,16 @@ export default function Clubs() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Club Header Banner Image (Optional)</label>
+                <label className="block text-xs font-bold text-[#555555] mb-1">Club Header Banner Image (Optional)</label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="text"
                     placeholder="Paste banner URL or browse local file..."
                     value={form.bannerUrl}
                     onChange={(e) => setForm({ ...form, bannerUrl: e.target.value })}
-                    className="flex-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="flex-1 px-3 py-2 bg-white border border-[#E5E1DC] rounded-xl text-xs text-[#202020] focus:outline-none focus:border-[#F28D1E]"
                   />
-                  <label className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                  <label className="px-3 py-2 bg-[#F28D1E]/10 hover:bg-[#F28D1E]/20 text-[#F28D1E] border border-[#F28D1E]/30 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
                     <span>📁</span> Browse...
                     <input
                       type="file"
@@ -313,7 +319,7 @@ export default function Clubs() {
                     <img
                       src={form.bannerUrl}
                       alt="Banner Preview"
-                      className="h-14 w-36 object-cover rounded-lg border border-white/20 shadow-md"
+                      className="h-14 w-36 object-cover rounded-lg border border-[#E5E1DC] shadow-md"
                     />
                     <button
                       type="button"
@@ -327,17 +333,17 @@ export default function Clubs() {
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#E5E1DC]">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold rounded-lg cursor-pointer"
+                  className="px-4 py-2 bg-white border border-[#E5E1DC] hover:bg-[#F1EFEB] text-[#555555] text-xs font-semibold rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-emerald-600/30 cursor-pointer"
+                  className="px-5 py-2 bg-[#F28D1E] hover:bg-[#D97706] text-white text-xs font-bold rounded-xl shadow-sm shadow-[#F28D1E]/25 cursor-pointer"
                 >
                   {editingClub ? 'Save Changes' : 'Create Club'}
                 </button>

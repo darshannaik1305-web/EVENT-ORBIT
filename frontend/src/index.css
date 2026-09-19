@@ -1,49 +1,70 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: 'Inter', sans-serif;
   --font-headings: 'Outfit', sans-serif;
-  
+
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+
   --color-secondary: var(--secondary);
-  --color-secondary-hover: var(--secondary-hover);
-  
-  --color-accent-orange: #F97316;
-  --color-accent-blue: #3B82F6;
-  
-  --color-danger: var(--danger);
-  --color-danger-hover: var(--danger-hover);
+  --color-secondary-dark: var(--secondary-dark);
+  --color-secondary-light: var(--secondary-light);
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-border: var(--border);
+
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --color-dark: var(--dark);
-  --color-panel: var(--panel);
-  --color-surface: var(--surface);
-  --color-border: var(--border);
-  
-  --radius-radius: 24px;
-  --radius-radius-sm: 12px;
-  --radius-radius-lg: 32px;
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --radius-radius: 16px;
+  --radius-radius-sm: 10px;
+  --radius-radius-lg: 24px;
 }
 
 :root {
-  /* Brand Guidelines & Design Tokens */
-  --primary: #7C3AED;
-  --primary-hover: #6d28d9;
-  --secondary: #EC4899;
-  --secondary-hover: #db2777;
-  
-  --danger: #EF4444;
-  --danger-hover: #dc2626;
-  --success: #22C55E;
-  --warning: #F59E0B;
-  
-  --dark: #0B1020;
-  --panel: #12182B;
-  --surface: #1A2238;
-  --border: rgba(255, 255, 255, 0.08);
+  /* PRIMARY VISUAL IDENTITY: PRIMARY MAROON #7B1113 */
+  --primary-maroon: #7B1113;
+  --maroon-dark: #6F0F11;
+  --maroon-light: #8A1416;
+
+  --secondary: #7B1113;
+  --secondary-dark: #6F0F11;
+  --secondary-light: #8A1416;
+
+  --background: #F7F6F3;
+  --surface: #FFFFFF;
+  --surface-soft: #F1EFEB;
+
+  --text-primary: #202020;
+  --text-secondary: #555555;
+  --text-muted: #888888;
+
+  --border: #E5E1DC;
+
+  --success: #287A4B;
+  --warning: #B7791F;
+  --danger: #B42318;
+  --info: #2563A6;
+
+  /* Academic Elevation & Shadows */
+  --shadow-subtle: 0 2px 8px -2px rgba(242, 141, 30, 0.06), 0 1px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 4px 16px -3px rgba(32, 32, 32, 0.06), 0 2px 6px -2px rgba(32, 32, 32, 0.03);
+  --shadow-card-hover: 0 12px 28px -6px rgba(242, 141, 30, 0.15), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 20px 40px -12px rgba(0, 0, 0, 0.2), 0 8px 16px -6px rgba(0, 0, 0, 0.08);
 }
 
 /* Base resets */
@@ -52,57 +73,114 @@
   box-sizing: border-box;
 }
 
-h1, h2, h3, h4, h5, h6, .font-headings {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-headings {
   font-family: 'Outfit', sans-serif;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
 }
 
 body {
-  background-color: var(--dark);
-  color: #FFFFFF;
+  background-color: var(--background);
+  color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar with primary orange hover */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #F1EFEB;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
+  background: #D5D0C9;
   border-radius: 99px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
 }
 
-/* Glassmorphism helpers */
-.glass-panel {
-  background: rgba(26, 34, 56, 0.6);
-  backdrop-filter: blur(12px);
+/* Institutional Card Styling */
+.academic-card {
+  background: #FFFFFF;
   border: 1px solid var(--border);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: var(--shadow-card);
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glass-pill {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.academic-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: rgba(242, 141, 30, 0.35);
 }
 
-/* Custom date & time picker icon styling for dark mode inputs */
+/* Primary Orange Institutional Header */
+.header-orange {
+  background-color: #F28D1E;
+  color: #FFFFFF;
+}
+
+/* Institutional Hero Banner */
+.hero-gradient {
+  background: linear-gradient(135deg, #F28D1E 0%, #FA9D38 40%, #D97706 100%);
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-gradient::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(122, 31, 43, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: 10%;
+  width: 350px;
+  height: 350px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Geometric Grid Accent */
+.academic-grid-pattern {
+  background-size: 24px 24px;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+
+/* Custom date & time picker icon styling for light inputs */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.9) sepia(1) saturate(5) hue-rotate(220deg);
+  filter: opacity(0.6);
   cursor: pointer;
-  opacity: 0.95;
 }
+
 input[type="date"]::-webkit-calendar-picker-indicator:hover,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
 input[type="time"]::-webkit-calendar-picker-indicator:hover {
-  filter: invert(1);
-  opacity: 1;
+  filter: opacity(1);
 }

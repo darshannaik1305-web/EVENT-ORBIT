@@ -13,77 +13,85 @@ export default function Sidebar() {
     navigate(ROUTES.LOGIN)
   }
 
-  // Strict check using user.roles array (Mandatory Fix 1)
   const isClubAdmin = Boolean(user?.roles && user.roles.includes('CLUB_ADMIN'))
 
   const navLinkClass = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-      isActive
-        ? 'bg-primary/20 text-primary font-bold border border-primary/30 shadow-lg shadow-primary/10'
-        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+    `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 ${isActive
+      ? 'bg-[#F28D1E]/10 text-[#F28D1E] font-bold border-l-4 border-[#F28D1E] shadow-sm'
+      : 'text-[#555555] hover:bg-[#F28D1E]/5 hover:text-[#F28D1E]'
     }`
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-white/10 flex flex-col justify-between p-4 sticky top-0 h-screen z-40 select-none">
+    <aside className="w-64 bg-white border-r border-[#E5E1DC] flex flex-col justify-between p-4 sticky top-0 h-screen z-40 select-none shadow-[2px_0_12px_rgba(0,0,0,0.02)]">
       {/* Brand & Main Nav */}
       <div className="space-y-6">
         <Link to={ROUTES.STUDENT.HOME} className="flex items-center gap-3 px-2 pt-2 group">
-          <img src={logoImg} alt="EventOrbit Logo" className="h-10 w-10 object-contain drop-shadow-[0_0_10px_rgba(236,72,153,0.5)] transition-transform group-hover:scale-105" />
+          <img
+            src={logoImg}
+            alt="EventOrbit Logo"
+            className="h-9 w-9 object-contain drop-shadow-sm transition-transform group-hover:scale-105"
+          />
           <div>
-            <div className="font-black text-lg text-white leading-tight">EventOrbit</div>
-            <div className="text-[10px] text-slate-400 font-bold tracking-wider">College Event Portal</div>
+            <div className="font-headings font-extrabold text-lg text-[#202020] leading-tight tracking-tight flex items-center gap-1.5">
+              EventOrbit
+              <span className="h-1.5 w-1.5 rounded-full bg-[#F28D1E]" />
+            </div>
+            <div className="text-[10px] text-[#888888] font-semibold tracking-wider uppercase">MVJCE Event Portal</div>
           </div>
         </Link>
 
         {/* Sidebar Nav List */}
-        <nav className="space-y-1.5 pt-4">
+        <nav className="space-y-1 pt-3">
+          <div className="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-[#888888]">
+            Main Menu
+          </div>
+
           <NavLink to={ROUTES.STUDENT.HOME} className={navLinkClass}>
-            <span className="text-lg">🏠</span>
+            <span className="text-base">🏠</span>
             <span>Dashboard</span>
           </NavLink>
 
           <NavLink to={ROUTES.STUDENT.CLUBS} className={navLinkClass}>
-            <span className="text-lg">🏫</span>
+            <span className="text-base">🏛️</span>
             <span>Clubs</span>
           </NavLink>
 
           <NavLink to={ROUTES.STUDENT.MY_EVENTS} className={navLinkClass}>
-            <span className="text-lg">🎟️</span>
+            <span className="text-base">🎟️</span>
             <span>My Participation</span>
           </NavLink>
 
           <NavLink to={ROUTES.STUDENT.RESULTS} className={navLinkClass}>
-            <span className="text-lg">🏆</span>
-            <span>Results</span>
+            <span className="text-base">🏆</span>
+            <span>Winners & Results</span>
           </NavLink>
 
           <NavLink to={ROUTES.STUDENT.AI_ASSISTANT} className={navLinkClass}>
-            <span className="text-lg">🤖</span>
+            <span className="text-base">🤖</span>
             <span>AI Assistant</span>
           </NavLink>
 
           <NavLink to={ROUTES.STUDENT.PROFILE} className={navLinkClass}>
-            <span className="text-lg">👤</span>
+            <span className="text-base">👤</span>
             <span>Profile</span>
           </NavLink>
 
           {/* Conditional Admin Panel for Club Admins */}
           {isClubAdmin && (
-            <div className="pt-4 border-t border-white/10">
-              <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-purple-400">
-                Management
+            <div className="pt-4 mt-2 border-t border-[#E5E1DC]">
+              <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-[#7B1113]">
+                Club Administration
               </div>
               <NavLink
                 to={ROUTES.ADMIN.DASHBOARD}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
-                    isActive
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                      : 'bg-purple-950/60 text-purple-300 border border-purple-500/30 hover:bg-purple-900/60 hover:text-white'
+                  `flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${isActive
+                    ? 'bg-[#F28D1E] text-white shadow-sm'
+                    : 'bg-[#F7F6F3] text-[#7B1113] border border-[#E5E1DC] hover:bg-[#F28D1E]/10 hover:text-[#F28D1E]'
                   }`
                 }
               >
-                <span className="text-lg">⚡</span>
+                <span className="text-base">⚡</span>
                 <span>Admin Panel</span>
               </NavLink>
             </div>
@@ -92,20 +100,19 @@ export default function Sidebar() {
       </div>
 
       {/* User Profile Footer */}
-      <div className="border-t border-white/10 pt-4 space-y-3">
-        <div className="flex items-center justify-between px-2">
+      <div className="border-t border-[#E5E1DC] pt-3.5 space-y-3">
+        <div className="flex items-center justify-between px-2 bg-[#F7F6F3] p-2.5 rounded-xl border border-[#E5E1DC]">
           <div className="overflow-hidden pr-2">
-            <div className="text-sm font-bold text-white truncate">
-              {user?.fullName || user?.username}
+            <div className="text-xs font-bold text-[#202020] truncate">
+              {user?.fullName || user?.username || 'Student User'}
             </div>
-            <div className="text-xs text-slate-400 font-mono truncate">{user?.username}</div>
+            <div className="text-[11px] text-[#888888] font-mono truncate">{user?.username}</div>
           </div>
           <span
-            className={`px-2 py-0.5 rounded text-[10px] uppercase font-extrabold ${
-              isClubAdmin
-                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-            }`}
+            className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${isClubAdmin
+                ? 'bg-[#F28D1E]/10 text-[#F28D1E] border border-[#F28D1E]/30'
+                : 'bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/25'
+              }`}
           >
             {isClubAdmin ? 'Club Admin' : 'Student'}
           </span>
@@ -113,9 +120,9 @@ export default function Sidebar() {
 
         <button
           onClick={handleLogout}
-          className="w-full px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-[#B42318]/5 hover:bg-[#B42318]/10 text-[#B42318] border border-[#B42318]/20 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
-          <span>🚪</span> Logout
+          <span>🚪</span> Sign Out
         </button>
       </div>
     </aside>

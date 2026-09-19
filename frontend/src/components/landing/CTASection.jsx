@@ -1,29 +1,34 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import Button from '@/components/common/Button'
 import { ROUTES } from '@/config/routes'
 
 export default function CTASection() {
   return (
-    <section className="w-full max-w-5xl mx-auto px-6 py-20 select-none relative overflow-hidden">
-      <div className="bg-gradient-to-tr from-primary to-secondary border border-white/10 rounded-3xl p-8 md:p-16 text-center flex flex-col gap-6 items-center relative overflow-hidden shadow-2xl shadow-primary/10">
-        <div className="absolute top-[-50%] left-[-50%] w-full h-full rounded-full border border-dashed border-white/5 animate-[spin_60s_linear_infinite]" />
-        
-        <h2 className="text-3xl md:text-5xl font-black text-white leading-tight max-w-xl relative z-10">
-          Ready to Join the Event Universe?
+    <section className="w-full max-w-6xl mx-auto px-6 py-16 select-none relative overflow-hidden">
+      <div className="hero-gradient border border-[#D97706] rounded-3xl p-8 sm:p-12 md:p-16 text-center flex flex-col gap-5 items-center relative overflow-hidden shadow-xl">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#7B1113] via-[#8A1416] to-[#7B1113]" />
+
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 border border-white/25 text-white text-xs font-bold tracking-wide relative z-10">
+          <span>🎓 MVJ College of Engineering</span>
+        </div>
+
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-headings font-extrabold text-white leading-tight max-w-2xl relative z-10">
+          Ready to Compete & Lead on Campus?
         </h2>
-        <p className="text-sm md:text-base text-slate-200 font-medium max-w-md leading-relaxed relative z-10">
-          Sign up with your student USN profile today, coordinate team registrations, and follow active fests standings.
+
+        <p className="text-sm sm:text-base text-white/90 font-normal max-w-lg leading-relaxed relative z-10">
+          Sign in with your verified student USN to register for upcoming contests, lead group hackathon teams, and track official podium victories.
         </p>
-        <div className="flex flex-col sm:flex-row items-center gap-4 justify-center relative z-10 mt-4 w-full sm:w-auto">
+
+        <div className="flex flex-col sm:flex-row items-center gap-4 justify-center relative z-10 mt-3 w-full sm:w-auto">
           <Link to={ROUTES.REGISTER} className="w-full sm:w-auto">
-            <button className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white text-slate-950 font-extrabold text-sm shadow-xl hover:bg-slate-100 transition-all hover:scale-105 cursor-pointer">
-              Create Account
+            <button className="w-full sm:w-auto px-8 py-3 rounded-xl bg-white text-[#F28D1E] font-bold text-sm shadow-md hover:bg-[#F1EFEB] transition-all cursor-pointer">
+              Create Student Account
             </button>
           </Link>
           <Link to={ROUTES.LOGIN} className="w-full sm:w-auto">
-            <button className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-slate-950/50 hover:bg-slate-950/80 text-white font-extrabold text-sm border border-white/25 hover:border-white/50 shadow-xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer">
-              Sign In
+            <button className="w-full sm:w-auto px-8 py-3 rounded-xl bg-[#7B1113] hover:bg-[#6F0F11] text-white font-bold text-sm border border-white/20 shadow-sm transition-all cursor-pointer">
+              Student / Admin Sign In
             </button>
           </Link>
         </div>

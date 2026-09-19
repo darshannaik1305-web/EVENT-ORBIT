@@ -18,6 +18,8 @@ public interface WinnerRepository extends JpaRepository<Winner, String> {
     List<Winner> findByEventIdOrderByPositionAsc(String eventId);
     
     List<Winner> findByClubIdOrderByCreatedAtDesc(String clubId);
+
+    List<Winner> findByUsernameIgnoreCase(String username);
     
     Optional<Winner> findByEventIdAndPosition(String eventId, Winner.Position position);
     

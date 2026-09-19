@@ -218,6 +218,36 @@ public class ChatService {
             }
         }
 
+        // LEVEL 1: Compound Multi-Query (Independent SubQuery Execution to prevent context bleed)
+        if (processed.getSubQueries().size() > 1) {
+            return processCompoundQuery(processed, authenticatedUsername);
+        }
+
+        // LEVEL 1: Personal Achievements / Winnings (Strict Security & JPA DB Context Only)
+        if (intent == QueryProcessor.Intent.MY_ACHIEVEMENTS) {
+            if (authenticatedUsername == null || authenticatedUsername.isBlank() || authenticatedUsername.equalsIgnoreCase("anonymousUser")) {
+                return new ChatResponse("Please log in with your student account to view your achievements.", Collections.emptyList());
+            }
+
+            DatabaseSqlAgent.QueryResult dbResult = databaseSqlAgent.retrieveTargetedContext(
+                    processed.getNormalizedQuery(), authenticatedUsername, intent, null, null);
+
+            List<SourceMetadata> sources = deduplicateSources(dbResult.getSources());
+            String context = dbResult.getContext();
+
+            if (context != null && !context.isBlank()) {
+                if (hasValidApiKey()) {
+                    logSafeLlmRequest(intent, sources.size(), context.length());
+                    String llmAnswer = callLlmWithStrictGrounding(processed.getOriginalQuery(), context, "STUDENT_ACHIEVEMENTS");
+                    if (llmAnswer != null && !llmAnswer.isBlank() && !llmAnswer.contains(authenticatedUsername)) {
+                        return new ChatResponse(llmAnswer, sources);
+                    }
+                }
+                return new ChatResponse(context, sources);
+            }
+            return new ChatResponse("You have no recorded winning achievements yet.", Collections.emptyList());
+        }
+
         // LEVEL 1: Ambiguous Query Clarification (Do not dump all data)
         if (processed.isAmbiguous() && processed.getClarificationMessage() != null) {
             return new ChatResponse(processed.getClarificationMessage(), Collections.emptyList());
@@ -249,13 +279,9 @@ public class ChatService {
             return new ChatResponse(GROUNDED_UNAVAILABLE_MESSAGE, Collections.emptyList());
         }
 
-        // LEVEL 1: Compound Multi-Query (Independent SubQuery Execution to prevent context bleed)
-        if (processed.getSubQueries().size() > 1) {
-            return processCompoundQuery(processed, authenticatedUsername);
-        }
-
         // LEVEL 2/3: Dynamic Database Intents
-        boolean isDatabaseIntent = (intent == QueryProcessor.Intent.CLUB_EVENTS ||
+        boolean isDatabaseIntent = (intent == QueryProcessor.Intent.MY_ACHIEVEMENTS ||
+                intent == QueryProcessor.Intent.CLUB_EVENTS ||
                 intent == QueryProcessor.Intent.WINNERS ||
                 intent == QueryProcessor.Intent.LATEST_WINNER ||
                 intent == QueryProcessor.Intent.LATEST_EVENT_WINNER ||

@@ -108,10 +108,10 @@ export default function AdminParticipants() {
   }
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return null
+    if (!dateStr) return ''
     try {
       const d = new Date(dateStr)
-      return d.toLocaleString('en-US', {
+      return d.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -123,8 +123,8 @@ export default function AdminParticipants() {
     }
   }
 
-  const currentEvent = events.find((e) => e.id === selectedEventId)
   const activeClubObj = myClubs.find((c) => c.id === selectedClubId)
+  const currentEvent = events.find((e) => e.id === selectedEventId)
   const isGroupEvent = currentEvent?.type === 'GROUP'
 
   // Filter individual registrations by search term
@@ -156,19 +156,19 @@ export default function AdminParticipants() {
   return (
     <div className="space-y-6 select-none">
       {/* Header */}
-      <div className="bg-slate-900 border border-purple-500/20 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+      <div className="academic-card p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-l-[#F28D1E]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-white flex items-center gap-2">
+            <h1 className="text-2xl font-headings font-extrabold text-[#202020] flex items-center gap-2">
               <span>📋</span> Event Registration Review
             </h1>
             {activeClubObj && (
-              <span className="px-3 py-1 bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold rounded-full">
+              <span className="px-3 py-1 bg-[#7B1113]/10 border border-[#7B1113]/25 text-[#7B1113] text-xs font-bold rounded-full">
                 {activeClubObj.name}
               </span>
             )}
           </div>
-          <p className="text-slate-400 text-xs md:text-sm mt-1">
+          <p className="text-[#666666] text-xs sm:text-sm mt-1">
             View participant rosters, team member USNs, student details, and registration history.
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function AdminParticipants() {
         {selectedEventId && (
           <button
             onClick={() => navigate(ROUTES.ADMIN.RESULTS)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-[#F28D1E] hover:bg-[#D97706] text-white text-xs font-bold rounded-xl shadow-sm shadow-[#F28D1E]/25 transition-all flex items-center gap-2 cursor-pointer"
           >
             <span>🏆</span> Declare Event Winners
           </button>
@@ -184,22 +184,22 @@ export default function AdminParticipants() {
       </div>
 
       {/* Select Event Bar */}
-      <div className="bg-slate-900 border border-white/10 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="academic-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider whitespace-nowrap">
+          <span className="text-xs font-bold text-[#555555] uppercase tracking-wider whitespace-nowrap">
             Select Event:
           </span>
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
             disabled={loadingEvents || events.length === 0}
-            className="w-full sm:w-80 bg-slate-950 border border-purple-500/30 rounded-xl px-3 py-2 text-xs font-bold text-purple-300 outline-none focus:border-purple-500 cursor-pointer"
+            className="w-full sm:w-80 bg-white border border-[#E5E1DC] rounded-xl px-3 py-2 text-xs font-bold text-[#202020] outline-none focus:border-[#F28D1E] cursor-pointer shadow-sm"
           >
             {events.length === 0 ? (
               <option value="">No events available</option>
             ) : (
               events.map((evt) => (
-                <option key={evt.id} value={evt.id} className="bg-slate-900 text-white">
+                <option key={evt.id} value={evt.id}>
                   {evt.name} ({evt.type === 'GROUP' ? 'GROUP TEAM' : 'INDIVIDUAL'})
                 </option>
               ))
@@ -208,19 +208,19 @@ export default function AdminParticipants() {
         </div>
 
         {currentEvent && (
-          <div className="flex items-center gap-4 text-xs text-slate-400 border-t sm:border-t-0 pt-2 sm:pt-0 border-white/5">
+          <div className="flex items-center gap-4 text-xs text-[#666666] border-t sm:border-t-0 pt-2 sm:pt-0 border-[#E5E1DC]">
             <div>
-              <span className="text-slate-500">Type:</span>{' '}
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isGroupEvent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>
+              <span className="text-[#888888]">Type:</span>{' '}
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isGroupEvent ? 'bg-[#D6A84F]/15 text-[#B7791F] border-[#D6A84F]/30' : 'bg-[#2563A6]/10 text-[#2563A6] border-[#2563A6]/20'}`}>
                 {isGroupEvent ? `Team (${currentEvent.minMembers || 1}-${currentEvent.maxMembers || 4} Members)` : 'Individual'}
               </span>
             </div>
             <div>
-              <span className="text-slate-500">Venue:</span>{' '}
+              <span className="text-[#888888]">Venue:</span>{' '}
               {currentEvent.venue ? (
-                <span className="text-slate-200 font-semibold">{currentEvent.venue}</span>
+                <span className="text-[#202020] font-semibold">{currentEvent.venue}</span>
               ) : (
-                <span className="text-amber-400/90 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-[10px]">
+                <span className="text-[#B7791F] font-bold bg-[#B7791F]/10 px-2 py-0.5 rounded text-[10px]">
                   Venue is not declared
                 </span>
               )}
@@ -231,24 +231,24 @@ export default function AdminParticipants() {
 
       {/* Participant Roster Table / List */}
       {!selectedEventId ? (
-        <div className="bg-slate-900 border border-white/10 rounded-2xl p-12 text-center text-slate-400">
+        <div className="academic-card p-12 text-center text-[#888888]">
           Select an event above to view registered participants.
         </div>
       ) : loadingRegistrations ? (
         <div className="flex items-center justify-center min-h-[300px]">
-          <div className="text-purple-400 font-bold animate-pulse flex items-center gap-2">
+          <div className="text-[#F28D1E] font-bold animate-pulse flex items-center gap-2">
             <span>⚡</span> Loading Participants & Team Rosters...
           </div>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Controls & Search Bar */}
-          <div className="bg-slate-900 border border-white/10 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="academic-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-headings font-bold text-[#202020] flex items-center gap-2">
                 <span>{isGroupEvent ? '👥 Registered Teams' : '👤 Registered Participants'}</span> ({isGroupEvent ? teams.length : registrations.length})
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#666666]">
                 {isGroupEvent ? `Total registered teams for ${currentEvent?.name}` : `Total registered students for ${currentEvent?.name}`}
               </p>
             </div>
@@ -259,7 +259,7 @@ export default function AdminParticipants() {
                 placeholder="Search team, USN, name, email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-purple-500"
+                className="w-full bg-[#F7F6F3] border border-[#E5E1DC] rounded-xl px-3 py-2 text-xs text-[#202020] outline-none focus:border-[#F28D1E] focus:bg-white transition-all"
               />
             </div>
           </div>
@@ -267,13 +267,13 @@ export default function AdminParticipants() {
           {/* GROUP EVENT TEAM ROSTER VIEW */}
           {isGroupEvent ? (
             teams.length === 0 ? (
-              <div className="bg-slate-900 border border-white/5 p-12 rounded-2xl text-center text-slate-500 text-sm space-y-2">
+              <div className="academic-card p-12 text-center text-[#888888] space-y-2">
                 <div className="text-3xl">👥</div>
-                <div className="text-slate-300 font-bold">No Teams Registered Yet</div>
-                <p className="text-xs text-slate-500">Students registering for {currentEvent?.name} will create their teams here.</p>
+                <div className="text-[#202020] font-headings font-bold">No Teams Registered Yet</div>
+                <p className="text-xs text-[#666666]">Students registering for {currentEvent?.name} will create their teams here.</p>
               </div>
             ) : filteredTeams.length === 0 ? (
-              <div className="bg-slate-900 border border-white/5 p-8 rounded-2xl text-center text-slate-500 text-xs">
+              <div className="academic-card p-8 text-center text-[#888888] text-xs">
                 No teams matching search term "{searchTerm}".
               </div>
             ) : (
@@ -285,23 +285,23 @@ export default function AdminParticipants() {
                   return (
                     <div
                       key={t.id || tIdx}
-                      className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden"
+                      className="academic-card p-6 space-y-4"
                     >
                       {/* Team Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E5E1DC] pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-2xl">
+                          <div className="p-3 bg-[#F28D1E]/10 border border-[#F28D1E]/20 rounded-2xl text-2xl text-[#F28D1E]">
                             🛡️
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="text-lg font-black text-white">{t.teamName}</h3>
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              <h3 className="text-lg font-headings font-bold text-[#202020]">{t.teamName}</h3>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#D6A84F]/15 text-[#B7791F] border border-[#D6A84F]/30">
                                 TEAM #{tIdx + 1} ({membersList.length} Members)
                               </span>
                             </div>
-                            <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                              <span>👑 Leader USN: <span className="text-purple-300 font-bold font-mono">{t.leaderId}</span></span>
+                            <div className="text-xs text-[#666666] mt-0.5 flex items-center gap-2">
+                              <span>👑 Leader USN: <span className="text-[#F28D1E] font-bold font-mono">{t.leaderId}</span></span>
                               {leaderMember && <span>({leaderMember.fullName})</span>}
                             </div>
                           </div>
@@ -310,7 +310,7 @@ export default function AdminParticipants() {
                         <div className="flex items-center gap-2 self-end sm:self-auto">
                           <button
                             onClick={() => setRemoveTargetTeam({ id: t.id, name: t.teamName })}
-                            className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition-all"
+                            className="px-3 py-1.5 bg-[#B42318]/10 hover:bg-[#B42318]/20 text-[#B42318] border border-[#B42318]/20 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                           >
                             Remove Team
                           </button>
@@ -321,35 +321,35 @@ export default function AdminParticipants() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
                           <thead>
-                            <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider bg-slate-950/60">
-                              <th className="p-2.5">Role</th>
-                              <th className="p-2.5">Student USN</th>
-                              <th className="p-2.5">Full Name</th>
-                              <th className="p-2.5">Email Address</th>
-                              <th className="p-2.5">Mobile Number</th>
+                            <tr className="border-b border-[#E5E1DC] text-[#555555] uppercase text-[10px] tracking-wider bg-[#F7F6F3]">
+                              <th className="p-3">Role</th>
+                              <th className="p-3">Student USN</th>
+                              <th className="p-3">Full Name</th>
+                              <th className="p-3">Email Address</th>
+                              <th className="p-3">Mobile Number</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-white/5">
+                          <tbody className="divide-y divide-[#E5E1DC]">
                             {membersList.map((m, mIdx) => {
                               const isLeader = m.userId?.toUpperCase() === t.leaderId?.toUpperCase()
 
                               return (
-                                <tr key={m.id || mIdx} className="hover:bg-white/[0.02]">
-                                  <td className="p-2.5">
+                                <tr key={m.id || mIdx} className="hover:bg-[#F7F6F3]/50">
+                                  <td className="p-3">
                                     {isLeader ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1 w-max">
+                                      <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/25 flex items-center gap-1 w-max">
                                         👑 Leader
                                       </span>
                                     ) : (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 border border-white/5 w-max">
+                                      <span className="px-2.5 py-0.5 rounded text-[10px] font-semibold bg-[#F1EFEB] text-[#555555] border border-[#E5E1DC] w-max">
                                         Member #{mIdx + 1}
                                       </span>
                                     )}
                                   </td>
-                                  <td className="p-2.5 font-mono font-bold text-purple-300">{m.userId}</td>
-                                  <td className="p-2.5 font-bold text-white">{m.fullName || 'Registered Student'}</td>
-                                  <td className="p-2.5 text-slate-300">{m.email || 'N/A'}</td>
-                                  <td className="p-2.5 text-slate-300 font-mono">{m.mobile || 'N/A'}</td>
+                                  <td className="p-3 font-mono font-bold text-[#F28D1E]">{m.userId}</td>
+                                  <td className="p-3 font-bold text-[#202020]">{m.fullName || 'Registered Student'}</td>
+                                  <td className="p-3 text-[#555555]">{m.email || 'N/A'}</td>
+                                  <td className="p-3 text-[#555555] font-mono">{m.mobile || 'N/A'}</td>
                                 </tr>
                               )
                             })}
@@ -363,20 +363,20 @@ export default function AdminParticipants() {
             )
           ) : (
             /* INDIVIDUAL EVENT PARTICIPANTS TABLE */
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl">
+            <div className="academic-card p-6">
               {registrations.length === 0 ? (
-                <div className="py-12 text-center text-slate-500 text-sm">
+                <div className="py-12 text-center text-[#888888] text-sm">
                   No participants have registered for this event yet.
                 </div>
               ) : filteredRegistrations.length === 0 ? (
-                <div className="py-8 text-center text-slate-500 text-xs">
+                <div className="py-8 text-center text-[#888888] text-xs">
                   No participants matching "{searchTerm}".
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider bg-slate-950/50">
+                      <tr className="border-b border-[#E5E1DC] text-[#555555] uppercase text-[10px] tracking-wider bg-[#F7F6F3]">
                         <th className="p-3">#</th>
                         <th className="p-3">USN / Username</th>
                         <th className="p-3">Full Name</th>
@@ -386,19 +386,19 @@ export default function AdminParticipants() {
                         <th className="p-3 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-[#E5E1DC]">
                       {filteredRegistrations.map((reg, idx) => (
-                        <tr key={reg.id || idx} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="p-3 text-slate-500 font-mono">{idx + 1}</td>
-                          <td className="p-3 font-bold text-purple-300 font-mono">{reg.username}</td>
-                          <td className="p-3 font-bold text-white">{reg.fullName}</td>
-                          <td className="p-3 text-slate-300">{reg.email}</td>
-                          <td className="p-3 text-slate-300 font-mono">{reg.mobile}</td>
-                          <td className="p-3 text-slate-400">{formatDate(reg.registrationTime) || 'Registered'}</td>
+                        <tr key={reg.id || idx} className="hover:bg-[#F7F6F3]/50 transition-colors">
+                          <td className="p-3 text-[#888888] font-mono">{idx + 1}</td>
+                          <td className="p-3 font-bold text-[#F28D1E] font-mono">{reg.username}</td>
+                          <td className="p-3 font-bold text-[#202020]">{reg.fullName}</td>
+                          <td className="p-3 text-[#555555]">{reg.email}</td>
+                          <td className="p-3 text-[#555555] font-mono">{reg.mobile}</td>
+                          <td className="p-3 text-[#888888]">{formatDate(reg.registrationTime) || 'Registered'}</td>
                           <td className="p-3 text-right">
                             <button
                               onClick={() => setRemoveTargetReg({ id: reg.id, name: reg.fullName })}
-                              className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-[11px] font-semibold transition-all"
+                              className="px-2.5 py-1 bg-[#B42318]/10 hover:bg-[#B42318]/20 text-[#B42318] border border-[#B42318]/20 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
                             >
                               Remove
                             </button>

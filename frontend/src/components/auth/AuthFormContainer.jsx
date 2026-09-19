@@ -9,14 +9,14 @@ export default function AuthFormContainer({
   className = '',
 }) {
   return (
-    <div className={`flex flex-col gap-6 w-full ${className}`}>
+    <div className={`flex flex-col gap-5 w-full ${className}`}>
       <div className="flex flex-col items-center text-center gap-2 select-none">
         <Logo size="md" variant="primary" />
-        {title && <h2 className="text-2xl font-bold tracking-tight text-white mt-3">{title}</h2>}
-        {description && <p className="text-sm text-slate-400 max-w-sm">{description}</p>}
+        {title && <h2 className="text-2xl font-headings font-extrabold tracking-tight text-[#202020] mt-2">{title}</h2>}
+        {description && <p className="text-xs text-[#666666] max-w-sm leading-relaxed">{description}</p>}
       </div>
-      <div className="mt-2">{children}</div>
-      {footer && <div className="text-center text-xs text-slate-400 mt-2">{footer}</div>}
+      <div className="mt-1">{children}</div>
+      {footer && <div className="text-center text-xs text-[#666666] mt-2">{footer}</div>}
     </div>
   )
 }

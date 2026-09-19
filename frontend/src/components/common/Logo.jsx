@@ -19,9 +19,12 @@ export default function Logo({ size = 'md', variant = 'primary', showText = true
   const selectedImageSize = imageSizes[size] || imageSizes.md
   const selectedTextSize = textSizes[size] || textSizes.md
 
-  const colorClass = variant === 'primary' 
-    ? 'bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 bg-clip-text text-transparent' 
-    : 'text-white'
+  let colorClass = 'text-[#7B1113]'
+  if (variant === 'light') {
+    colorClass = 'text-white'
+  } else if (variant === 'dark') {
+    colorClass = 'text-[#202020]'
+  }
 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
@@ -29,11 +32,11 @@ export default function Logo({ size = 'md', variant = 'primary', showText = true
         <img 
           src={logoImg} 
           alt="EventOrbit Logo" 
-          className={`${selectedImageSize} object-contain filter drop-shadow-[0_0_12px_rgba(236,72,153,0.5)] transition-transform hover:scale-105`} 
+          className={`${selectedImageSize} object-contain transition-transform hover:scale-105`} 
         />
       </div>
       {showText && (
-        <span className={`font-black tracking-tight ${selectedTextSize} ${colorClass}`}>
+        <span className={`font-headings font-black tracking-tight ${selectedTextSize} ${colorClass}`}>
           EventOrbit
         </span>
       )}

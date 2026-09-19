@@ -520,4 +520,39 @@ public class DatabaseSqlAgentTest {
                 "Show my participation", "anonymousUser", QueryProcessor.Intent.PRIVATE_STUDENT_DATA, null, null);
         assertTrue(res3.getContext().contains("Please log in with your student account to view your participation."));
     }
+
+    @Test
+    @DisplayName("13. getStudentAchievementsContext queries authenticated student's winnings only, hides USN, and enforces auth guard")
+    void testStudentAchievementsContext() {
+        when(winnerRepository.findByUsernameIgnoreCase("1MJ23CG011")).thenReturn(List.of(winnerCg));
+        when(winnerRepository.findByUsernameIgnoreCase("1MJ25CD400")).thenReturn(Collections.emptyList());
+
+        // 1. Authenticated user with winnings (1MJ23CG011)
+        DatabaseSqlAgent.QueryResult res1 = databaseSqlAgent.retrieveTargetedContext(
+                "my achievements", "1MJ23CG011", QueryProcessor.Intent.MY_ACHIEVEMENTS, null, null);
+        assertNotNull(res1);
+        assertTrue(res1.getContext().contains("🏆 Your Achievements"));
+        assertTrue(res1.getContext().contains("Hackathon2026 — 2nd"));
+        assertFalse(res1.getContext().contains("1MJ23CG011"), "Privacy check: USN must not appear in response");
+        assertFalse(res1.getContext().contains("1MJ23CS200"), "No cross-student winner contamination");
+        assertEquals(1, res1.getSources().size());
+        assertEquals("WINNER", res1.getSources().get(0).getType());
+
+        // 2. Authenticated user with no winnings (1MJ25CD400)
+        DatabaseSqlAgent.QueryResult res2 = databaseSqlAgent.retrieveTargetedContext(
+                "my achievements", "1MJ25CD400", QueryProcessor.Intent.MY_ACHIEVEMENTS, null, null);
+        assertEquals("You have no recorded winning achievements yet.", res2.getContext());
+        assertTrue(res2.getSources().isEmpty());
+
+        // 3. Unauthenticated / anonymous
+        DatabaseSqlAgent.QueryResult res3 = databaseSqlAgent.retrieveTargetedContext(
+                "my achievements", null, QueryProcessor.Intent.MY_ACHIEVEMENTS, null, null);
+        assertEquals("Please log in with your student account to view your achievements.", res3.getContext());
+        assertTrue(res3.getSources().isEmpty());
+
+        DatabaseSqlAgent.QueryResult res4 = databaseSqlAgent.retrieveTargetedContext(
+                "my achievements", "anonymousUser", QueryProcessor.Intent.MY_ACHIEVEMENTS, null, null);
+        assertEquals("Please log in with your student account to view your achievements.", res4.getContext());
+        assertTrue(res4.getSources().isEmpty());
+    }
 }

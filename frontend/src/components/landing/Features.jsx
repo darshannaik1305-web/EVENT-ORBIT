@@ -29,20 +29,22 @@ export default function Features() {
       icon: '🏆'
     },
     {
-      title: 'Global Announcements',
-      description: 'Broadcast notifications and timing changes directly from club leaders to student portals.',
-      icon: '📢'
+      title: 'Department Guidelines',
+      description: 'Instant verified location and faculty coordination records for CS, CG, and other engineering streams.',
+      icon: '🏫'
     }
   ]
 
   return (
-    <section id="features" className="w-full max-w-5xl mx-auto px-6 py-20 relative select-none">
-      <div className="text-center max-w-2xl mx-auto flex flex-col gap-4 mb-16">
-        <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-1.5 rounded-full w-max mx-auto">
-          Features
+    <section id="features" className="w-full max-w-6xl mx-auto px-6 py-16 relative select-none">
+      <div className="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
+        <span className="text-xs font-bold text-[#F28D1E] uppercase tracking-widest bg-[#F28D1E]/10 border border-[#F28D1E]/20 px-4 py-1.5 rounded-full w-max mx-auto">
+          Core Capabilities
         </span>
-        <h2 className="text-3xl font-black text-white tracking-tight">Everything you need to compete</h2>
-        <p className="text-sm text-slate-400 font-medium">A single ecosystem built for campus life activities.</p>
+        <h2 className="text-3xl sm:text-4xl font-headings font-extrabold text-[#202020] tracking-tight">
+          Everything You Need to Participate & Compete
+        </h2>
+        <p className="text-sm text-[#666666]">A unified digital ecosystem engineered for MVJCE students, clubs, and coordinators.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

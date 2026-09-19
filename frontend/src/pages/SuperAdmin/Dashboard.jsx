@@ -64,62 +64,67 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 select-none">
       {/* Title */}
-      <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl">
-        <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
+      <div className="academic-card p-6 sm:p-8 space-y-2 border-l-4 border-l-[#F28D1E]">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F28D1E]/10 border border-[#F28D1E]/20 text-[#F28D1E] text-xs font-bold mb-1">
+          <span>👑 Master Administration</span>
+          <span>•</span>
+          <span>MVJCE EventOrbit</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-headings font-extrabold text-[#202020] flex items-center gap-2">
           <span>👑</span> Super Admin Control Center
         </h1>
-        <p className="text-slate-400 text-sm mt-1">
-          System overview, club & user administration, data maintenance.
+        <p className="text-[#666666] text-xs sm:text-sm mt-1">
+          System overview, club & user administration, and institutional data maintenance.
         </p>
       </div>
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/80 border border-white/10 p-5 rounded-xl">
-          <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Registered Users</div>
-          <div className="text-3xl font-extrabold text-white mt-2">{loading ? '...' : stats.totalUsers}</div>
-          <div className="text-xs text-slate-500 mt-1">Includes students & admins</div>
+        <div className="academic-card p-5">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Total Registered Users</div>
+          <div className="text-3xl font-headings font-extrabold text-[#202020] mt-1.5">{loading ? '...' : stats.totalUsers}</div>
+          <div className="text-xs text-[#888888] mt-1">Includes students & admins</div>
         </div>
 
-        <div className="bg-slate-900/80 border border-purple-500/20 p-5 rounded-xl">
-          <div className="text-purple-400 text-xs font-semibold uppercase tracking-wider">Assigned Club Admins</div>
-          <div className="text-3xl font-extrabold text-purple-300 mt-2">{loading ? '...' : stats.clubAdmins}</div>
-          <div className="text-xs text-purple-400/60 mt-1">Active club managers</div>
+        <div className="academic-card p-5 border-l-4 border-l-[#F28D1E]">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Assigned Club Admins</div>
+          <div className="text-3xl font-headings font-extrabold text-[#F28D1E] mt-1.5">{loading ? '...' : stats.clubAdmins}</div>
+          <div className="text-xs text-[#888888] mt-1">Active club managers</div>
         </div>
 
-        <div className="bg-slate-900/80 border border-emerald-500/20 p-5 rounded-xl">
-          <div className="text-emerald-400 text-xs font-semibold uppercase tracking-wider">Active Clubs</div>
-          <div className="text-3xl font-extrabold text-emerald-300 mt-2">{loading ? '...' : stats.totalClubs}</div>
-          <div className="text-xs text-emerald-400/60 mt-1">College campus clubs</div>
+        <div className="academic-card p-5 border-l-4 border-l-[#7B1113]">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Active Clubs</div>
+          <div className="text-3xl font-headings font-extrabold text-[#7B1113] mt-1.5">{loading ? '...' : stats.totalClubs}</div>
+          <div className="text-xs text-[#888888] mt-1">College campus clubs</div>
         </div>
 
-        <div className="bg-slate-900/80 border border-blue-500/20 p-5 rounded-xl">
-          <div className="text-blue-400 text-xs font-semibold uppercase tracking-wider">Total Events</div>
-          <div className="text-3xl font-extrabold text-blue-300 mt-2">{loading ? '...' : stats.totalEvents}</div>
-          <div className="text-xs text-blue-400/60 mt-1">Events created across clubs</div>
+        <div className="academic-card p-5 border-l-4 border-l-[#2563A6]">
+          <div className="text-[#888888] text-xs font-bold uppercase tracking-wider">Total Events</div>
+          <div className="text-3xl font-headings font-extrabold text-[#2563A6] mt-1.5">{loading ? '...' : stats.totalEvents}</div>
+          <div className="text-xs text-[#888888] mt-1">Events created across clubs</div>
         </div>
       </div>
 
       {/* Database Maintenance Tools */}
-      <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+      <div className="academic-card p-6 space-y-4">
+        <h2 className="text-lg font-headings font-bold text-[#202020] flex items-center gap-2">
           <span>🧹</span> System Maintenance
         </h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-[#666666]">
           Execute safe database cleanup tasks for orphaned events and winner declarations.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             onClick={handleCleanupEvents}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-white/10 transition-colors cursor-pointer"
+            className="px-4 py-2.5 bg-white hover:bg-[#F1EFEB] text-[#202020] text-xs font-bold rounded-xl border border-[#E5E1DC] transition-colors cursor-pointer shadow-sm"
           >
             Cleanup Orphaned Events
           </button>
           <button
             onClick={handleCleanupWinners}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-white/10 transition-colors cursor-pointer"
+            className="px-4 py-2.5 bg-white hover:bg-[#F1EFEB] text-[#202020] text-xs font-bold rounded-xl border border-[#E5E1DC] transition-colors cursor-pointer shadow-sm"
           >
             Cleanup Orphaned Winners
           </button>

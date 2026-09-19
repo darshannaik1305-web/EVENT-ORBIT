@@ -110,7 +110,7 @@ public class ChatServiceTest {
                 "What events did I participate in?",
                 "Show my registrations.",
                 "Which events have I joined?",
-                "Did I win anything?"
+                "What are my registrations?"
         );
 
         for (String query : privateQueries) {
@@ -1134,5 +1134,136 @@ public class ChatServiceTest {
         ChatResponse r15 = chatService.processQuery("Who is the prime minister of India?", "userTurnCtx2");
         assertTrue(r15.getReply().contains("I can only answer questions related to EventOrbit"), "Turn 2 must remain out-of-domain");
         assertTrue(r15.getSources().isEmpty(), "Turn 2 must NOT retrieve any sources");
+    }
+
+    @Test
+    @DisplayName("P. Personal Achievements & Winnings: Routing, Authentication Guard, Privacy, and Grounding")
+    void testPersonalAchievementsRoutingAndGuarantees() {
+        // Mock personal achievements context for authenticated student 1MJ23CG011
+        String authUser = "1MJ23CG011";
+        List<SourceMetadata> achievementSources = List.of(
+                new SourceMetadata("WINNER", "W-1", "Music Concert Winner"),
+                new SourceMetadata("WINNER", "W-2", "Singing2026 Winner")
+        );
+        String formattedAchievements = "🏆 Your Achievements:\n\n• Music Concert — 1st\n• Singing2026 — 1st";
+
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq(authUser), eq(QueryProcessor.Intent.MY_ACHIEVEMENTS), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult(formattedAchievements, achievementSources));
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq(authUser), eq(QueryProcessor.Intent.MY_ACHIEVEMENTS), any(), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult(formattedAchievements, achievementSources));
+
+        // 1. All 12 requested user phrasing variations must classify as MY_ACHIEVEMENTS and return achievements
+        List<String> achievementPhrases = List.of(
+                "my achievements",
+                "what are my achievements?",
+                "what are my winnings?",
+                "what have I won?",
+                "what did I win?",
+                "which events did I win?",
+                "show my winnings",
+                "tell me about my achievements",
+                "i am asking about my winnings",
+                "what prizes have I won?",
+                "what awards have I won?",
+                "which competitions have I won?",
+                "my wins",
+                "tell me my achievements",
+                "my winning records",
+                "what are my wins"
+        );
+
+        for (String query : achievementPhrases) {
+            QueryProcessor.ProcessedQuery processed = queryProcessor.process(query);
+            assertEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, processed.getIntent(),
+                    "Query [" + query + "] was not classified as MY_ACHIEVEMENTS intent!");
+            assertFalse(processed.isAmbiguous(),
+                    "Query [" + query + "] must NEVER trigger ambiguity clarification!");
+
+            ChatResponse response = chatService.processQuery(query, authUser);
+            assertNotNull(response);
+            assertTrue(response.getReply().contains("🏆 Your Achievements"),
+                    "Query [" + query + "] did not return achievements header: " + response.getReply());
+            assertTrue(response.getReply().contains("Music Concert — 1st"),
+                    "Query [" + query + "] missing event 1: " + response.getReply());
+            assertTrue(response.getReply().contains("Singing2026 — 1st"),
+                    "Query [" + query + "] missing event 2: " + response.getReply());
+
+            // Privacy verification: student USN must NEVER appear in the response
+            assertFalse(response.getReply().contains(authUser),
+                    "Privacy violation: Student USN appeared in the response for query [" + query + "]!");
+
+            // Source verification: sources must contain only user's WINNER sources
+            assertEquals(2, response.getSources().size());
+            assertTrue(response.getSources().stream().allMatch(s -> "WINNER".equals(s.getType())));
+        }
+
+        // 2. Department & Event queries must NOT be classified as MY_ACHIEVEMENTS
+        QueryProcessor.ProcessedQuery csDept = queryProcessor.process("What has CS won?");
+        assertEquals(QueryProcessor.Intent.WINNERS, csDept.getIntent());
+        assertEquals("CS", csDept.getTargetDepartment());
+        assertNotEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, csDept.getIntent());
+
+        QueryProcessor.ProcessedQuery cgDept = queryProcessor.process("What has CG won?");
+        assertEquals(QueryProcessor.Intent.WINNERS, cgDept.getIntent());
+        assertEquals("CG", cgDept.getTargetDepartment());
+        assertNotEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, cgDept.getIntent());
+
+        QueryProcessor.ProcessedQuery eventWinner = queryProcessor.process("Who won Hackathon?");
+        assertEquals(QueryProcessor.Intent.WINNERS, eventWinner.getIntent());
+        assertNotEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, eventWinner.getIntent());
+
+        // 3. Generic winner query must trigger clarification, NOT personal achievements
+        QueryProcessor.ProcessedQuery genericWinner = queryProcessor.process("Who won?");
+        assertTrue(genericWinner.isAmbiguous());
+        assertNotEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, genericWinner.getIntent());
+
+        ChatResponse genericResponse = chatService.processQuery("Who won?", authUser);
+        assertTrue(genericResponse.getReply().contains("Please specify the event or department"));
+
+        // 4. Participation query must remain PRIVATE_STUDENT_DATA, NOT MY_ACHIEVEMENTS
+        QueryProcessor.ProcessedQuery participation = queryProcessor.process("my participation");
+        assertEquals(QueryProcessor.Intent.PRIVATE_STUDENT_DATA, participation.getIntent());
+        assertNotEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, participation.getIntent());
+
+        QueryProcessor.ProcessedQuery registrations = queryProcessor.process("show my registrations");
+        assertEquals(QueryProcessor.Intent.PRIVATE_STUDENT_DATA, registrations.getIntent());
+        assertNotEquals(QueryProcessor.Intent.MY_ACHIEVEMENTS, registrations.getIntent());
+
+        // 5. Unauthenticated user asking for achievements must get login prompt
+        ChatResponse unauthResponse = chatService.processQuery("my achievements", null);
+        assertEquals("Please log in with your student account to view your achievements.", unauthResponse.getReply());
+        assertTrue(unauthResponse.getSources().isEmpty());
+
+        ChatResponse anonResponse = chatService.processQuery("my achievements", "anonymousUser");
+        assertEquals("Please log in with your student account to view your achievements.", anonResponse.getReply());
+        assertTrue(anonResponse.getSources().isEmpty());
+
+        ChatResponse blankResponse = chatService.processQuery("my achievements", "   ");
+        assertEquals("Please log in with your student account to view your achievements.", blankResponse.getReply());
+        assertTrue(blankResponse.getSources().isEmpty());
+
+        // 6. Authenticated user with zero achievements
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq("1MJ23CS999"), eq(QueryProcessor.Intent.MY_ACHIEVEMENTS), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult("You have no recorded winning achievements yet.", Collections.emptyList()));
+
+        ChatResponse zeroResponse = chatService.processQuery("what have I won?", "1MJ23CS999");
+        assertTrue(zeroResponse.getReply().contains("You have no recorded winning achievements yet."));
+        assertTrue(zeroResponse.getSources().isEmpty());
+
+        // 7. Compound query: "what are my achievements and where is CG?"
+        when(databaseSqlAgent.retrieveTargetedContext(anyString(), eq(authUser), eq(QueryProcessor.Intent.MY_ACHIEVEMENTS), any(), any()))
+                .thenReturn(new DatabaseSqlAgent.QueryResult(formattedAchievements, achievementSources));
+
+        ChatResponse compound = chatService.processQuery("what are my achievements and where is CG?", authUser);
+        assertNotNull(compound);
+        assertTrue(compound.getReply().contains("🏆 Your Achievements"), "Compound response must contain achievements");
+        assertTrue(compound.getReply().contains("Music Concert — 1st"), "Compound response must contain event 1");
+        assertTrue(compound.getReply().contains("Main Academic Block") || compound.getReply().contains("Computer Graphics"),
+                "Compound response must contain CG location");
+        assertFalse(compound.getReply().contains(authUser), "Compound response must NOT expose USN");
+
+        // Sources must contain both WINNER and KNOWLEDGE without pollution
+        assertTrue(compound.getSources().stream().anyMatch(s -> "WINNER".equals(s.getType())));
+        assertTrue(compound.getSources().stream().anyMatch(s -> "KNOWLEDGE".equals(s.getType())));
     }
 }

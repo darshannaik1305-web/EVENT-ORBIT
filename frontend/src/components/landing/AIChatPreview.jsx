@@ -3,35 +3,42 @@ import { motion } from 'framer-motion'
 
 export default function AIChatPreview() {
   return (
-    <section id="ai-chat" className="w-full max-w-5xl mx-auto px-6 py-20 relative grid grid-cols-1 lg:grid-cols-12 gap-12 items-center select-none">
-      <div className="lg:col-span-5 flex flex-col gap-6 text-center lg:text-left">
-        <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-1.5 rounded-full w-max mx-auto lg:mx-0">
-          AI Chat Assistant
+    <section id="ai-chat" className="w-full max-w-6xl mx-auto px-6 py-16 relative grid grid-cols-1 lg:grid-cols-12 gap-12 items-center select-none">
+      <div className="lg:col-span-5 flex flex-col gap-4 text-center lg:text-left">
+        <span className="text-xs font-bold text-[#F28D1E] uppercase tracking-widest bg-[#F28D1E]/10 border border-[#F28D1E]/20 px-4 py-1.5 rounded-full w-max mx-auto lg:mx-0">
+          Intelligent Assistant
         </span>
-        <h2 className="text-3xl font-black text-white tracking-tight">
-          Instant Campus Guidelines
+        <h2 className="text-3xl sm:text-4xl font-headings font-extrabold text-[#202020] tracking-tight leading-tight">
+          Instant Verified Campus Answers
         </h2>
-        <p className="text-sm text-slate-400 font-medium leading-relaxed">
-          Ask questions about rules, active coordinators, registration options, or contest schedules. Get responses instantly.
+        <p className="text-sm text-[#666666] leading-relaxed">
+          Ask questions about contest schedules, campus locations, club coordinators, scholarship steps, or your personal winnings. Receive verified, hallucination-free answers backed by college databases.
         </p>
       </div>
 
-      <div className="lg:col-span-7 flex justify-center mt-6 lg:mt-0">
+      <div className="lg:col-span-7 flex justify-center mt-4 lg:mt-0">
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, margin: '-100px' }}
+          viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-lg bg-[#12182B]/60 border border-white/5 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[320px] backdrop-blur-md"
+          className="w-full max-w-lg academic-card rounded-2xl overflow-hidden shadow-lg flex flex-col h-[320px] bg-[#F7F6F3]"
         >
           {/* Header */}
-          <div className="bg-slate-900/60 border-b border-white/5 py-4 px-6 flex items-center gap-3">
-            <div className="h-2.5 w-2.5 bg-success rounded-full animate-pulse" />
-            <span className="text-xs font-extrabold text-white tracking-wide">EventOrbit Bot</span>
+          <div className="bg-white border-b border-[#E5E1DC] py-3.5 px-6 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-2.5 w-2.5 bg-[#287A4B] rounded-full animate-pulse" />
+              <span className="text-xs font-headings font-bold text-[#202020] tracking-wide">
+                EventOrbit AI Assistant
+              </span>
+            </div>
+            <span className="text-[10px] text-[#F28D1E] font-bold font-mono">
+              [KNOWLEDGE + DB]
+            </span>
           </div>
 
           {/* Bubbles */}
-          <div className="flex-1 p-6 flex flex-col gap-4 overflow-y-auto">
+          <div className="flex-1 p-5 flex flex-col gap-3.5 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -39,23 +46,28 @@ export default function AIChatPreview() {
               transition={{ delay: 0.2 }}
               className="flex flex-col gap-1 max-w-[85%]"
             >
-              <div className="bg-white/5 py-3 px-4 rounded-3xl rounded-tl-none text-xs text-slate-200 font-semibold border border-white/5">
-                When is the Coding Club Hackathon?
+              <div className="bg-white py-2.5 px-4 rounded-xl rounded-tl-none text-xs text-[#202020] border border-[#E5E1DC] shadow-sm">
+                Where is the CG department located and who is the coordinator?
               </div>
-              <span className="text-[9px] text-slate-500 font-bold ml-2">Student (1MJ23CS012)</span>
+              <span className="text-[10px] text-[#888888] ml-1">Student Inquiry</span>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, x: 10 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.8 }}
+              transition={{ delay: 0.6 }}
               className="flex flex-col gap-1 max-w-[85%] self-end items-end"
             >
-              <div className="bg-gradient-to-tr from-primary to-secondary py-3 px-4 rounded-3xl rounded-tr-none text-xs text-white font-semibold shadow-md shadow-primary/10">
-                The Coding Club Hackathon starts on August 18 at 9:00 AM in the Main Seminar Hall. Remember to register before Aug 15!
+              <div className="bg-[#F28D1E] text-white py-2.5 px-4 rounded-xl rounded-tr-none text-xs leading-relaxed shadow-sm font-medium">
+                The CG (Computer Graphics & Engineering) department is located in the New Building on the 2nd Floor.
               </div>
-              <span className="text-[9px] text-slate-500 font-bold mr-2">AI Assistant</span>
+              <div className="flex items-center gap-1.5 mr-1">
+                <span className="text-[9px] font-mono font-bold text-[#7B1113] bg-[#7B1113]/10 px-1.5 py-0.2 rounded border border-[#7B1113]/25">
+                  [KNOWLEDGE: CG]
+                </span>
+                <span className="text-[10px] text-[#888888]">EventOrbit Bot</span>
+              </div>
             </motion.div>
           </div>
         </motion.div>

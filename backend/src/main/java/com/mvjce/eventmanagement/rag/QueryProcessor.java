@@ -18,6 +18,7 @@ public class QueryProcessor {
         GREETING,
         PRIVACY_ATTACK,
         PRIVATE_STUDENT_DATA,
+        MY_ACHIEVEMENTS,
         CLUB_EVENTS,
         WINNERS,
         LATEST_WINNER,
@@ -347,6 +348,33 @@ public class QueryProcessor {
             Pattern.CASE_INSENSITIVE
     );
 
+    private static final Pattern PERSONAL_ACHIEVEMENT_PATTERN = Pattern.compile(
+            "\\b(" +
+            "my\\s+(?:achievements?|winnings?|wins?|winning\\s+records?|winning\\s+history|prizes?|awards?)|" +
+            "(?:what|which)\\s+(?:events?|competitions?|prizes?|awards?)\\s+(?:did|have)\\s+i\\s+(?:win|won)|" +
+            "what\\s+(?:did|have)\\s+i\\s+(?:win|won|achieved?)|" +
+            "what\\s+are\\s+my\\s+(?:achievements?|winnings?|wins?|awards?|prizes?)|" +
+            "show\\s+(?:me\\s+)?(?:all\\s+)?my\\s+(?:winnings?|achievements?|wins?|winning\\s+records?)|" +
+            "tell\\s+me\\s+(?:about\\s+)?my\\s+(?:achievements?|winnings?|wins?)|" +
+            "i\\s+am\\s+asking\\s+about\\s+my\\s+(?:winnings?|achievements?|wins?)|" +
+            "have\\s+i\\s+won\\s+(?:anything|any\\s+events?|any\\s+competitions?|any\\s+prizes?|any\\s+awards?)|" +
+            "did\\s+i\\s+win\\s+(?:anything|any\\s+events?|any\\s+competitions?|any\\s+prizes?|any\\s+awards?)|" +
+            "what\\s+competitions?\\s+(?:did|have)\\s+i\\s+(?:win|won)|" +
+            "which\\s+competitions?\\s+(?:did|have)\\s+i\\s+(?:win|won)|" +
+            "what\\s+have\\s+i\\s+achieved|" +
+            "what\\s+did\\s+i\\s+achieve" +
+            ")\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    public boolean isPersonalAchievementQuery(String normalized) {
+        if (normalized == null || normalized.isBlank()) return false;
+        if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) return false;
+        if (PERSONAL_ACHIEVEMENT_PATTERN.matcher(normalized).find()) return true;
+        return normalized.matches(".*\\b(my|i)\\b.*\\b(won|win|winnings?|achievements?|prizes?|awards?)\\b.*") &&
+               !normalized.contains("department") && !normalized.contains("dept");
+    }
+
     // Canonical Campus & Department Entities with strict word-boundary patterns
     private static final Map<String, Pattern> ACADEMIC_DEPARTMENTS = new LinkedHashMap<>();
     static {
@@ -413,7 +441,7 @@ public class QueryProcessor {
         }
 
         // 3. Recognized Database Intents
-        if (intent == Intent.WINNERS || intent == Intent.LATEST_WINNER || intent == Intent.LATEST_EVENT_WINNER ||
+        if (intent == Intent.MY_ACHIEVEMENTS || intent == Intent.WINNERS || intent == Intent.LATEST_WINNER || intent == Intent.LATEST_EVENT_WINNER ||
                 intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST || intent == Intent.EVENTS_ONGOING ||
                 intent == Intent.EVENTS_UPCOMING || intent == Intent.EVENTS_ACTIVE || intent == Intent.EVENTS_ENDED ||
                 intent == Intent.EVENTS_THIS_WEEK || intent == Intent.REGISTRATION_OPENING_THIS_WEEK ||
@@ -487,7 +515,11 @@ public class QueryProcessor {
         EntityScope primaryScope = EntityScope.GLOBAL;
         String targetDepartment = null;
 
-        if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) {
+        if (isPersonalAchievementQuery(normalized)) {
+            primaryEntity = "AUTHENTICATED_USER";
+            primaryScope = EntityScope.STUDENT;
+            primaryAttribute = RequestedAttribute.WINNER;
+        } else if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) {
             primaryEntity = "MY_DEPARTMENT";
             primaryScope = EntityScope.DEPARTMENT;
             if (primaryAttribute == RequestedAttribute.WINNER) {
@@ -525,7 +557,7 @@ public class QueryProcessor {
                 normalized.contains("last winner") || normalized.contains("latest winners");
 
         if (primaryAttribute == RequestedAttribute.WINNER && primaryEntity == null && targetDepartment == null && matchedEvent == null &&
-                !isUserPrivateQuery(normalized) && !isLatestWinnerQuery) {
+                !isUserPrivateQuery(normalized) && !isPersonalAchievementQuery(normalized) && !isLatestWinnerQuery) {
             boolean isExternalComp = EXTERNAL_COMPETITION_PATTERN.matcher(normalized).find();
             if (!isExternalComp) {
                 boolean isFaq = normalized.contains("how are") || normalized.contains("how do they announce") ||
@@ -635,7 +667,11 @@ public class QueryProcessor {
                 String entity = null;
                 EntityScope scope = EntityScope.GLOBAL;
 
-                if (MY_DEPARTMENT_PATTERN.matcher(normPart).find()) {
+                if (isPersonalAchievementQuery(normPart)) {
+                    entity = "AUTHENTICATED_USER";
+                    scope = EntityScope.STUDENT;
+                    attr = RequestedAttribute.WINNER;
+                } else if (MY_DEPARTMENT_PATTERN.matcher(normPart).find()) {
                     entity = "MY_DEPARTMENT";
                     scope = EntityScope.DEPARTMENT;
                 } else {
@@ -678,7 +714,11 @@ public class QueryProcessor {
 
             String entity = null;
             EntityScope scope = EntityScope.GLOBAL;
-            if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) {
+            if (isPersonalAchievementQuery(normalized)) {
+                entity = "AUTHENTICATED_USER";
+                scope = EntityScope.STUDENT;
+                attr = RequestedAttribute.WINNER;
+            } else if (MY_DEPARTMENT_PATTERN.matcher(normalized).find()) {
                 entity = "MY_DEPARTMENT";
                 scope = EntityScope.DEPARTMENT;
             } else if (!campusEnts.isEmpty()) {
@@ -726,6 +766,10 @@ public class QueryProcessor {
     }
 
     private boolean isUserPrivateQuery(String q) {
+        if (isPersonalAchievementQuery(q)) {
+            return false;
+        }
+
         // Exclude general guidance, questions starting with how/what should i do/process/procedure
         if (q.startsWith("how ") || q.startsWith("where ") || q.startsWith("what is the procedure") ||
                 q.startsWith("what is the process") || q.startsWith("what are the steps") ||
@@ -945,6 +989,11 @@ public class QueryProcessor {
     private Intent detectIntent(String normalized, String matchedClub, String matchedEvent,
                                  RequestedAttribute requestedAttribute, List<String> campusEntities,
                                  EntityScope primaryScope, String primaryEntity, boolean isAmbiguous) {
+        // 0. Personal Achievements / Winnings
+        if (isPersonalAchievementQuery(normalized)) {
+            return Intent.MY_ACHIEVEMENTS;
+        }
+
         // 1. Private Student Data Queries (LEVEL 1)
         if (isUserPrivateQuery(normalized)) {
             return Intent.PRIVATE_STUDENT_DATA;
@@ -1119,7 +1168,7 @@ public class QueryProcessor {
         if (intent == Intent.PRIVACY_ATTACK || intent == Intent.GREETING || intent == Intent.AMBIGUOUS_QUERY || intent == Intent.OUT_OF_DOMAIN) {
             return DataSource.SYSTEM;
         }
-        if (intent == Intent.WINNERS || intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST ||
+        if (intent == Intent.MY_ACHIEVEMENTS || intent == Intent.WINNERS || intent == Intent.CLUB_EVENTS || intent == Intent.CLUBS_LIST ||
                 intent == Intent.EVENTS_ONGOING || intent == Intent.EVENTS_UPCOMING ||
                 intent == Intent.EVENTS_ACTIVE || intent == Intent.EVENTS_ENDED ||
                 intent == Intent.EVENTS_THIS_WEEK || intent == Intent.REGISTRATION_OPENING_THIS_WEEK ||

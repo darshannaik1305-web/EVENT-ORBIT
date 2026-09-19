@@ -101,7 +101,7 @@ export default function RegisterForm() {
   const footer = (
     <p>
       Already have an account?{' '}
-      <Link to={ROUTES.LOGIN} className="text-primary hover:text-primary-hover font-semibold transition-colors">
+      <Link to={ROUTES.LOGIN} className="text-[#F28D1E] hover:text-[#D97706] font-bold transition-colors">
         Sign In
       </Link>
     </p>

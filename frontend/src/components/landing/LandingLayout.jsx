@@ -5,7 +5,7 @@ import Footer from './Footer'
 
 export default function LandingLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B1020] text-slate-100 overflow-x-hidden font-sans">
+    <div className="min-h-screen flex flex-col bg-[#F7F6F3] text-[#202020] overflow-x-hidden font-sans">
       <Navbar />
       <div className="pt-24 flex-1 flex flex-col">
         <Outlet />
