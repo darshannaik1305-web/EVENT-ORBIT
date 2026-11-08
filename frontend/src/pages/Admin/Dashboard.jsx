@@ -32,7 +32,7 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F28D1E]/10 border border-[#F28D1E]/20 text-[#F28D1E] text-xs font-bold mb-1">
-              <span>⚡ Admin Console</span>
+              <span>⚡ Faculty Console</span>
               <span>•</span>
               <span>MVJCE EventOrbit</span>
             </div>
@@ -40,14 +40,14 @@ export default function Dashboard() {
               <span>🛡️</span> Club Administration Hub
             </h1>
             <p className="text-[#666666] text-xs sm:text-sm mt-1">
-              Welcome, <strong className="text-[#202020]">{user?.fullName || user?.username}</strong>! Manage your club activities, track participant entry passes, and declare official podium winners.
+              Welcome, <strong className="text-[#202020]">{user?.fullName || user?.username}</strong> ({user?.username})! Manage your club activities, track participant entry passes, and declare official podium winners.
             </p>
           </div>
           <Link
-            to={ROUTES.STUDENT.HOME}
-            className="px-4 py-2 bg-[#7B1113]/10 hover:bg-[#7B1113]/20 text-[#7B1113] font-bold text-xs rounded-xl border border-[#7B1113]/25 transition-all self-start sm:self-auto shrink-0 shadow-sm"
+            to={ROUTES.ADMIN.PROFILE}
+            className="px-4 py-2 bg-[#F28D1E]/10 hover:bg-[#F28D1E]/20 text-[#F28D1E] font-bold text-xs rounded-xl border border-[#F28D1E]/25 transition-all self-start sm:self-auto shrink-0 shadow-sm flex items-center gap-2"
           >
-            Switch to Student View →
+            <span>👤</span> Security & Profile
           </Link>
         </div>
       </div>

@@ -60,17 +60,25 @@ public class ClubController {
             return ResponseEntity.ok(clubRepository.findAll());
         }
 
-        List<com.mvjce.eventmanagement.model.ClubAdmin> adminEntries = clubAdminRepository.findByUsernameIgnoreCase(user.getUsername());
-        List<String> clubIds = adminEntries.stream()
-                .map(com.mvjce.eventmanagement.model.ClubAdmin::getClubId)
-                .collect(java.util.stream.Collectors.toList());
-
-        if (clubIds.isEmpty() && user.getAdminClubId() != null && !user.getAdminClubId().isBlank()) {
-            clubIds.add(user.getAdminClubId());
+        if (!"CLUB_ADMIN".equalsIgnoreCase(user.getRole()) || !user.isEnabled()) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
         }
 
-        List<Club> clubs = clubRepository.findAllById(clubIds);
-        return ResponseEntity.ok(clubs);
+        String assignedClubId = user.getAdminClubId();
+        if (assignedClubId == null || assignedClubId.isBlank()) {
+            List<com.mvjce.eventmanagement.model.ClubAdmin> adminEntries = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(user.getUsername());
+            if (!adminEntries.isEmpty()) {
+                assignedClubId = adminEntries.get(0).getClubId();
+            }
+        }
+
+        if (assignedClubId != null && !assignedClubId.isBlank()) {
+            return clubRepository.findById(assignedClubId)
+                    .map(c -> ResponseEntity.ok(List.of(c)))
+                    .orElse(ResponseEntity.ok(java.util.Collections.emptyList()));
+        }
+
+        return ResponseEntity.ok(java.util.Collections.emptyList());
     }
 
     @GetMapping("/{id}")

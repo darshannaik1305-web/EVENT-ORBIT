@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
     const rolesArray = Array.isArray(data.roles) && data.roles.length > 0
       ? data.roles
       : data.role === 'CLUB_ADMIN'
-      ? ['STUDENT', 'CLUB_ADMIN']
+      ? ['CLUB_ADMIN']
       : data.role === 'SUPER_ADMIN' || data.role === 'ADMIN'
       ? ['SUPER_ADMIN']
       : ['STUDENT']
@@ -66,6 +66,8 @@ export function AuthProvider({ children }) {
       email: data.email || '',
       adminClubIds: data.adminClubIds || [],
       adminClubId: data.adminClubId || null,
+      adminClubName: data.adminClubName || null,
+      mustChangePassword: data.mustChangePassword ?? false,
     }
 
     storage.saveToken(data.token)
@@ -80,6 +82,16 @@ export function AuthProvider({ children }) {
 
   const register = async (payload) => {
     return await authService.register(payload)
+  }
+
+  const changePassword = async (currentPassword, newPassword) => {
+    const res = await authService.changePassword(currentPassword, newPassword, user?.username)
+    if (user && user.mustChangePassword) {
+      const updatedUser = { ...user, mustChangePassword: false }
+      storage.saveUser(updatedUser)
+      setUser(updatedUser)
+    }
+    return res
   }
 
   const logout = () => {
@@ -106,6 +118,7 @@ export function AuthProvider({ children }) {
     loading,
     login,
     register,
+    changePassword,
     logout,
     refreshSession,
   }

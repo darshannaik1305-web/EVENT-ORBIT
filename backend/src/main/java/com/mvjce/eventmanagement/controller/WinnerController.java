@@ -69,9 +69,11 @@ public class WinnerController {
             return true;
         }
         if (isClubAdmin(actor)) {
-            // Check if user is admin for this specific club using ClubAdmin entries
-            if (event == null || event.getClubId() == null) {
+            if (event == null || event.getClubId() == null || !actor.isEnabled()) {
                 return false;
+            }
+            if (event.getClubId().equals(actor.getAdminClubId())) {
+                return true;
             }
             List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actor.getUsername());
             return clubAdmins.stream().anyMatch(ca -> ca.getClubId().equals(event.getClubId()));

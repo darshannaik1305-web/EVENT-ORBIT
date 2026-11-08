@@ -10,8 +10,8 @@ export const authService = {
     const response = await api.post(API_ENDPOINTS.AUTH.REGISTER, payload)
     return response.data
   },
-  registerAdmin: async (payload) => {
-    const response = await api.post(API_ENDPOINTS.AUTH.REGISTER_ADMIN, payload)
+  changePassword: async (currentPassword, newPassword, username) => {
+    const response = await api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, { currentPassword, newPassword, username })
     return response.data
   }
 }

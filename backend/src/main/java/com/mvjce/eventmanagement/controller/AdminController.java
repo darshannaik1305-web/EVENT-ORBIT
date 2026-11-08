@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -51,38 +52,18 @@ public class AdminController {
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> listUsers() {
         List<Map<String, Object>> users = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == null || (!u.getRole().equalsIgnoreCase("CLUB_ADMIN") 
+                        && !u.getRole().equalsIgnoreCase("SUPER_ADMIN") 
+                        && !u.getRole().equalsIgnoreCase("ADMIN")))
                 .map(u -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", u.getId());
                     m.put("username", u.getUsername());
-                    
-                    // For club admins, verify assigned clubs and demote to normal user if 0 clubs assigned
-                    if (u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN")) {
-                        List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
-                        if (clubAdmins.isEmpty()) {
-                            u.setRole("USER");
-                            u.setAdminClubId(null);
-                            userRepository.save(u);
-                        } else {
-                            List<Map<String, Object>> clubs = clubAdmins.stream()
-                                    .map(ca -> {
-                                        Map<String, Object> cm = new HashMap<>();
-                                        cm.put("clubAdminId", ca.getId());
-                                        cm.put("clubId", ca.getClubId());
-                                        cm.put("enabled", ca.isEnabled());
-                                        return cm;
-                                    })
-                                    .collect(Collectors.toList());
-                            m.put("clubs", clubs);
-                        }
-                    }
-
-                    m.put("role", u.getRole());
+                    m.put("role", u.getRole() != null ? u.getRole() : "STUDENT");
                     m.put("mobile", u.getMobile());
                     m.put("fullName", u.getFullName());
                     m.put("email", u.getEmail());
                     m.put("gender", u.getGender());
-                    m.put("adminClubId", u.getAdminClubId());
                     m.put("enabled", u.isEnabled());
                     return m;
                 })
@@ -92,224 +73,236 @@ public class AdminController {
 
     @GetMapping("/club-admins")
     public ResponseEntity<List<Map<String, Object>>> listClubAdmins() {
-        List<Map<String, Object>> users = userRepository.findAll().stream()
+        List<Map<String, Object>> clubAdmins = userRepository.findAll().stream()
                 .filter(u -> u.getRole() != null && u.getRole().equalsIgnoreCase("CLUB_ADMIN"))
                 .map(u -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", u.getId());
+                    m.put("clubAdminId", u.getUsername());
                     m.put("username", u.getUsername());
-                    m.put("role", u.getRole());
+                    m.put("facultyName", u.getFullName() != null ? u.getFullName() : u.getUsername());
+                    m.put("fullName", u.getFullName() != null ? u.getFullName() : u.getUsername());
+                    m.put("role", "CLUB_ADMIN");
                     m.put("mobile", u.getMobile());
-                    m.put("fullName", u.getFullName());
                     m.put("email", u.getEmail());
                     m.put("gender", u.getGender());
-                    // Get all clubs this admin manages
-                    List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
-                    List<Map<String, Object>> clubs = clubAdmins.stream()
-                            .map(ca -> {
-                                Map<String, Object> cm = new HashMap<>();
-                                cm.put("clubAdminId", ca.getId());
-                                cm.put("clubId", ca.getClubId());
-                                cm.put("enabled", ca.isEnabled());
-                                return cm;
-                            })
-                            .collect(Collectors.toList());
-                    m.put("clubs", clubs);
+                    m.put("adminClubId", u.getAdminClubId());
                     m.put("enabled", u.isEnabled());
+
+                    String clubId = u.getAdminClubId();
+                    if (clubId == null || clubId.isBlank()) {
+                        List<ClubAdmin> cas = clubAdminRepository.findByUsernameIgnoreCase(u.getUsername());
+                        if (!cas.isEmpty()) {
+                            clubId = cas.get(0).getClubId();
+                            m.put("adminClubId", clubId);
+                        }
+                    }
+
+                    if (clubId != null && !clubId.isBlank()) {
+                        clubRepository.findById(clubId).ifPresent(c -> {
+                            m.put("clubName", c.getName());
+                            m.put("clubCategory", c.getCategory());
+                        });
+                    }
+
                     return m;
                 })
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(users);
-    }
-
-    @GetMapping("/club-admins/pending")
-    public ResponseEntity<List<Map<String, Object>>> listPendingClubAdmins() {
-        // Get all pending ClubAdmin entries
-        List<ClubAdmin> pendingClubAdmins = clubAdminRepository.findAll().stream()
-                .filter(ca -> !ca.isEnabled())
-                .collect(Collectors.toList());
-
-        List<Map<String, Object>> result = pendingClubAdmins.stream()
-                .map(ca -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("clubAdminId", ca.getId());
-                    m.put("username", ca.getUsername());
-                    m.put("clubId", ca.getClubId());
-                    m.put("enabled", ca.isEnabled());
-                    // Get user details
-                    userRepository.findByUsernameIgnoreCase(ca.getUsername()).ifPresent(user -> {
-                        m.put("userId", user.getId());
-                        m.put("fullName", user.getFullName());
-                        m.put("mobile", user.getMobile());
-                        m.put("email", user.getEmail());
-                        m.put("gender", user.getGender());
-                    });
-                    return m;
-                })
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(clubAdmins);
     }
 
     @PostMapping("/club-admins")
     public ResponseEntity<?> createClubAdmin(@RequestBody Map<String, String> payload) {
         try {
-            String usn = payload.get("usn");
-            if (usn == null || usn.isBlank()) {
-                usn = payload.get("username");
+            String clubAdminId = payload.get("clubAdminId");
+            if (clubAdminId == null || clubAdminId.isBlank()) {
+                clubAdminId = payload.get("username");
+            }
+            String facultyName = payload.get("facultyName");
+            if (facultyName == null || facultyName.isBlank()) {
+                facultyName = payload.get("fullName");
             }
             String clubId = payload.get("clubId");
+            if (clubId == null || clubId.isBlank()) {
+                clubId = payload.get("adminClubId");
+            }
+            String email = payload.get("email");
+            String mobile = payload.get("mobile");
 
-            if (usn == null || usn.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Student USN / Username is required"));
+            if (clubAdminId == null || clubAdminId.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Club Admin ID is required (e.g. CODINGCLUB01)"));
+            }
+            if (facultyName == null || facultyName.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Faculty / Lecturer Name is required"));
             }
             if (clubId == null || clubId.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Club selection is required"));
+                return ResponseEntity.badRequest().body(Map.of("message", "Assigned Club selection is required"));
+            }
+            if (mobile == null || mobile.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Faculty phone/mobile number is required to generate the initial temporary password"));
             }
 
-            final String targetUsn = usn.trim();
+            // Extract first meaningful name and last 4 digits of phone
+            String firstName = extractFirstName(facultyName);
+            String last4Digits = extractLast4DigitsOfPhone(mobile);
+            String tempPassword = firstName + "@" + last4Digits;
 
-            // Rule 1: Student Registration Check - Must be registered first as a student
-            User studentUser = userRepository.findByUsernameIgnoreCase(targetUsn)
-                    .orElseThrow(() -> new RuntimeException("Student with USN '" + targetUsn + "' is not registered. User must register as a student first."));
+            final String normalizedId = clubAdminId.trim().toUpperCase();
 
-            // Rule 2: Club existence check
-            Club club = clubRepository.findById(clubId)
+            // 1. Uniqueness check for Club Admin ID across all users
+            if (userRepository.existsByUsernameIgnoreCase(normalizedId)) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Club Admin ID '" + normalizedId + "' is already taken. Please choose a unique ID."));
+            }
+
+            final String assignedClubId = clubId;
+
+            // 2. Club existence check
+            Club club = clubRepository.findById(assignedClubId)
                     .orElseThrow(() -> new RuntimeException("Selected club does not exist."));
 
-            // Rule 3: Maximum 2 Club Admins Per Club Limit
-            long currentAdminsCount = clubAdminRepository.countByClubIdAndEnabledTrue(clubId);
-            if (currentAdminsCount >= 2) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Club '" + club.getName() + "' already has the maximum limit of 2 assigned Club Admins."));
+            // 3. Strict 1 Club Admin per Club enforcement
+            boolean clubAlreadyHasAdmin = userRepository.findAll().stream()
+                    .anyMatch(u -> "CLUB_ADMIN".equalsIgnoreCase(u.getRole()) 
+                            && assignedClubId.equals(u.getAdminClubId()) 
+                            && u.isEnabled());
+            if (clubAlreadyHasAdmin || clubAdminRepository.countByClubIdAndEnabledTrue(assignedClubId) > 0) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Club '" + club.getName() + "' already has an assigned active Club Admin. Each club can have only 1 Club Admin."));
             }
 
-            // Rule 4: Check if already assigned to this club
-            if (clubAdminRepository.existsByUsernameIgnoreCaseAndClubId(targetUsn, clubId)) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Student '" + targetUsn + "' is already an assigned Club Admin for '" + club.getName() + "'."));
-            }
+            // 4. Create separate Lecturer Club Admin User with hashed temp password and mustChangePassword = true
+            User adminUser = new User();
+            adminUser.setUsername(normalizedId);
+            adminUser.setFullName(facultyName.trim());
+            adminUser.setPassword(passwordEncoder.encode(tempPassword));
+            adminUser.setRole("CLUB_ADMIN");
+            adminUser.setAdminClubId(assignedClubId);
+            adminUser.setEmail(email != null ? email.trim() : "");
+            adminUser.setMobile(mobile != null ? mobile.trim() : "");
+            adminUser.setEnabled(true);
+            adminUser.setMustChangePassword(true);
+            User saved = userRepository.save(adminUser);
 
-            // Update user role to CLUB_ADMIN and set primary adminClubId
-            studentUser.setRole("CLUB_ADMIN");
-            studentUser.setAdminClubId(clubId);
-            User saved = userRepository.save(studentUser);
-
-            // Create/Update ClubAdmin mapping entry
-            ClubAdmin clubAdmin = clubAdminRepository.findByUsernameIgnoreCaseAndClubId(targetUsn, clubId)
-                    .orElseGet(() -> new ClubAdmin(targetUsn, clubId));
+            // 5. Create/sync ClubAdmin entity
+            ClubAdmin clubAdmin = new ClubAdmin(normalizedId, clubId);
             clubAdmin.setEnabled(true);
             clubAdminRepository.save(clubAdmin);
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Student '" + targetUsn + "' assigned as Club Admin for '" + club.getName() + "' successfully",
-                    "id", saved.getId(),
-                    "username", saved.getUsername(),
-                    "role", "CLUB_ADMIN",
-                    "adminClubId", clubId,
-                    "clubName", club.getName(),
-                    "enabled", saved.isEnabled()
-            ));
+            Map<String, Object> resp = new java.util.LinkedHashMap<>();
+            resp.put("message", "Lecturer Club Admin '" + normalizedId + "' created for '" + club.getName() + "' successfully");
+            resp.put("id", saved.getId());
+            resp.put("clubAdminId", saved.getUsername());
+            resp.put("username", saved.getUsername());
+            resp.put("facultyName", saved.getFullName());
+            resp.put("role", "CLUB_ADMIN");
+            resp.put("adminClubId", clubId);
+            resp.put("clubName", club.getName());
+            resp.put("temporaryPassword", tempPassword);
+            resp.put("mustChangePassword", true);
+            resp.put("enabled", saved.isEnabled());
+
+            return ResponseEntity.ok(resp);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
-    @DeleteMapping("/users/{id}")
-    public ResponseEntity<?> deleteUser(@NonNull @PathVariable String id) {
-        return userRepository.findById(id)
-                .map(u -> {
-                    if (u.getRole() != null && u.getRole().equalsIgnoreCase("ADMIN")) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "Cannot delete global admin"));
-                    }
-                    // Delete related records in order to avoid foreign key constraints
-                    try {
-                        // Delete ClubAdmin entries for this user if any
-                        clubAdminRepository.deleteByUsernameIgnoreCase(u.getUsername());
-                        // Finally delete the user from users table
-                        userRepository.deleteById(id);
-                        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
-                    } catch (Exception e) {
-                        return ResponseEntity.status(500).body(Map.of("message", "Error deleting user: " + e.getMessage()));
-                    }
-                })
-                .orElse(ResponseEntity.notFound().build());
+    private String extractFirstName(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return "Faculty";
+        }
+        String[] tokens = fullName.trim().split("\\s+");
+        java.util.Set<String> titlePrefixes = java.util.Set.of(
+                "dr.", "dr", "prof.", "prof", "mr.", "mr", "mrs.", "mrs", "ms.", "ms", "shri", "smt", "er.", "er", "doctor", "professor"
+        );
+        for (String token : tokens) {
+            String cleanToken = token.replaceAll("[^a-zA-Z]", "");
+            if (!cleanToken.isBlank() && !titlePrefixes.contains(token.toLowerCase()) && !titlePrefixes.contains(cleanToken.toLowerCase())) {
+                return cleanToken.substring(0, 1).toUpperCase() + (cleanToken.length() > 1 ? cleanToken.substring(1).toLowerCase() : "");
+            }
+        }
+        return "Faculty";
     }
 
-    @PatchMapping("/users/{id}/enabled")
-    public ResponseEntity<?> setUserEnabled(@NonNull @PathVariable String id, @RequestBody Map<String, Object> payload) {
+    private String extractLast4DigitsOfPhone(String mobile) {
+        if (mobile == null || mobile.isBlank()) {
+            throw new RuntimeException("Phone number is required");
+        }
+        String digits = mobile.replaceAll("\\D+", "");
+        if (digits.length() < 4) {
+            throw new RuntimeException("Phone number must contain at least 4 digits");
+        }
+        return digits.substring(digits.length() - 4);
+    }
+
+    @PatchMapping("/club-admins/{id}/enabled")
+    public ResponseEntity<?> setClubAdminEnabled(@NonNull @PathVariable String id, @RequestBody Map<String, Object> payload) {
         Object enabledObj = payload.get("enabled");
         if (!(enabledObj instanceof Boolean enabled)) {
             return ResponseEntity.badRequest().body(Map.of("message", "enabled must be boolean"));
         }
 
-        return userRepository.findById(id)
-                .map(user -> {
-                    if (!enabled && user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
-                        return ResponseEntity.badRequest().body(Map.of("message", "Cannot disable global admin"));
-                    }
-                    user.setEnabled(enabled);
-                    userRepository.save(user);
-                    return ResponseEntity.ok(Map.of(
-                            "message", "User updated",
-                            "id", user.getId(),
-                            "enabled", user.isEnabled()
-                    ));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
+        // Try lookup by User ID first, then by ClubAdmin ID
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setEnabled(enabled);
+            userRepository.save(user);
 
-    @PatchMapping("/club-admins/{clubAdminId}/enabled")
-    public ResponseEntity<?> setClubAdminEnabled(@NonNull @PathVariable String clubAdminId, @RequestBody Map<String, Object> payload) {
-        Object enabledObj = payload.get("enabled");
-        if (!(enabledObj instanceof Boolean enabled)) {
-            return ResponseEntity.badRequest().body(Map.of("message", "enabled must be boolean"));
+            // Sync with club_admins table
+            List<ClubAdmin> cas = clubAdminRepository.findByUsernameIgnoreCase(user.getUsername());
+            for (ClubAdmin ca : cas) {
+                ca.setEnabled(enabled);
+                clubAdminRepository.save(ca);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Club Admin status updated successfully",
+                    "id", user.getId(),
+                    "clubAdminId", user.getUsername(),
+                    "enabled", user.isEnabled()
+            ));
         }
 
-        return clubAdminRepository.findById(clubAdminId)
+        return clubAdminRepository.findById(id)
                 .map(ca -> {
                     ca.setEnabled(enabled);
                     clubAdminRepository.save(ca);
-
-                    // If this is the first enabled club for this user, also enable the user
-                    if (enabled) {
-                        List<ClubAdmin> enabledClubs = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(ca.getUsername());
-                        userRepository.findByUsernameIgnoreCase(ca.getUsername()).ifPresent(user -> {
-                            if (!user.isEnabled()) {
-                                user.setEnabled(true);
-                                userRepository.save(user);
-                            }
-                        });
-                    }
-
+                    userRepository.findByUsernameIgnoreCase(ca.getUsername()).ifPresent(u -> {
+                        u.setEnabled(enabled);
+                        userRepository.save(u);
+                    });
                     return ResponseEntity.ok(Map.of(
-                            "message", "Club admin updated",
-                            "clubAdminId", ca.getId(),
+                            "message", "Club Admin status updated successfully",
+                            "clubAdminId", ca.getUsername(),
                             "enabled", ca.isEnabled()
                     ));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/club-admins/{clubAdminId}")
-    public ResponseEntity<?> deleteClubAdmin(@NonNull @PathVariable String clubAdminId) {
-        return clubAdminRepository.findById(clubAdminId)
+    @DeleteMapping("/club-admins/{id}")
+    public ResponseEntity<?> deleteClubAdmin(@NonNull @PathVariable String id) {
+        // Safe removal of admin account without touching events, registrations, or winners
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isPresent()) {
+            User u = userOpt.get();
+            if ("CLUB_ADMIN".equalsIgnoreCase(u.getRole())) {
+                clubAdminRepository.deleteByUsernameIgnoreCase(u.getUsername());
+                userRepository.deleteById(id);
+                return ResponseEntity.ok(Map.of("message", "Club Admin account removed successfully. All event records remain preserved."));
+            }
+        }
+
+        return clubAdminRepository.findById(id)
                 .map(ca -> {
                     String username = ca.getUsername();
-                    clubAdminRepository.deleteById(clubAdminId);
-
-                    List<ClubAdmin> remaining = clubAdminRepository.findByUsernameIgnoreCase(username);
-                    if (remaining.isEmpty()) {
-                        userRepository.findByUsernameIgnoreCase(username).ifPresent(user -> {
-                            user.setRole("USER");
-                            user.setAdminClubId(null);
-                            userRepository.save(user);
-                        });
-                    } else {
-                        userRepository.findByUsernameIgnoreCase(username).ifPresent(user -> {
-                            user.setAdminClubId(remaining.get(0).getClubId());
-                            userRepository.save(user);
-                        });
-                    }
-
-                    return ResponseEntity.ok(Map.of("message", "Club admin role revoked successfully"));
+                    clubAdminRepository.deleteById(id);
+                    userRepository.findByUsernameIgnoreCase(username).ifPresent(u -> {
+                        if ("CLUB_ADMIN".equalsIgnoreCase(u.getRole())) {
+                            userRepository.deleteById(u.getId());
+                        }
+                    });
+                    return ResponseEntity.ok(Map.of("message", "Club Admin account removed successfully. All event records remain preserved."));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -353,6 +346,50 @@ public class AdminController {
                 "role", saved.getRole(),
                 "enabled", saved.isEnabled()
         ));
+    }
+
+    @PatchMapping("/users/{id}/enabled")
+    public ResponseEntity<?> setUserEnabled(@NonNull @PathVariable String id, @RequestBody Map<String, Object> payload) {
+        Object enabledObj = payload.get("enabled");
+        if (!(enabledObj instanceof Boolean enabled)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "enabled must be boolean"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User user = userOpt.get();
+        if ("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) || "ADMIN".equalsIgnoreCase(user.getRole())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Super Admin accounts cannot be disabled"));
+        }
+
+        user.setEnabled(enabled);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "User status updated successfully",
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "enabled", user.isEnabled()
+        ));
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<?> deleteUser(@NonNull @PathVariable String id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User user = userOpt.get();
+        if ("SUPER_ADMIN".equalsIgnoreCase(user.getRole()) || "ADMIN".equalsIgnoreCase(user.getRole())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Super Admin accounts cannot be deleted"));
+        }
+
+        userRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "Student account deleted successfully"));
     }
 
     @PostMapping("/cleanup-winners")

@@ -56,8 +56,6 @@ export default function StudentHome() {
     }
   }
 
-  const isClubAdmin = Boolean(user?.roles && user.roles.includes('CLUB_ADMIN'))
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">

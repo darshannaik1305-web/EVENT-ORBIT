@@ -50,12 +50,20 @@ export default function LoginForm() {
   }
 
   const footer = (
-    <p>
-      Don't have an account?{' '}
-      <Link to={ROUTES.REGISTER} className="text-[#F28D1E] hover:text-[#D97706] font-bold transition-colors">
-        Sign Up
-      </Link>
-    </p>
+    <div className="space-y-2 text-center text-xs">
+      <p>
+        Don't have an account?{' '}
+        <Link to={ROUTES.REGISTER} className="text-[#F28D1E] hover:text-[#D97706] font-bold transition-colors">
+          Student Sign Up
+        </Link>
+      </p>
+      <div className="pt-2 border-t border-[#E5E1DC] text-[#666666]">
+        Club Coordinator / Faculty?{' '}
+        <Link to={ROUTES.CLUB_ADMIN_LOGIN} className="text-[#F28D1E] hover:text-[#D97706] font-bold transition-colors">
+          Club Admin Portal →
+        </Link>
+      </div>
+    </div>
   )
 
   return (

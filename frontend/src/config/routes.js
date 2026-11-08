@@ -1,6 +1,8 @@
 export const ROUTES = {
   LANDING: '/',
   LOGIN: '/login',
+  STUDENT_LOGIN: '/student-login',
+  CLUB_ADMIN_LOGIN: '/club-admin-login',
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   UNAUTHORIZED: '/unauthorized',
@@ -20,6 +22,7 @@ export const ROUTES = {
     EVENTS: '/admin/events',
     PARTICIPANTS: '/admin/participants',
     RESULTS: '/admin/results',
+    PROFILE: '/admin/profile',
   },
   SUPERADMIN: {
     DASHBOARD: '/superadmin',

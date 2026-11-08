@@ -33,6 +33,7 @@ public class User implements UserDetails {
 
     private String adminClubId;
     private boolean enabled = true;
+    private boolean mustChangePassword = false;
 
     // Constructors
     public User() {}
@@ -113,6 +114,14 @@ public class User implements UserDetails {
         this.enabled = enabled;
     }
 
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
     // UserDetails interface methods
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -124,11 +133,7 @@ public class User implements UserDetails {
             return java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_STUDENT"));
         }
         if ("CLUB_ADMIN".equals(cleanRole)) {
-            return java.util.List.of(
-                new SimpleGrantedAuthority("ROLE_USER"),
-                new SimpleGrantedAuthority("ROLE_STUDENT"),
-                new SimpleGrantedAuthority("ROLE_CLUB_ADMIN")
-            );
+            return java.util.List.of(new SimpleGrantedAuthority("ROLE_CLUB_ADMIN"));
         }
         if ("ADMIN".equals(cleanRole) || "SUPER_ADMIN".equals(cleanRole) || "SUPERADMIN".equals(cleanRole) || cleanRole.contains("ADMIN")) {
             return java.util.List.of(

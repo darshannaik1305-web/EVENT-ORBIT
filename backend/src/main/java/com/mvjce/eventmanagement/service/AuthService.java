@@ -59,7 +59,6 @@ public class AuthService {
         if ("STUDENT".equals(normalizedRole)) {
             rolesList.add("STUDENT");
         } else if ("CLUB_ADMIN".equals(normalizedRole)) {
-            rolesList.add("STUDENT");
             rolesList.add("CLUB_ADMIN");
         } else if ("SUPER_ADMIN".equals(normalizedRole)) {
             rolesList.add("SUPER_ADMIN");
@@ -77,15 +76,20 @@ public class AuthService {
         resp.put("fullName", user.getFullName() != null ? user.getFullName() : user.getUsername());
         resp.put("email", user.getEmail() != null ? user.getEmail() : "");
         resp.put("mobile", user.getMobile() != null ? user.getMobile() : "");
+        resp.put("mustChangePassword", user.isMustChangePassword());
 
         if (rolesList.contains("CLUB_ADMIN")) {
-            List<ClubAdmin> adminClubs = clubAdminRepository.findByUsernameIgnoreCase(user.getUsername());
-            List<String> clubIds = adminClubs.stream()
-                    .map(ClubAdmin::getClubId)
-                    .collect(Collectors.toList());
-            if (!clubIds.isEmpty()) {
-                resp.put("adminClubIds", clubIds);
-                resp.put("adminClubId", clubIds.get(0));
+            String adminClubId = user.getAdminClubId();
+            if (adminClubId == null || adminClubId.isBlank()) {
+                List<ClubAdmin> adminClubs = clubAdminRepository.findByUsernameIgnoreCase(user.getUsername());
+                if (!adminClubs.isEmpty()) {
+                    adminClubId = adminClubs.get(0).getClubId();
+                }
+            }
+            if (adminClubId != null && !adminClubId.isBlank()) {
+                resp.put("adminClubId", adminClubId);
+                resp.put("adminClubIds", List.of(adminClubId));
+                clubRepository.findById(adminClubId).ifPresent(c -> resp.put("adminClubName", c.getName()));
             }
         }
 
@@ -148,103 +152,32 @@ public class AuthService {
         user.setEmail(email);
         user.setGender(g);
         user.setEnabled(true);
+        user.setMustChangePassword(false);
         
         return userRepository.save(user);
     }
 
-    public User registerAdmin(String usn, String fullName, String password, String mobile, String email, String gender, String adminClubId) {
-        if (adminClubId == null || adminClubId.isBlank()) {
-            throw new RuntimeException("club is required");
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        if (username == null || username.isBlank()) {
+            throw new RuntimeException("User not authenticated");
         }
-        final String normalizedClubId = Objects.requireNonNull(adminClubId).trim();
-        if (!clubRepository.existsById(Objects.requireNonNull(normalizedClubId))) {
-            throw new RuntimeException("club is invalid");
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new RuntimeException("Current password is required");
         }
-
-        // Check admin limit per club using ClubAdminRepository
-        long currentAdmins = clubAdminRepository.countByClubIdAndEnabledTrue(normalizedClubId);
-        if (currentAdmins >= 2) {
-            throw new RuntimeException("Only two admins are allowed per club");
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new RuntimeException("New password is required");
         }
-
-        if (usn == null || usn.isBlank()) {
-            throw new RuntimeException("USN is required");
-        }
-        String normalizedUsn = usn.trim().toUpperCase();
-        if (!normalizedUsn.matches("[A-Z0-9]+")) {
-            throw new RuntimeException("USN is invalid");
-        }
-        if (!normalizedUsn.matches("^1MJ[A-Z0-9]{7}$")) {
-            throw new RuntimeException("USN must be in format 1MJ******* (all capital letters)");
-        }
-        if (fullName == null || fullName.isBlank()) {
-            throw new RuntimeException("Full name is required");
-        }
-        if (password == null || password.isBlank()) {
-            throw new RuntimeException("Password is required");
-        }
-        if (mobile == null || !mobile.matches("\\d{10}")) {
-            throw new RuntimeException("mobile must be a valid 10-digit number");
-        }
-        if (email == null || email.isBlank() || !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
-            throw new RuntimeException("email is invalid");
-        }
-        if (gender == null || gender.isBlank()) {
-            throw new RuntimeException("gender is required");
-        }
-        String g = gender.trim().toUpperCase();
-        if (!g.equals("MALE") && !g.equals("FEMALE") && !g.equals("OTHER")) {
-            throw new RuntimeException("gender must be MALE, FEMALE or OTHER");
+        if (newPassword.length() < 6) {
+            throw new RuntimeException("New password must be at least 6 characters long");
         }
 
-        // Check if this user is already an admin for this specific club
-        if (clubAdminRepository.existsByUsernameIgnoreCaseAndClubId(normalizedUsn, normalizedClubId)) {
-            throw new RuntimeException("This USN is already an admin for this club");
+        User user = getUserByUsername(username);
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Incorrect current password");
         }
 
-        Optional<User> existingUserOpt = userRepository.findByUsernameIgnoreCase(normalizedUsn);
-        User user;
-
-        if (existingUserOpt.isPresent()) {
-            // User exists - check if they can be added as admin for another club
-            user = existingUserOpt.get();
-
-            // Verify password matches
-            if (!passwordEncoder.matches(password, user.getPassword())) {
-                throw new RuntimeException("USN already exists with a different password");
-            }
-
-            // Verify details match (case-insensitive, trimmed)
-            if (!Objects.equals(user.getFullName() != null ? user.getFullName().trim() : null, fullName.trim())) {
-                throw new RuntimeException("USN already exists with different name");
-            }
-
-            // Update role to CLUB_ADMIN if not already
-            if (!"CLUB_ADMIN".equalsIgnoreCase(user.getRole())) {
-                user.setRole("CLUB_ADMIN");
-                user = userRepository.save(user);
-            }
-        } else {
-            // Create new user
-            user = new User();
-            user.setUsername(normalizedUsn);
-            user.setPassword(passwordEncoder.encode(password));
-            user.setRole("CLUB_ADMIN");
-            user.setMobile(mobile);
-            user.setFullName(fullName);
-            user.setEmail(email);
-            user.setGender(g);
-            user.setEnabled(false);
-            user = userRepository.save(user);
-        }
-
-        // Create ClubAdmin mapping entry
-        ClubAdmin clubAdmin = new ClubAdmin();
-        clubAdmin.setUsername(normalizedUsn);
-        clubAdmin.setClubId(normalizedClubId);
-        clubAdmin.setEnabled(false); // Needs superadmin approval
-        clubAdminRepository.save(clubAdmin);
-
-        return user;
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(false);
+        userRepository.save(user);
     }
 }

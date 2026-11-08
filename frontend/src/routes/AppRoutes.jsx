@@ -18,6 +18,7 @@ import ProtectedRoute from './ProtectedRoute'
 
 // Pages - Auth
 import Login from '@/pages/Auth/Login'
+import ClubAdminLogin from '@/pages/Auth/ClubAdminLogin'
 import Register from '@/pages/Auth/Register'
 import ForgotPassword from '@/pages/Auth/ForgotPassword'
 
@@ -36,6 +37,7 @@ import StudentSettings from '@/pages/Student/Settings'
 import AdminEvents from '@/pages/Admin/Events'
 import AdminParticipants from '@/pages/Admin/Participants'
 import AdminResults from '@/pages/Admin/Results'
+import AdminProfile from '@/pages/Admin/Profile'
 
 // Pages - SuperAdmin
 import SuperAdminDashboard from '@/pages/SuperAdmin/Dashboard'
@@ -57,12 +59,14 @@ export default function AppRoutes() {
       {/* Public Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route path={ROUTES.STUDENT_LOGIN} element={<Login />} />
+        <Route path={ROUTES.CLUB_ADMIN_LOGIN} element={<ClubAdminLogin />} />
         <Route path={ROUTES.REGISTER} element={<Register />} />
         <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
       </Route>
 
-      {/* Protected Student Routes (Shared by STUDENT and CLUB_ADMIN) */}
-      <Route element={<ProtectedRoute allowedRoles={[ROLES.USER, ROLES.STUDENT, ROLES.CLUB_ADMIN]} />}>
+      {/* Protected Student Routes (Strictly STUDENT / USER) */}
+      <Route element={<ProtectedRoute allowedRoles={[ROLES.USER, ROLES.STUDENT]} />}>
         <Route element={<StudentLayout />}>
           <Route path={ROUTES.STUDENT.HOME} element={<StudentHome />} />
           <Route path={ROUTES.STUDENT.EVENTS} element={<StudentEvents />} />
@@ -83,6 +87,7 @@ export default function AppRoutes() {
           <Route path={ROUTES.ADMIN.EVENTS} element={<AdminEvents />} />
           <Route path={ROUTES.ADMIN.PARTICIPANTS} element={<AdminParticipants />} />
           <Route path={ROUTES.ADMIN.RESULTS} element={<AdminResults />} />
+          <Route path={ROUTES.ADMIN.PROFILE} element={<AdminProfile />} />
         </Route>
       </Route>
 

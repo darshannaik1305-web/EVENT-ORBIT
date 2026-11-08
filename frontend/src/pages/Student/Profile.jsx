@@ -4,8 +4,6 @@ import useAuth from '@/hooks/useAuth'
 export default function Profile() {
   const { user } = useAuth()
 
-  const isClubAdmin = Boolean(user?.roles && user.roles.includes('CLUB_ADMIN'))
-
   return (
     <div className="space-y-6 select-none max-w-4xl mx-auto pb-12">
       {/* Institutional Header Banner with Primary Orange Header */}
@@ -36,14 +34,8 @@ export default function Profile() {
               <span className="font-mono text-xs text-[#555555] bg-[#F7F6F3] px-2 py-0.5 rounded border border-[#E5E1DC]">
                 {user?.username}
               </span>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                  isClubAdmin
-                    ? 'bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/30'
-                    : 'bg-[#F28D1E]/15 text-[#F28D1E] border border-[#F28D1E]/30'
-                }`}
-              >
-                {isClubAdmin ? 'Club Admin' : 'Student'}
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#F28D1E]/15 text-[#F28D1E] border border-[#F28D1E]/30">
+                Student
               </span>
             </div>
           </div>

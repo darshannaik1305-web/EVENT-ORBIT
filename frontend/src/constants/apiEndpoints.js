@@ -2,7 +2,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
-    REGISTER_ADMIN: '/auth/register-admin',
+    CHANGE_PASSWORD: '/auth/change-password',
   },
   CLUBS: {
     BASE: '/clubs',

@@ -13,8 +13,6 @@ export default function Sidebar() {
     navigate(ROUTES.LOGIN)
   }
 
-  const isClubAdmin = Boolean(user?.roles && user.roles.includes('CLUB_ADMIN'))
-
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 ${isActive
       ? 'bg-[#F28D1E]/10 text-[#F28D1E] font-bold border-l-4 border-[#F28D1E] shadow-sm'
@@ -75,27 +73,6 @@ export default function Sidebar() {
             <span className="text-base">👤</span>
             <span>Profile</span>
           </NavLink>
-
-          {/* Conditional Admin Panel for Club Admins */}
-          {isClubAdmin && (
-            <div className="pt-4 mt-2 border-t border-[#E5E1DC]">
-              <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-[#7B1113]">
-                Club Administration
-              </div>
-              <NavLink
-                to={ROUTES.ADMIN.DASHBOARD}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${isActive
-                    ? 'bg-[#F28D1E] text-white shadow-sm'
-                    : 'bg-[#F7F6F3] text-[#7B1113] border border-[#E5E1DC] hover:bg-[#F28D1E]/10 hover:text-[#F28D1E]'
-                  }`
-                }
-              >
-                <span className="text-base">⚡</span>
-                <span>Admin Panel</span>
-              </NavLink>
-            </div>
-          )}
         </nav>
       </div>
 
@@ -108,13 +85,8 @@ export default function Sidebar() {
             </div>
             <div className="text-[11px] text-[#888888] font-mono truncate">{user?.username}</div>
           </div>
-          <span
-            className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${isClubAdmin
-                ? 'bg-[#F28D1E]/10 text-[#F28D1E] border border-[#F28D1E]/30'
-                : 'bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/25'
-              }`}
-          >
-            {isClubAdmin ? 'Club Admin' : 'Student'}
+          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/25">
+            Student
           </span>
         </div>
 

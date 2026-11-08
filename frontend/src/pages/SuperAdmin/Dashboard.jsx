@@ -22,18 +22,19 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     setLoading(true)
     try {
-      const [usersRes, clubsRes, eventsRes] = await Promise.all([
+      const [usersRes, clubAdminsRes, clubsRes, eventsRes] = await Promise.all([
         adminService.listUsers(),
+        adminService.listClubAdmins(),
         clubService.getAllClubs(),
         eventService.getAllEvents()
       ])
 
-      const usersList = usersRes.data || []
-      const clubAdminsList = usersList.filter(u => u.role === 'CLUB_ADMIN')
+      const studentsList = usersRes.data || []
+      const clubAdminsList = clubAdminsRes.data || []
 
       setStats({
-        totalUsers: usersList.length,
-        clubAdmins: clubAdminsList.length,
+        totalUsers: studentsList.length + clubAdminsList.length,
+        clubAdmins: clubAdminsList.filter(a => a.enabled !== false).length,
         totalClubs: (clubsRes.data || []).length,
         totalEvents: (eventsRes.data || []).length
       })

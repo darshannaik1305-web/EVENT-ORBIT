@@ -92,7 +92,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to={ROUTES.LOGIN} className="hover:text-white transition-colors">
+                <Link to={ROUTES.CLUB_ADMIN_LOGIN} className="hover:text-white transition-colors">
                   Club Admin Sign In
                 </Link>
               </li>

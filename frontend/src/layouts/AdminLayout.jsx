@@ -35,7 +35,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     logout()
-    navigate(ROUTES.LOGIN)
+    navigate(ROUTES.CLUB_ADMIN_LOGIN)
   }
 
   const navLinkClass = ({ isActive }) =>
@@ -62,30 +62,20 @@ export default function AdminLayout() {
           </Link>
 
           {/* Managed Club Context Box */}
-          {myClubs.length > 1 ? (
-            <div className="bg-[#F7F6F3] border border-[#E5E1DC] p-3 rounded-2xl space-y-1.5">
-              <div className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Active Club:</div>
-              <select
-                value={selectedClubId}
-                onChange={(e) => setSelectedClubId(e.target.value)}
-                className="w-full bg-white border border-[#E5E1DC] rounded-xl px-2.5 py-1.5 text-xs font-bold text-[#202020] outline-none cursor-pointer"
-              >
-                {myClubs.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : myClubs.length === 1 ? (
-            <div className="bg-[#F28D1E]/10 border border-[#F28D1E]/20 p-3 rounded-2xl flex items-center justify-between">
+          {selectedClub ? (
+            <div className="bg-[#F28D1E]/10 border border-[#F28D1E]/20 p-3.5 rounded-2xl flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-bold text-[#F28D1E] uppercase tracking-wider">Managing Club</div>
-                <div className="text-sm font-headings font-bold text-[#202020] truncate max-w-[140px]">{myClubs[0].name}</div>
+                <div className="text-[10px] font-bold text-[#F28D1E] uppercase tracking-wider">Assigned Club</div>
+                <div className="text-sm font-headings font-bold text-[#202020] truncate max-w-[140px]">{selectedClub.name}</div>
               </div>
               <span className="text-xl">🏛️</span>
             </div>
-          ) : null}
+          ) : (
+            <div className="bg-[#F7F6F3] border border-[#E5E1DC] p-3 rounded-2xl">
+              <div className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Assigned Club</div>
+              <div className="text-xs font-bold text-[#202020] mt-0.5">{user?.adminClubName || 'Club Coordinator'}</div>
+            </div>
+          )}
 
           {/* Main Navigation Links */}
           <nav className="space-y-1.5 pt-2">
@@ -107,21 +97,12 @@ export default function AdminLayout() {
               <span className="text-lg">🏆</span>
               <span>Winner Results</span>
             </NavLink>
-          </nav>
 
-          {/* Quick Action: Switch to Student Portal */}
-          <div className="pt-4 border-t border-[#E5E1DC] space-y-2">
-            <div className="px-2 text-[10px] font-extrabold text-[#888888] uppercase tracking-wider mb-1">
-              Student View
-            </div>
-            <Link
-              to={ROUTES.STUDENT.HOME}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs bg-[#7B1113]/10 text-[#7B1113] border border-[#7B1113]/25 hover:bg-[#7B1113]/20 transition-all shadow-sm"
-            >
-              <span className="text-base">🎓</span>
-              <span>Student Portal</span>
-            </Link>
-          </div>
+            <NavLink to={ROUTES.ADMIN.PROFILE} className={navLinkClass}>
+              <span className="text-lg">👤</span>
+              <span>Profile & Security</span>
+            </NavLink>
+          </nav>
         </div>
 
         {/* Admin User Profile Footer */}
@@ -132,11 +113,11 @@ export default function AdminLayout() {
                 {user?.fullName || user?.username}
               </div>
               <div className="text-[11px] text-[#7B1113] font-semibold truncate">
-                {selectedClub ? selectedClub.name : 'Club Admin'}
+                ID: {user?.username}
               </div>
             </div>
             <span className="px-2 py-0.5 rounded text-[9px] uppercase font-black bg-[#F28D1E]/10 text-[#F28D1E] border border-[#F28D1E]/30">
-              ADMIN
+              FACULTY
             </span>
           </div>
 
@@ -169,6 +150,22 @@ export default function AdminLayout() {
             </span>
           </div>
         </header>
+
+        {/* Temporary Password Mandatory Change Banner */}
+        {user?.mustChangePassword && (
+          <div className="bg-[#B42318] text-white px-6 sm:px-8 py-2.5 flex items-center justify-between text-xs font-bold shadow-md animate-pulse">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚠️</span>
+              <span>Temporary Password Active: You must change your initial temporary password to secure your account.</span>
+            </div>
+            <Link
+              to={ROUTES.ADMIN.PROFILE}
+              className="bg-white text-[#B42318] px-3 py-1 rounded-lg hover:bg-white/90 transition-colors uppercase text-[10px] tracking-wider font-extrabold"
+            >
+              Change Password Now &rarr;
+            </Link>
+          </div>
+        )}
 
         {/* Workspace Viewport */}
         <main className="p-6 md:p-8 max-w-7xl w-full flex-1">

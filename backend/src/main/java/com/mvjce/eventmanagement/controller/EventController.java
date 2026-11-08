@@ -110,9 +110,11 @@ public class EventController {
             return true;
         }
         if (isClubAdmin(actor)) {
-            // Check if user is admin for this specific club using ClubAdmin entries
-            if (event == null || event.getClubId() == null) {
+            if (event == null || event.getClubId() == null || !actor.isEnabled()) {
                 return false;
+            }
+            if (event.getClubId().equals(actor.getAdminClubId())) {
+                return true;
             }
             List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actor.getUsername());
             return clubAdmins.stream().anyMatch(ca -> ca.getClubId().equals(event.getClubId()));
@@ -251,9 +253,11 @@ public class EventController {
         if (actorUser != null && isClubAdmin(actorUser)) {
             System.out.println("DEBUG: User is CLUB_ADMIN, checking club permissions");
             System.out.println("DEBUG: event.clubId = " + event.getClubId());
-            // Check if user is admin for this specific club using ClubAdmin entries
-            List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actorUser.getUsername());
-            boolean hasAccess = clubAdmins.stream().anyMatch(ca -> ca.getClubId().equals(event.getClubId()));
+            boolean hasAccess = event.getClubId() != null && event.getClubId().equals(actorUser.getAdminClubId());
+            if (!hasAccess) {
+                List<ClubAdmin> clubAdmins = clubAdminRepository.findByUsernameIgnoreCaseAndEnabledTrue(actorUser.getUsername());
+                hasAccess = clubAdmins.stream().anyMatch(ca -> ca.getClubId().equals(event.getClubId()));
+            }
             if (!hasAccess) {
                 System.out.println("DEBUG: Club admin permission check FAILED - returning 403");
                 return ResponseEntity.status(403).build();

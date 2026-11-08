@@ -4,8 +4,9 @@ export const redirectByRole = (role) => {
   switch (role?.toUpperCase()) {
     case 'USER':
     case 'STUDENT':
-    case 'CLUB_ADMIN':
       return ROUTES.STUDENT.HOME
+    case 'CLUB_ADMIN':
+      return ROUTES.ADMIN.EVENTS
     case 'ADMIN':
     case 'SUPER_ADMIN':
       return ROUTES.SUPERADMIN.DASHBOARD
